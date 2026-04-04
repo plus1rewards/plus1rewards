@@ -75,7 +75,7 @@ export default function ApprovalsPage() {
         console.log('✅ Partners:', partners?.length || 0);
       }
 
-      // Fetch pending agents (without join since FK relationship doesn't exist)
+      // Fetch pending agents
       const { data: agents, error: agentsError } = await supabaseAdmin
         .from('agents')
         .select('*')
@@ -84,26 +84,11 @@ export default function ApprovalsPage() {
 
       if (agentsError) {
         console.error('❌ Agents error:', agentsError);
+        setPendingAgents([]);
       } else {
         console.log('✅ Agents:', agents?.length || 0);
-        
-        // Fetch user details for each agent
-        if (agents && agents.length > 0) {
-          const agentsWithUsers = await Promise.all(
-            agents.map(async (agent) => {
-              const { data: user } = await supabaseAdmin
-                .from('users')
-                .select('full_name, mobile_number, email')
-                .eq('id', agent.user_id)
-                .single();
-              
-              return { ...agent, users: user };
-            })
-          );
-          setPendingAgents(agentsWithUsers);
-        } else {
-          setPendingAgents([]);
-        }
+        // Agent details are stored directly in agents table, no need for separate join
+        setPendingAgents(agents || []);
       }
 
       // Fetch ALL active agents for assignment dropdown
@@ -113,22 +98,8 @@ export default function ApprovalsPage() {
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (activeAgents && activeAgents.length > 0) {
-        const activeAgentsWithUsers = await Promise.all(
-          activeAgents.map(async (agent) => {
-            const { data: user } = await supabaseAdmin
-              .from('users')
-              .select('full_name, mobile_number, email')
-              .eq('id', agent.user_id)
-              .single();
-            
-            return { ...agent, users: user };
-          })
-        );
-        setAllAgents(activeAgentsWithUsers);
-      } else {
-        setAllAgents([]);
-      }
+      // Agent details are stored directly in agents table
+      setAllAgents(activeAgents || []);
 
       // Fetch pending providers (if table exists)
       const { data: providers, error: providersError } = await supabaseAdmin
@@ -592,7 +563,7 @@ export default function ApprovalsPage() {
                       <div key={agent.id} className="p-6 hover:bg-gray-50 transition-colors">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h4 className="text-lg font-bold text-gray-900 mb-2">{agent.users?.full_name || 'Unknown'}</h4>
+                            <h4 className="text-lg font-bold text-gray-900 mb-2">{agent.full_name || 'Unknown'}</h4>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">ID Number</p>
@@ -600,11 +571,11 @@ export default function ApprovalsPage() {
                               </div>
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">Phone</p>
-                                <p className="text-sm text-gray-900">{agent.users?.mobile_number || 'Not provided'}</p>
+                                <p className="text-sm text-gray-900">{agent.mobile_number || 'Not provided'}</p>
                               </div>
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">Email</p>
-                                <p className="text-sm text-gray-900">{agent.users?.email || 'Not provided'}</p>
+                                <p className="text-sm text-gray-900">{agent.email || 'Not provided'}</p>
                               </div>
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">Applied</p>
@@ -948,7 +919,7 @@ export default function ApprovalsPage() {
                               <option value="">No agent assigned</option>
                               {allAgents.map((agent) => (
                                 <option key={agent.id} value={agent.id}>
-                                  {agent.users?.full_name || 'Unknown'} - {agent.users?.mobile_number || 'No phone'}
+                                  {agent.full_name || 'Unknown'} - {agent.mobile_number || 'No phone'}
                                 </option>
                               ))}
                             </select>

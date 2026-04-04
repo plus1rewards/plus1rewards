@@ -23,7 +23,7 @@ export default function AgentsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch agents first
+      // Fetch agents - details are stored directly in agents table
       const { data: agentsData, error: agentsError } = await supabaseAdmin
         .from('agents')
         .select('*')
@@ -35,26 +35,10 @@ export default function AgentsPage() {
         setLoading(false);
         return;
       }
-
-      // Fetch users data for all agents
-      const userIds = agentsData?.map(a => a.user_id).filter(Boolean) || [];
-      const { data: usersData } = await supabaseAdmin
-        .from('users')
-        .select('id, full_name, mobile_number, email')
-        .in('id', userIds);
-
-      // Create a map of users by id
-      const usersMap = new Map(usersData?.map(u => [u.id, u]) || []);
-
-      // Combine agents with their user data
-      const agentsWithUsers = agentsData?.map(agent => ({
-        ...agent,
-        users: usersMap.get(agent.user_id) || null
-      })) || [];
       
-      const totalAgents = agentsWithUsers.length;
-      const verified = agentsWithUsers.filter(a => a.status === 'active').length;
-      const pending = agentsWithUsers.filter(a => a.status === 'pending').length;
+      const totalAgents = agentsData?.length || 0;
+      const verified = agentsData?.filter(a => a.status === 'active').length || 0;
+      const pending = agentsData?.filter(a => a.status === 'pending').length || 0;
       
       // Get commission totals from agent_commissions table
       const { data: commissionsData } = await supabaseAdmin
@@ -63,7 +47,7 @@ export default function AgentsPage() {
       const commissions = commissionsData?.reduce((sum, c) => sum + (parseFloat(c.total_amount) || 0), 0) || 0;
       
       setStats({ totalAgents, verified, pending, sales: 0, commissions });
-      setAgents(agentsWithUsers);
+      setAgents(agentsData || []);
     } catch (error) {
       console.error('Error fetching agents:', error);
       setAgents([]);
@@ -343,8 +327,8 @@ export default function AgentsPage() {
                         <td className="px-6 py-4"><span className="text-xs font-mono font-bold text-[#1a558b] px-2 py-1 bg-[#1a558b]/10 rounded">{agent.id.substring(0, 8).toUpperCase()}</span></td>
                         <td className="px-6 py-4">
                           <div>
-                            <span className="text-sm font-semibold text-gray-900">{agent.users?.full_name || 'No name'}</span>
-                            <div className="text-xs text-gray-600">{agent.users?.mobile_number || 'No phone'}</div>
+                            <span className="text-sm font-semibold text-gray-900">{agent.full_name || 'No name'}</span>
+                            <div className="text-xs text-gray-600">{agent.mobile_number || 'No phone'}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -431,7 +415,7 @@ export default function AgentsPage() {
           {/* Modal Header */}
           <div className="border-b border-gray-200 px-8 py-6 flex items-center justify-between flex-shrink-0">
             <div>
-              <h2 className="text-2xl font-black text-gray-900">{selectedAgent.users?.full_name || 'Agent Details'}</h2>
+              <h2 className="text-2xl font-black text-gray-900">{selectedAgent.full_name || 'Agent Details'}</h2>
               <p className="text-sm text-gray-600 mt-1">Complete Agent Information</p>
             </div>
             <button
@@ -463,15 +447,15 @@ export default function AgentsPage() {
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Full Name</p>
-                      <p className="text-sm text-gray-900 font-semibold">{selectedAgent.users?.full_name || 'N/A'}</p>
+                      <p className="text-sm text-gray-900 font-semibold">{selectedAgent.full_name || 'N/A'}</p>
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Mobile Number</p>
-                      <p className="text-sm text-gray-900">{selectedAgent.users?.mobile_number || 'N/A'}</p>
+                      <p className="text-sm text-gray-900">{selectedAgent.mobile_number || 'N/A'}</p>
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Email</p>
-                      <p className="text-sm text-gray-900">{selectedAgent.users?.email || 'N/A'}</p>
+                      <p className="text-sm text-gray-900">{selectedAgent.email || 'N/A'}</p>
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">ID Number</p>

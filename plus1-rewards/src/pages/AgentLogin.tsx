@@ -29,30 +29,19 @@ export default function AgentLogin() {
         return;
       }
 
-      // Query users table by mobile number and PIN for agent role
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('mobile_number', mobileNumber)
-        .eq('pin_code', pin)
-        .eq('role', 'agent')
-        .single();
+      // Clean mobile number (remove non-digits)
+      const cleanMobileNumber = mobileNumber.replace(/\D/g, '');
 
-      if (userError || !userData) {
-        setError('Invalid mobile number or PIN');
-        setLoading(false);
-        return;
-      }
-
-      // Get agent record to check status
+      // Query agents table directly by mobile number and PIN
       const { data: agentData, error: agentError } = await supabase
         .from('agents')
         .select('*')
-        .eq('user_id', userData.id)
+        .eq('mobile_number', cleanMobileNumber)
+        .eq('pin_code', pin)
         .single();
 
       if (agentError || !agentData) {
-        setError('Agent account not found');
+        setError('Invalid mobile number or PIN');
         setLoading(false);
         return;
       }
@@ -75,12 +64,10 @@ export default function AgentLogin() {
       }
 
       if (agentData.status === 'active') {
-        // Store combined agent session
+        // Store agent session
         const sessionData = {
           ...agentData,
-          ...userData,
-          agent_id: agentData.id,
-          user_id: userData.id
+          agent_id: agentData.id
         };
         
         if (rememberMe) {

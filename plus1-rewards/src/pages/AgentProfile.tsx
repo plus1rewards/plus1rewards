@@ -43,20 +43,12 @@ export function AgentProfile() {
 
       const agentData = JSON.parse(agentDataStr);
       setAgent(agentData);
+      setUser(agentData); // Agent data is stored directly, no separate users table
 
-      // Load user data
-      const { data: userData } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', agentData.user_id)
-        .single();
-
-      if (userData) {
-        setUser(userData);
-        setFullName(userData.full_name || '');
-        setEmail(userData.email || '');
-        setMobileNumber(userData.mobile_number || '');
-      }
+      // Set form fields from agent data
+      setFullName(agentData.full_name || '');
+      setEmail(agentData.email || '');
+      setMobileNumber(agentData.mobile_number || '');
 
       // Load commission data
       const { data: commissionData } = await supabase
@@ -96,13 +88,13 @@ export function AgentProfile() {
 
     try {
       const { error } = await supabase
-        .from('users')
+        .from('agents')
         .update({
           full_name: fullName,
           email: email,
           mobile_number: mobileNumber
         })
-        .eq('id', user.id);
+        .eq('id', agent.id);
 
       if (error) throw error;
 
@@ -131,16 +123,16 @@ export function AgentProfile() {
       return;
     }
 
-    if (currentPin !== user.pin_code) {
+    if (currentPin !== agent.pin_code) {
       showError('Wrong PIN', 'Current PIN is incorrect');
       return;
     }
 
     try {
       const { error } = await supabase
-        .from('users')
+        .from('agents')
         .update({ pin_code: newPin })
-        .eq('id', user.id);
+        .eq('id', agent.id);
 
       if (error) throw error;
 

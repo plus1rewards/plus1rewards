@@ -72,20 +72,13 @@ export function AgentDashboard() {
         return;
       }
 
-      // Get user data separately
-      const { data: userData } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', currentAgent.user_id)
-        .single();
-
-      // Combine agent and user data
+      // Use agent data directly - no separate users table
       const combinedData = {
         ...currentAgent,
-        name: userData?.full_name?.split(' ')[0] || 'Agent',
-        surname: userData?.full_name?.split(' ').slice(1).join(' ') || '',
-        phone: userData?.mobile_number || '',
-        email: userData?.email || ''
+        name: currentAgent.full_name?.split(' ')[0] || 'Agent',
+        surname: currentAgent.full_name?.split(' ').slice(1).join(' ') || '',
+        phone: currentAgent.mobile_number || '',
+        email: currentAgent.email || ''
       };
 
       setAgent(combinedData as Agent);

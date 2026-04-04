@@ -23,7 +23,7 @@ export function AgentShopDetail() {
   const loadShopDetail = async () => {
     setLoading(true);
     try {
-      // Load partner data
+      // Load partner data - all partner details are stored directly in partners table
       const { data: partnerData } = await supabase
         .from('partners')
         .select('*')
@@ -32,15 +32,8 @@ export function AgentShopDetail() {
 
       if (partnerData) {
         setPartner(partnerData);
-
-        // Load partner user data
-        const { data: userData } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', partnerData.user_id)
-          .single();
-
-        setPartnerUser(userData);
+        // Partner data is stored directly, no separate users table
+        setPartnerUser(partnerData);
 
         // Load recent transactions
         const { data: transactionData } = await supabase
@@ -68,11 +61,12 @@ export function AgentShopDetail() {
   };
 
   const handleContactShop = () => {
-    if (!partnerUser?.mobile_number) {
+    const phoneNumber = partner?.phone || partnerUser?.mobile_number;
+    if (!phoneNumber) {
       showError('No Contact', 'No phone number available for this shop');
       return;
     }
-    window.open(`tel:${partnerUser.mobile_number}`, '_self');
+    window.open(`tel:${phoneNumber}`, '_self');
   };
 
   const handleAddNote = () => {
@@ -244,7 +238,7 @@ export function AgentShopDetail() {
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Phone Number</label>
-              <p className="text-gray-900 font-semibold">{partnerUser?.mobile_number || '-'}</p>
+              <p className="text-gray-900 font-semibold">{partner.phone || partnerUser?.mobile_number || '-'}</p>
             </div>
 
             <div>

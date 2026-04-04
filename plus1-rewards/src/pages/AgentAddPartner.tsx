@@ -1,25 +1,39 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Notification, useNotification } from '../components/Notification';
 
 const BLUE = '#1a558b';
 
+interface FormData {
+  shop_name: string;
+  phone: string;
+  email: string;
+  address: string;
+  category: string;
+  cashback_percent: string;
+  responsible_person: string;
+}
+
 export function AgentAddShop() {
   const navigate = useNavigate();
   const { notification, showSuccess, showError, hideNotification } = useNotification();
-  const [form, setForm] = useState({ 
+  const [step, setStep] = useState<'details' | 'agreement' | 'confirmation'>('details');
+  const [form, setForm] = useState<FormData>({ 
     shop_name: '', 
     phone: '', 
     email: '', 
     address: '', 
     category: '',
     cashback_percent: '5',
-    responsible_person: '',
-    included_products: '',
-    excluded_products: ''
+    responsible_person: ''
   });
   const [loading, setLoading] = useState(false);
+  const [signatureData, setSignatureData] = useState<string | null>(null);
+  const [partnerCreated, setPartnerCreated] = useState<any>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasSignature, setHasSignature] = useState(false);
 
   const agent = (() => { 
     try { 
@@ -31,24 +45,39 @@ export function AgentAddShop() {
 
   const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Initialize canvas when agreement step is reached
+  useEffect(() => {
+    if (step === 'agreement') {
+      setTimeout(() => initializeCanvas(), 100);
+    }
+  }, [step]);
+
+  const handleDetailsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     
-    if (!agent.agent_id && !agent.id) { 
-      navigate('/agent/login'); 
-      return; 
+    const cashback = parseFloat(form.cashback_percent);
+    if (cashback < 3 || cashback > 40) {
+      showError('Invalid Cashback', 'Cashback must be between 3% and 40%');
+      return;
     }
 
-    try {
-      const cashback = parseFloat(form.cashback_percent);
-      if (cashback < 3 || cashback > 40) {
-        showError('Invalid Cashback', 'Cashback must be between 3% and 40%');
-        setLoading(false);
+    // Validate email is unique if provided
+    if (form.email.trim()) {
+      const { data: existingPartner } = await supabase
+        .from('partners')
+        .select('id')
+        .eq('email', form.email.trim())
+        .single();
+
+      if (existingPartner) {
+        showError('Email Already Exists', 'This email is already registered as a partner. Please use a different email.');
         return;
       }
+    }
 
-      // Create partner record
+    // Create partner record first
+    setLoading(true);
+    try {
       const { data: partnerData, error: partnerError } = await supabase
         .from('partners')
         .insert([{
@@ -59,20 +88,161 @@ export function AgentAddShop() {
           category: form.category.trim() || null,
           cashback_percent: cashback,
           responsible_person: form.responsible_person.trim(),
-          included_products: form.included_products.trim() || null,
-          excluded_products: form.excluded_products.trim() || null,
           status: 'pending'
         }])
         .select()
         .single();
 
-      if (partnerError) throw partnerError;
+      if (partnerError) {
+        if (partnerError.message.includes('duplicate key')) {
+          showError('Duplicate Entry', 'This email or phone is already registered. Please use different contact details.');
+        } else {
+          throw partnerError;
+        }
+        return;
+      }
 
-      // Link partner to agent
+      setPartnerCreated(partnerData);
+      setStep('agreement');
+    } catch (err: any) {
+      showError('Error', err?.message || 'Failed to create partner record');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initializeCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas resolution to match display size
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    ctx.strokeStyle = BLUE;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  };
+
+  const getCanvasCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    let clientX: number;
+    let clientY: number;
+
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+
+    return { x, y };
+  };
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    setIsDrawing(true);
+    setHasSignature(true);
+
+    const { x, y } = getCanvasCoordinates(e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const { x, y } = getCanvasCoordinates(e);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasSignature(false);
+  };
+
+  const handleSignAgreement = async () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !hasSignature) return;
+
+    const signatureDataUrl = canvas.toDataURL('image/png');
+    setSignatureData(signatureDataUrl);
+    setStep('confirmation');
+  };
+
+  const handleConfirmConnection = async () => {
+    if (!partnerCreated || !signatureData) return;
+
+    setLoading(true);
+    try {
+      // Upload signature to storage
+      const timestamp = Date.now();
+      const fileName = `partner-signatures/${partnerCreated.id}_${timestamp}.png`;
+      
+      const response = await fetch(signatureData);
+      const blob = await response.blob();
+
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(fileName, blob, { upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      // Get the public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('documents')
+        .getPublicUrl(fileName);
+
+      // Update partner with signature URL
+      const { error: updateError } = await supabase
+        .from('partners')
+        .update({ signature_url: publicUrl })
+        .eq('id', partnerCreated.id);
+
+      if (updateError) throw updateError;
+
+      // Create partner-agent link with proof of signature
       const { error: linkError } = await supabase
         .from('partner_agent_links')
         .insert([{
-          partner_id: partnerData.id,
+          partner_id: partnerCreated.id,
           agent_id: agent.agent_id || agent.id,
           status: 'active'
         }]);
@@ -80,16 +250,28 @@ export function AgentAddShop() {
       if (linkError) throw linkError;
 
       showSuccess(
-        'Partner Shop Added!',
-        `${form.shop_name} has been added to your network and is pending admin approval.`
+        'Partner Connected!',
+        `${form.shop_name} has been successfully connected to your network with signed agreement proof.`
       );
       
       setTimeout(() => navigate('/agent/dashboard'), 2500);
     } catch (err: any) {
-      showError('Registration Failed', err?.message || 'Failed to register partner. Please try again.');
-    } finally { 
-      setLoading(false); 
+      showError('Error', err?.message || 'Failed to complete connection');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleBackToDetails = () => {
+    setStep('details');
+    setPartnerCreated(null);
+    setSignatureData(null);
+    setHasSignature(false);
+  };
+
+  const handleBackToAgreement = () => {
+    setStep('agreement');
+    setSignatureData(null);
   };
 
   return (
@@ -111,8 +293,16 @@ export function AgentAddShop() {
               <span className="material-symbols-outlined text-2xl">add_business</span>
             </div>
             <div>
-              <h1 className="text-xl font-black text-gray-900">Add Partner Shop</h1>
-              <p className="text-sm text-gray-600">Recruit a new business to your network</p>
+              <h1 className="text-xl font-black text-gray-900">
+                {step === 'details' && 'Add Partner Shop'}
+                {step === 'agreement' && 'Partner Agreement'}
+                {step === 'confirmation' && 'Confirm Connection'}
+              </h1>
+              <p className="text-sm text-gray-600">
+                {step === 'details' && 'Enter shop details'}
+                {step === 'agreement' && 'Review and sign the agreement'}
+                {step === 'confirmation' && 'Confirm the connection'}
+              </p>
             </div>
           </div>
           <button
@@ -125,9 +315,39 @@ export function AgentAddShop() {
         </div>
       </header>
 
+      {/* Progress Indicator */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className={`flex items-center gap-3 ${step === 'details' ? 'opacity-100' : 'opacity-50'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${step === 'details' ? 'bg-blue-600' : 'bg-green-600'}`}>
+                {step === 'details' ? '1' : '✓'}
+              </div>
+              <span className="text-sm font-semibold text-gray-700">Shop Details</span>
+            </div>
+            <div className={`flex-1 h-1 mx-4 ${step !== 'details' ? 'bg-green-600' : 'bg-gray-200'}`}></div>
+            <div className={`flex items-center gap-3 ${step === 'agreement' ? 'opacity-100' : 'opacity-50'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${step === 'agreement' ? 'bg-blue-600' : step === 'confirmation' ? 'bg-green-600' : 'bg-gray-300'}`}>
+                {step === 'confirmation' ? '✓' : '2'}
+              </div>
+              <span className="text-sm font-semibold text-gray-700">Sign Agreement</span>
+            </div>
+            <div className={`flex-1 h-1 mx-4 ${step === 'confirmation' ? 'bg-green-600' : 'bg-gray-200'}`}></div>
+            <div className={`flex items-center gap-3 ${step === 'confirmation' ? 'opacity-100' : 'opacity-50'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${step === 'confirmation' ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                3
+              </div>
+              <span className="text-sm font-semibold text-gray-700">Confirm</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-6 py-8">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* STEP 1: Shop Details */}
+        {step === 'details' && (
+        <form onSubmit={handleDetailsSubmit} className="space-y-6">
           {/* Shop Information */}
           <div className="bg-white border border-gray-200 rounded-xl p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -241,36 +461,6 @@ export function AgentAddShop() {
             </div>
           </div>
 
-          {/* Products Configuration */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined" style={{ color: BLUE }}>inventory_2</span>
-              Products & Services
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Included Products/Services</label>
-                <textarea 
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none" 
-                  placeholder="e.g. All groceries, fresh produce, household items"
-                  rows={3}
-                  value={form.included_products} 
-                  onChange={e => update('included_products', e.target.value)} 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Excluded Products/Services</label>
-                <textarea 
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none" 
-                  placeholder="e.g. Alcohol, tobacco, lottery tickets"
-                  rows={3}
-                  value={form.excluded_products} 
-                  onChange={e => update('excluded_products', e.target.value)} 
-                />
-              </div>
-            </div>
-          </div>
-
           {/* Commission Info */}
           <div className="bg-gradient-to-br from-cyan-50 to-blue-50 border border-cyan-200 rounded-xl p-6">
             <div className="flex items-start gap-3">
@@ -295,16 +485,215 @@ export function AgentAddShop() {
             {loading ? (
               <>
                 <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                Registering Partner...
+                Creating Partner Record...
               </>
             ) : (
               <>
-                <span className="material-symbols-outlined">add_business</span>
-                Add Partner to My Network
+                <span className="material-symbols-outlined">arrow_forward</span>
+                Continue to Agreement
               </>
             )}
           </button>
         </form>
+        )}
+
+        {/* STEP 2: Agreement & Signature */}
+        {step === 'agreement' && partnerCreated && (
+          <div className="space-y-6">
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Plus1 Rewards Partner Agreement</h2>
+              
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3 text-sm max-h-96 overflow-y-auto mb-6">
+                <div className="space-y-2">
+                  <p className="font-semibold">Partner: {form.shop_name}</p>
+                  <p className="font-semibold">Contact: {form.responsible_person}</p>
+                  <p className="font-semibold">Cashback Rate: {form.cashback_percent}%</p>
+                </div>
+
+                <div className="border-t border-gray-300 pt-3 space-y-2">
+                  <h4 className="font-bold">1. Cashback Structure</h4>
+                  <p>You agree to provide {form.cashback_percent}% cashback on qualifying purchases, distributed as follows:</p>
+                  <ul className="list-disc list-inside pl-2 space-y-1">
+                    <li>1% - Plus1 Rewards system fee</li>
+                    <li>1% - Sales agent commission</li>
+                    <li>{Math.max(parseFloat(form.cashback_percent || '0') - 2, 1)}% - Member cashback benefit</li>
+                  </ul>
+                </div>
+
+                <div className="border-t border-gray-300 pt-3 space-y-2">
+                  <h4 className="font-bold">2. Payment Terms</h4>
+                  <ul className="list-disc list-inside pl-2 space-y-1">
+                    <li>Cashback liability is invoiced monthly on the 28th</li>
+                    <li>Payment is due within 7 days of invoice date</li>
+                    <li>Late payments may result in account suspension</li>
+                    <li>All payments must be made via EFT to the designated account</li>
+                  </ul>
+                </div>
+
+                <div className="border-t border-gray-300 pt-3 space-y-2">
+                  <h4 className="font-bold">3. Partner Obligations</h4>
+                  <ul className="list-disc list-inside pl-2 space-y-1">
+                    <li>Process all member transactions accurately and honestly</li>
+                    <li>Verify member identity before processing transactions</li>
+                    <li>Maintain accurate records of all transactions</li>
+                    <li>Report any suspicious activity immediately</li>
+                    <li>Comply with all Plus1 Rewards policies and procedures</li>
+                  </ul>
+                </div>
+
+                <div className="border-t border-gray-300 pt-3 space-y-2">
+                  <h4 className="font-bold">4. Account Approval</h4>
+                  <p>Your account requires admin approval before activation. You will be notified via email once approved.</p>
+                </div>
+
+                <div className="border-t border-gray-300 pt-3 space-y-2">
+                  <h4 className="font-bold">5. Termination</h4>
+                  <p>Either party may terminate this agreement with 30 days written notice. Outstanding invoices remain payable.</p>
+                </div>
+
+                <div className="border-t border-gray-300 pt-3 space-y-2">
+                  <h4 className="font-bold">6. Data Protection</h4>
+                  <p>You agree to protect member data and use it only for Plus1 Rewards transactions.</p>
+                </div>
+              </div>
+
+              {/* Signature Canvas */}
+              <div className="space-y-2">
+                <label className="block text-sm font-bold" style={{ color: BLUE }}>
+                  Digital Signature *
+                </label>
+                <p className="text-xs text-gray-600">Sign below using your mouse or touchscreen</p>
+                <div className="border-2 rounded-xl overflow-hidden bg-white" style={{ borderColor: BLUE }}>
+                  <canvas
+                    ref={canvasRef}
+                    onMouseDown={startDrawing}
+                    onMouseMove={draw}
+                    onMouseUp={stopDrawing}
+                    onMouseLeave={stopDrawing}
+                    onTouchStart={startDrawing}
+                    onTouchMove={draw}
+                    onTouchEnd={stopDrawing}
+                    className="w-full h-40 cursor-crosshair touch-none block"
+                    style={{ touchAction: 'none', display: 'block' }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={clearSignature}
+                  className="text-xs text-gray-600 hover:text-gray-900 underline"
+                >
+                  Clear Signature
+                </button>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleBackToDetails}
+                className="flex-1 px-6 py-4 rounded-xl border-2 border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-all"
+              >
+                Back to Details
+              </button>
+              <button
+                type="button"
+                onClick={handleSignAgreement}
+                disabled={!hasSignature}
+                className="flex-1 px-6 py-4 rounded-xl font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ 
+                  backgroundColor: hasSignature ? BLUE : '#9ca3af',
+                  cursor: hasSignature ? 'pointer' : 'not-allowed'
+                }}
+              >
+                Sign & Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: Confirmation */}
+        {step === 'confirmation' && partnerCreated && signatureData && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center text-white flex-shrink-0">
+                  <span className="material-symbols-outlined text-2xl">check</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-green-900 mb-1">Agreement Signed Successfully</h3>
+                  <p className="text-sm text-green-800">
+                    Your digital signature has been captured and will serve as proof of this partnership agreement.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Confirm Connection</h2>
+              
+              <div className="space-y-4 mb-6">
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-700 mb-2"><strong>Shop Name:</strong> {form.shop_name}</p>
+                  <p className="text-sm text-gray-700 mb-2"><strong>Contact Person:</strong> {form.responsible_person}</p>
+                  <p className="text-sm text-gray-700 mb-2"><strong>Phone:</strong> {form.phone}</p>
+                  <p className="text-sm text-gray-700"><strong>Cashback Rate:</strong> {form.cashback_percent}%</p>
+                </div>
+
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-900">
+                    <strong>✓ Signature Proof:</strong> The partner's digital signature has been captured and stored as proof of this recruitment agreement.
+                  </p>
+                </div>
+
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-900">
+                    <strong>Next Step:</strong> This partner account is pending admin approval. Once approved, they can start processing member transactions and you'll earn commissions.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input type="checkbox" className="w-5 h-5 rounded" required />
+                  <span className="text-sm text-gray-700">
+                    I confirm that <strong>{form.responsible_person}</strong> from <strong>{form.shop_name}</strong> has digitally signed this agreement and is connected to my agent account.
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleBackToAgreement}
+                className="flex-1 px-6 py-4 rounded-xl border-2 border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-all"
+              >
+                Back to Signature
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmConnection}
+                disabled={loading}
+                className="flex-1 px-6 py-4 rounded-xl font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ backgroundColor: BLUE }}
+              >
+                {loading ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                    Confirming...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined">check_circle</span>
+                    Confirm & Complete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
