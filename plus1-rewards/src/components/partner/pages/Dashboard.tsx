@@ -1276,6 +1276,34 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
+
+        {/* Supplier References */}
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#1a558b]">local_shipping</span>
+              Supplier References
+            </h2>
+            <button
+              onClick={() => navigate('/partner/profile')}
+              className="text-blue-600 hover:text-blue-700 font-semibold text-xs md:text-sm"
+            >
+              Manage
+            </button>
+          </div>
+          <div className="p-4">
+            <p className="text-gray-600 text-xs md:text-sm mb-3">
+              Add suppliers you work with to help them join +1 Rewards
+            </p>
+            <button
+              onClick={() => navigate('/partner/profile')}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+            >
+              <span className="material-symbols-outlined">add</span>
+              Add Supplier Reference
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

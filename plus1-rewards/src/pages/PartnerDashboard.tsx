@@ -28,6 +28,206 @@ interface Transaction {
   member_name?: string;
 }
 
+interface Supplier {
+  id: string;
+  name: string;
+  contact_person: string;
+  phone: string;
+  email: string;
+}
+
+interface SupplierFormModalProps {
+  supplier: Supplier | null;
+  onSave: (supplier: Omit<Supplier, 'id'>) => Promise<void>;
+  onCancel: () => void;
+}
+
+function SupplierFormModal({ supplier, onSave, onCancel }: SupplierFormModalProps) {
+  const [formData, setFormData] = useState({
+    name: supplier?.name || '',
+    contact_person: supplier?.contact_person || '',
+    phone: supplier?.phone || '',
+    email: supplier?.email || ''
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim()) {
+      alert('Supplier name is required');
+      return;
+    }
+    setLoading(true);
+    try {
+      await onSave(formData);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '2rem',
+        maxWidth: '500px',
+        width: '90%',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+      }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', margin: 0 }}>
+          {supplier ? 'Edit Supplier' : 'Add Supplier'}
+        </h3>
+        
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1a558b' }}>
+              Supplier Name *
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="e.g., ABC Wholesale"
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                borderRadius: '8px',
+                border: '2px solid #1a558b',
+                fontSize: '0.9375rem',
+                boxSizing: 'border-box'
+              }}
+              required
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1a558b' }}>
+              Contact Person
+            </label>
+            <input
+              type="text"
+              name="contact_person"
+              value={formData.contact_person}
+              onChange={handleChange}
+              placeholder="e.g., John Smith"
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                borderRadius: '8px',
+                border: '2px solid #1a558b',
+                fontSize: '0.9375rem',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1a558b' }}>
+                Phone
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="082 555 1234"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  border: '2px solid #1a558b',
+                  fontSize: '0.9375rem',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1a558b' }}>
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="supplier@example.com"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  border: '2px solid #1a558b',
+                  fontSize: '0.9375rem',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={loading}
+              style={{
+                flex: 1,
+                padding: '0.75rem',
+                borderRadius: '8px',
+                border: '2px solid #1a558b',
+                backgroundColor: 'transparent',
+                color: '#1a558b',
+                fontSize: '0.9375rem',
+                fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.5 : 1
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                flex: 1,
+                padding: '0.75rem',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: '#1a558b',
+                color: 'white',
+                fontSize: '0.9375rem',
+                fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.5 : 1
+              }}
+            >
+              {loading ? 'Saving...' : 'Save Supplier'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export function PartnerDashboard() {
   const navigate = useNavigate();
   const [partner, setPartner] = useState<Partner | null>(null);
@@ -36,6 +236,10 @@ export function PartnerDashboard() {
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [monthlyTransactionCount, setMonthlyTransactionCount] = useState(0);
   const [monthlyCashbackLiability, setMonthlyCashbackLiability] = useState(0);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [expandedSupplier, setExpandedSupplier] = useState<number | null>(null);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [showSupplierForm, setShowSupplierForm] = useState(false);
 
   useEffect(() => { 
     loadPartnerData(); 
@@ -68,6 +272,11 @@ export function PartnerDashboard() {
       
       if (partnerDetails) {
         setPartner(partnerDetails);
+        
+        // Load suppliers
+        if (partnerDetails.suppliers && Array.isArray(partnerDetails.suppliers)) {
+          setSuppliers(partnerDetails.suppliers);
+        }
 
         // Load assigned agent
         console.log('Loading agent for partner:', partnerId);
@@ -178,6 +387,81 @@ export function PartnerDashboard() {
     navigate('/partner/login');
   };
 
+  const handleAddSupplier = () => {
+    setEditingSupplier(null);
+    setShowSupplierForm(true);
+  };
+
+  const handleEditSupplier = (supplier: Supplier) => {
+    setEditingSupplier(supplier);
+    setShowSupplierForm(true);
+  };
+
+  const handleSaveSupplier = async (supplierData: Omit<Supplier, 'id'>) => {
+    if (!partner) return;
+
+    try {
+      let updatedSuppliers: Supplier[];
+      
+      if (editingSupplier) {
+        // Update existing supplier
+        updatedSuppliers = suppliers.map(s => 
+          s.id === editingSupplier.id 
+            ? { ...s, ...supplierData }
+            : s
+        );
+      } else {
+        // Add new supplier
+        if (suppliers.length >= 3) {
+          alert('Maximum 3 suppliers allowed');
+          return;
+        }
+        const newSupplier: Supplier = {
+          id: `supplier-${Date.now()}`,
+          ...supplierData
+        };
+        updatedSuppliers = [...suppliers, newSupplier];
+      }
+
+      // Update in database
+      const { error } = await supabase
+        .from('partners')
+        .update({ suppliers: updatedSuppliers })
+        .eq('id', partner.id);
+
+      if (error) throw error;
+
+      setSuppliers(updatedSuppliers);
+      setShowSupplierForm(false);
+      setEditingSupplier(null);
+    } catch (error) {
+      console.error('Error saving supplier:', error);
+      alert('Failed to save supplier');
+    }
+  };
+
+  const handleDeleteSupplier = async (supplierId: string) => {
+    if (!partner) return;
+    
+    if (!confirm('Are you sure you want to delete this supplier?')) return;
+
+    try {
+      const updatedSuppliers = suppliers.filter(s => s.id !== supplierId);
+      
+      const { error } = await supabase
+        .from('partners')
+        .update({ suppliers: updatedSuppliers })
+        .eq('id', partner.id);
+
+      if (error) throw error;
+
+      setSuppliers(updatedSuppliers);
+    } catch (error) {
+      console.error('Error deleting supplier:', error);
+      alert('Failed to delete supplier');
+    }
+  };
+
   if (loading) return (
     <div className="page-wrapper" style={{ alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: '40px', height: '40px', borderRadius: '50%', border: '3px solid var(--blue-light)', borderTopColor: 'var(--blue)', margin: '0 auto 1rem', animation: 'spin 1s linear infinite' }} />
@@ -243,30 +527,153 @@ export function PartnerDashboard() {
             </div>
           </div>
 
-          {/* Recent Transactions */}
+          {/* Suppliers Section */}
           <div className="card">
-            <h2 className="section-title">Recent Transactions</h2>
-            {recentTransactions.length === 0 ? (
-              <p style={{ color: 'var(--gray-light)', textAlign: 'center', padding: '2rem 0' }}>No transactions yet</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <h2 className="section-title" style={{ margin: 0 }}>Suppliers</h2>
+              <button
+                onClick={handleAddSupplier}
+                disabled={suppliers.length >= 3}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  cursor: suppliers.length >= 3 ? 'not-allowed' : 'pointer',
+                  backgroundColor: suppliers.length >= 3 ? '#e5e7eb' : 'var(--blue)',
+                  color: suppliers.length >= 3 ? '#9ca3af' : 'white'
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>add</span>
+                Add Supplier
+              </button>
+            </div>
+
+            {suppliers.length === 0 ? (
+              <div style={{ padding: '2rem 1rem', textAlign: 'center', backgroundColor: 'rgba(26, 85, 139, 0.08)', borderRadius: '10px', border: '2px dashed var(--blue)' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '2rem', color: 'var(--blue)', display: 'block', marginBottom: '0.5rem' }}>local_shipping</span>
+                <p style={{ fontWeight: 600, color: 'var(--blue)', margin: '0.5rem 0 0.25rem' }}>No suppliers added yet</p>
+                <p style={{ fontSize: '0.875rem', color: 'var(--gray-light)', margin: 0 }}>Click "Add Supplier" to get started</p>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-                {recentTransactions.map(tx => (
-                  <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.875rem 1rem', background: '#fafbff', border: '1px solid var(--gray-border)', borderRadius: '10px' }}>
-                    <div>
-                      <p style={{ fontWeight: 600, color: '#111827', margin: '0 0 2px', fontSize: '0.9375rem' }}>{tx.member_name}</p>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--gray-light)', margin: 0 }}>
-                        {new Date(tx.created_at).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontWeight: 700, color: 'var(--green-dark)', margin: '0 0 2px' }}>+R{(parseFloat(tx.member_amount) || 0).toFixed(2)}</p>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--gray-light)', margin: 0 }}>Purchase: R{(parseFloat(tx.purchase_amount) || 0).toFixed(2)}</p>
-                    </div>
+                {suppliers.map((supplier, idx) => (
+                  <div key={supplier.id} style={{ border: '1px solid var(--gray-border)', borderRadius: '10px', overflow: 'hidden' }}>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedSupplier(expandedSupplier === idx ? null : idx)}
+                      style={{
+                        width: '100%',
+                        padding: '1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: expandedSupplier === idx ? 'var(--blue)' : 'rgba(26, 85, 139, 0.08)',
+                        color: expandedSupplier === idx ? 'white' : 'var(--blue)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, textAlign: 'left' }}>
+                        <span className="material-symbols-outlined">{supplier.name ? 'check_circle' : 'radio_button_unchecked'}</span>
+                        <div>
+                          <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Supplier {idx + 1}</p>
+                          <p style={{ fontSize: '0.9375rem', fontWeight: 600, margin: '0.25rem 0 0' }}>{supplier.name || 'Click to view details'}</p>
+                        </div>
+                      </div>
+                      <span className="material-symbols-outlined" style={{ transition: 'transform 0.2s ease', transform: expandedSupplier === idx ? 'rotate(180deg)' : 'rotate(0deg)' }}>expand_more</span>
+                    </button>
+
+                    {expandedSupplier === idx && (
+                      <div style={{ padding: '1rem', backgroundColor: '#fff', borderTop: '1px solid var(--gray-border)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                          <div>
+                            <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--gray-text)', margin: '0 0 0.25rem', textTransform: 'uppercase' }}>Supplier Name</p>
+                            <p style={{ fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>{supplier.name}</p>
+                          </div>
+                          <div>
+                            <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--gray-text)', margin: '0 0 0.25rem', textTransform: 'uppercase' }}>Contact Person</p>
+                            <p style={{ fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>{supplier.contact_person || '-'}</p>
+                          </div>
+                          <div>
+                            <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--gray-text)', margin: '0 0 0.25rem', textTransform: 'uppercase' }}>Phone</p>
+                            <p style={{ fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>{supplier.phone || '-'}</p>
+                          </div>
+                          <div>
+                            <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--gray-text)', margin: '0 0 0.25rem', textTransform: 'uppercase' }}>Email</p>
+                            <p style={{ fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>{supplier.email || '-'}</p>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button
+                            onClick={() => handleEditSupplier(supplier)}
+                            style={{
+                              flex: 1,
+                              padding: '0.5rem',
+                              borderRadius: '8px',
+                              border: '1px solid var(--blue)',
+                              backgroundColor: 'transparent',
+                              color: 'var(--blue)',
+                              fontSize: '0.875rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.5rem'
+                            }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>edit</span>
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSupplier(supplier.id)}
+                            style={{
+                              flex: 1,
+                              padding: '0.5rem',
+                              borderRadius: '8px',
+                              border: '1px solid #ef4444',
+                              backgroundColor: 'transparent',
+                              color: '#ef4444',
+                              fontSize: '0.875rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.5rem'
+                            }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>delete</span>
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
           </div>
+
+          {/* Supplier Form Modal */}
+          {showSupplierForm && (
+            <SupplierFormModal
+              supplier={editingSupplier}
+              onSave={handleSaveSupplier}
+              onCancel={() => {
+                setShowSupplierForm(false);
+                setEditingSupplier(null);
+              }}
+            />
+          )}
         </div>
       </main>
 
