@@ -35,8 +35,8 @@ export default function LogoUpload({ currentLogoUrl, onLogoUpdate, partnerId }: 
     try {
       // Create unique filename
       const fileExt = file.name.split('.').pop();
-      const fileName = `${partnerId}-logo-${Date.now()}.${fileExt}`;
-      const filePath = `partner-logos/${fileName}`;
+      const fileName = `${partnerId}-banner-${Date.now()}.${fileExt}`;
+      const filePath = `partner-banners/${fileName}`;
 
       // Upload file to Supabase Storage using admin client
       const { error: uploadError } = await supabaseAdmin.storage
@@ -61,16 +61,16 @@ export default function LogoUpload({ currentLogoUrl, onLogoUpdate, partnerId }: 
 
       if (updateError) throw updateError;
 
-      // Delete old logo if it exists
-      if (currentLogoUrl && currentLogoUrl.includes('partner-logos/')) {
+      // Delete old banner if it exists
+      if (currentLogoUrl && currentLogoUrl.includes('partner-banners/')) {
         const oldPath = currentLogoUrl.split('/').slice(-2).join('/');
         await supabaseAdmin.storage.from('documents').remove([oldPath]);
       }
 
       onLogoUpdate(publicUrl);
     } catch (error: any) {
-      console.error('Error uploading logo:', error);
-      setError(error.message || 'Failed to upload logo');
+      console.error('Error uploading banner:', error);
+      setError(error.message || 'Failed to upload banner');
     } finally {
       setUploading(false);
     }
@@ -89,16 +89,16 @@ export default function LogoUpload({ currentLogoUrl, onLogoUpdate, partnerId }: 
 
       if (updateError) throw updateError;
 
-      // Delete file from storage if it's in our partner-logos folder
-      if (currentLogoUrl.includes('partner-logos/')) {
+      // Delete file from storage if it's in our partner-banners folder
+      if (currentLogoUrl.includes('partner-banners/')) {
         const filePath = currentLogoUrl.split('/').slice(-2).join('/');
         await supabaseAdmin.storage.from('documents').remove([filePath]);
       }
 
       onLogoUpdate('');
     } catch (error: any) {
-      console.error('Error removing logo:', error);
-      setError(error.message || 'Failed to remove logo');
+      console.error('Error removing banner:', error);
+      setError(error.message || 'Failed to remove banner');
     } finally {
       setUploading(false);
     }
@@ -108,18 +108,18 @@ export default function LogoUpload({ currentLogoUrl, onLogoUpdate, partnerId }: 
     <div className="bg-white border border-gray-200 rounded-xl p-6">
       <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
         <span className="material-symbols-outlined text-[#1a558b]">image</span>
-        Shop Logo
+        Shop Banner
       </h3>
 
       <div className="space-y-4">
-        {/* Current Logo Display */}
+        {/* Current Banner Display */}
         {currentLogoUrl ? (
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 border border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
+            <div className="w-44 h-20 border border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
               <img
                 src={currentLogoUrl}
-                alt="Shop Logo"
-                className="w-full h-full object-contain"
+                alt="Shop Banner"
+                className="w-full h-full object-cover"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
                   e.currentTarget.parentElement!.innerHTML = '<span class="material-symbols-outlined text-gray-400">broken_image</span>';
@@ -127,18 +127,18 @@ export default function LogoUpload({ currentLogoUrl, onLogoUpdate, partnerId }: 
               />
             </div>
             <div className="flex-1">
-              <p className="text-sm text-gray-600 mb-2">Current logo</p>
+              <p className="text-sm text-gray-600 mb-2">Current banner</p>
               <button
                 onClick={handleRemoveLogo}
                 disabled={uploading}
                 className="text-red-600 hover:text-red-700 text-sm font-semibold disabled:opacity-50"
               >
-                Remove Logo
+                Remove Banner
               </button>
             </div>
           </div>
         ) : (
-          <div className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+          <div className="w-44 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
             <span className="material-symbols-outlined text-gray-400 text-2xl">add_photo_alternate</span>
           </div>
         )}
@@ -165,7 +165,7 @@ export default function LogoUpload({ currentLogoUrl, onLogoUpdate, partnerId }: 
             ) : (
               <>
                 <span className="material-symbols-outlined">upload</span>
-                {currentLogoUrl ? 'Change Logo' : 'Upload Logo'}
+                {currentLogoUrl ? 'Change Banner' : 'Upload Banner'}
               </>
             )}
           </button>
@@ -180,12 +180,12 @@ export default function LogoUpload({ currentLogoUrl, onLogoUpdate, partnerId }: 
 
         {/* Guidelines */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <p className="text-blue-700 text-sm font-semibold mb-1">Logo Guidelines:</p>
+          <p className="text-blue-700 text-sm font-semibold mb-1">Banner Guidelines:</p>
           <ul className="text-blue-600 text-xs space-y-1">
-            <li>• Recommended size: 200x200 pixels or larger</li>
+            <li>• Recommended size: 220x100 pixels or larger</li>
             <li>• Supported formats: JPG, PNG, GIF</li>
             <li>• Maximum file size: 2MB</li>
-            <li>• Square or rectangular logos work best</li>
+            <li>• Landscape banners work best</li>
           </ul>
         </div>
       </div>

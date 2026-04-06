@@ -651,6 +651,16 @@ export default function App() {
               >
                 {/* Header Image/Pattern Area */}
                 <div className="h-64 premium-gradient relative overflow-hidden shrink-0">
+                  {/* Partner Logo Background */}
+                  {selectedPartner.store_logo_url && (
+                    <div 
+                      className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
+                      style={{ 
+                        backgroundImage: `url(${selectedPartner.store_logo_url})`,
+                        filter: 'blur(2px) brightness(0.7)'
+                      }}
+                    />
+                  )}
                   <div className="absolute inset-0 opacity-10">
                     <div className="absolute top-0 left-0 w-full h-full" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
                   </div>

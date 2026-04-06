@@ -293,6 +293,73 @@ export function AgentShopDetail() {
           </div>
         </div>
 
+        {/* Supplier Referrals */}
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="px-6 py-5 border-b border-gray-200 bg-gray-50">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <span className="material-symbols-outlined" style={{ color: BLUE }}>business</span>
+              Supplier Referrals
+            </h3>
+          </div>
+
+          <div className="p-6">
+            {partner.suppliers && Array.isArray(partner.suppliers) && partner.suppliers.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {partner.suppliers.map((supplier: any, index: number) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="size-10 rounded-lg flex items-center justify-center text-white" style={{ backgroundColor: BLUE }}>
+                        <span className="material-symbols-outlined text-lg">factory</span>
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Supplier {index + 1}</span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Company Name</label>
+                        <p className="text-sm font-semibold text-gray-900">{supplier.name || '-'}</p>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Contact Person</label>
+                        <p className="text-sm text-gray-700">{supplier.contact_person || '-'}</p>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Phone</label>
+                        <p className="text-sm text-gray-700">{supplier.phone || '-'}</p>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Email</label>
+                        <p className="text-sm text-gray-700 break-all">{supplier.email || '-'}</p>
+                      </div>
+                    </div>
+
+                    {supplier.phone && (
+                      <div className="mt-4 pt-3 border-t border-gray-200">
+                        <button
+                          onClick={() => window.open(`tel:${supplier.phone}`, '_self')}
+                          className="w-full py-2 px-3 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2"
+                        >
+                          <span className="material-symbols-outlined text-sm">call</span>
+                          Call Supplier
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <span className="material-symbols-outlined text-gray-300 text-6xl mb-4">business</span>
+                <p className="text-gray-600 mb-2">No supplier referrals added</p>
+                <p className="text-sm text-gray-500">This partner hasn't added any supplier information yet.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Recent Transactions */}
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-6 py-5 border-b border-gray-200 bg-gray-50">

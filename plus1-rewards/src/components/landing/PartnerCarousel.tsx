@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import AnimatedPartnerCard from './AnimatedPartnerCard';
 
 const BLUE = '#1a558b';
 
@@ -13,6 +14,7 @@ interface Partner {
   cashback_percent: number;
   status: string;
   store_logo_url?: string;
+  phone?: string;
 }
 
 export default function PartnerCarousel() {
@@ -29,7 +31,7 @@ export default function PartnerCarousel() {
     try {
       const { data, error } = await supabase
         .from('partners')
-        .select('id, shop_name, category, address, cashback_percent, status, store_logo_url')
+        .select('id, shop_name, category, address, cashback_percent, status, store_logo_url, phone')
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(12);
@@ -44,11 +46,11 @@ export default function PartnerCarousel() {
   };
 
   const nextSlide = () => {
-    setCurrentIndex((prev) => (prev + 1) % Math.max(1, partners.length - 2));
+    setCurrentIndex((prev) => (prev + 1) % Math.max(1, partners.length - 3));
   };
 
   const prevSlide = () => {
-    setCurrentIndex((prev) => (prev - 1 + Math.max(1, partners.length - 2)) % Math.max(1, partners.length - 2));
+    setCurrentIndex((prev) => (prev - 1 + Math.max(1, partners.length - 3)) % Math.max(1, partners.length - 3));
   };
 
   const handlePartnerClick = (partnerId: string) => {
@@ -91,20 +93,20 @@ export default function PartnerCarousel() {
         </div>
 
         {/* Carousel */}
-        <div className="relative">
+        <div className="relative overflow-visible" style={{ minHeight: '400px', paddingTop: '50px', paddingBottom: '50px' }}>
           {/* Navigation Buttons */}
-          {partners.length > 3 && (
+          {partners.length > 4 && (
             <>
               <button
                 onClick={prevSlide}
-                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-16 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
                 style={{ color: BLUE }}
               >
                 <span className="material-symbols-outlined">chevron_left</span>
               </button>
               <button
                 onClick={nextSlide}
-                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-16 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
                 style={{ color: BLUE }}
               >
                 <span className="material-symbols-outlined">chevron_right</span>
@@ -113,85 +115,31 @@ export default function PartnerCarousel() {
           )}
 
           {/* Partner Cards */}
-          <div className="overflow-hidden">
+          <div className="overflow-hidden relative px-4" style={{ minHeight: '300px', paddingTop: '30px', paddingBottom: '30px' }}>
+            {/* Left fade effect */}
+            <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-gray-50 to-transparent z-10 pointer-events-none"></div>
+            {/* Right fade effect */}
+            <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-gray-50 to-transparent z-10 pointer-events-none"></div>
+            
             <div 
-              className="flex transition-transform duration-300 ease-in-out gap-6"
+              className="flex transition-transform duration-300 ease-in-out gap-4 justify-center"
               style={{ 
-                transform: `translateX(-${currentIndex * (100 / 3)}%)`,
-                width: `${Math.max(100, (partners.length / 3) * 100)}%`
+                transform: `translateX(-${currentIndex * (100 / 4)}%)`,
+                width: `${Math.max(100, (partners.length / 4) * 100)}%`,
+                paddingLeft: '15px',
+                paddingRight: '5px'
               }}
             >
               {partners.map((partner) => (
                 <div
                   key={partner.id}
-                  className="flex-shrink-0 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer group"
-                  style={{ width: `${100 / Math.max(3, partners.length)}%` }}
-                  onClick={() => handlePartnerClick(partner.id)}
+                  className="flex-shrink-0 flex justify-center"
+                  style={{ width: `${100 / Math.max(4, partners.length)}%` }}
                 >
-                  {/* Partner Header */}
-                  <div className="p-6 pb-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
-                          {partner.shop_name}
-                        </h3>
-                        <p className="text-sm text-gray-600 capitalize">
-                          {partner.category || 'General Store'}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        {/* Partner Logo */}
-                        {partner.store_logo_url && (
-                          <div className="w-14 h-14 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
-                            <img
-                              src={partner.store_logo_url}
-                              alt={partner.shop_name}
-                              className="w-full h-full object-contain p-1"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          </div>
-                        )}
-                        {/* Member Cashback Percentage */}
-                        <div 
-                          className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold"
-                          style={{ backgroundColor: '#e0f2fe', color: BLUE }}
-                        >
-                          <span className="material-symbols-outlined text-sm">percent</span>
-                          {Math.max(0, partner.cashback_percent - 2)}%
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-                      <span className="material-symbols-outlined text-sm">location_on</span>
-                      <span className="truncate">{partner.address}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span className="text-xs text-green-600 font-semibold">Active Partner</span>
-                      </div>
-                      <span className="material-symbols-outlined text-gray-400 group-hover:text-blue-600 transition-colors">
-                        arrow_forward
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Cashback Info */}
-                  <div 
-                    className="px-6 py-4 border-t border-gray-100"
-                    style={{ backgroundColor: '#f8fafc' }}
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-600">Earn cashback on every purchase</span>
-                      <span className="font-bold" style={{ color: BLUE }}>
-                        Up to {Math.max(0, partner.cashback_percent - 2)}%
-                      </span>
-                    </div>
-                  </div>
+                  <AnimatedPartnerCard
+                    partner={partner}
+                    onClick={handlePartnerClick}
+                  />
                 </div>
               ))}
             </div>
@@ -212,9 +160,9 @@ export default function PartnerCarousel() {
         </div>
 
         {/* Dots Indicator */}
-        {partners.length > 3 && (
+        {partners.length > 4 && (
           <div className="flex justify-center gap-2 mt-8">
-            {Array.from({ length: Math.max(1, partners.length - 2) }).map((_, index) => (
+            {Array.from({ length: Math.max(1, partners.length - 3) }).map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
