@@ -53,7 +53,6 @@ export default function Footer() {
               <li><a className="hover:text-blue-800 transition-colors" href="#roles">Partner Stores</a></li>
               <li><a className="hover:text-blue-800 transition-colors" href="/agent/register">Become an Agent</a></li>
               <li><a className="hover:text-blue-800 transition-colors" href="#faq">Day1Health Details</a></li>
-              <li><a className="hover:text-blue-800 transition-colors" href="#">Zii Chat</a></li>
               <li><a className="hover:text-blue-800 transition-colors" href="#">Contact Us</a></li>
             </ul>
           </div>
