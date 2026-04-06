@@ -35,8 +35,8 @@ export default function Dashboard() {
   const monthOptions = getMonthOptions();
 
   useEffect(() => {
-    // Get provider from localStorage
-    const providerData = localStorage.getItem('currentProvider');
+    // Get provider from sessionStorage or localStorage
+    const providerData = sessionStorage.getItem('currentProvider') || localStorage.getItem('currentProvider');
     if (!providerData) {
       navigate('/provider/login');
       return;

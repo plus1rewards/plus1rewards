@@ -77,7 +77,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       // Count pending providers created after last visit
       const { count: providersCount } = await supabaseAdmin
-        .from('providers')
+        .from('insurers')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending')
         .gte('created_at', new Date(lastApprovalsVisit).toISOString());
@@ -138,7 +138,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       // Count all providers
       const { count: allProvidersCount } = await supabaseAdmin
-        .from('providers')
+        .from('insurers')
         .select('*', { count: 'exact', head: true });
 
       // Count today's transactions
@@ -150,7 +150,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       // Count pending exports
       const { count: pendingExportsCount } = await supabaseAdmin
-        .from('provider_exports')
+        .from('insurer_exports')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
 

@@ -286,7 +286,7 @@ export function AgentShopDetail() {
           <div className="bg-white border border-gray-200 rounded-xl p-6">
             <div className="flex items-center justify-between mb-3">
               <span className="material-symbols-outlined text-2xl text-orange-600">account_balance_wallet</span>
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Your Commission</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Agent Commission</span>
             </div>
             <p className="text-3xl font-black text-orange-600 mb-1">R{monthlyCommission.toFixed(2)}</p>
             <p className="text-sm text-gray-600">Earned this month</p>
@@ -313,9 +313,10 @@ export function AgentShopDetail() {
                 <thead>
                   <tr className="bg-gray-50">
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Date</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Time</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Amount</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Cashback</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Your Share</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Agent Commission</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Status</th>
                   </tr>
                 </thead>
@@ -326,10 +327,13 @@ export function AgentShopDetail() {
                         <span className="text-sm text-gray-900">{new Date(transaction.created_at).toLocaleDateString()}</span>
                       </td>
                       <td className="px-6 py-4">
+                        <span className="text-sm text-gray-600">{new Date(transaction.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </td>
+                      <td className="px-6 py-4">
                         <span className="text-sm font-bold text-gray-900">R{parseFloat(transaction.purchase_amount).toFixed(2)}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm font-semibold" style={{ color: BLUE }}>{transaction.cashback_percent}%</span>
+                        <span className="text-sm font-semibold" style={{ color: BLUE }}>{partner.cashback_percent}%</span>
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-sm font-bold text-green-600">R{parseFloat(transaction.agent_amount || '0').toFixed(2)}</span>

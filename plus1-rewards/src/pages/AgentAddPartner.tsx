@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Notification, useNotification } from '../components/Notification';
+import { normalizePhoneNumber, isValidMobileNumber } from '../utils/phoneValidation';
 
 const BLUE = '#1a558b';
 
@@ -68,8 +69,8 @@ export function AgentAddShop() {
     }
 
     // Validate mobile number
-    if (!/^\d{10}$/.test(form.mobile_number.trim())) {
-      showError('Invalid Mobile Number', 'Mobile number must be exactly 10 digits');
+    if (!isValidMobileNumber(form.mobile_number.trim())) {
+      showError('Invalid Mobile Number', 'Please enter a valid 10-digit mobile number (e.g., 060 296 2491)');
       return;
     }
 
@@ -107,7 +108,7 @@ export function AgentAddShop() {
           category: form.category.trim() || null,
           cashback_percent: cashback,
           responsible_person: form.responsible_person.trim(),
-          mobile_number: form.mobile_number.trim(),
+          mobile_number: normalizePhoneNumber(form.mobile_number.trim()),
           pin_code: form.pin_code.trim(),
           status: 'pending'
         }])
@@ -377,7 +378,9 @@ export function AgentAddShop() {
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Business Name *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Business Name <span className="text-red-500">*</span>
+                </label>
                 <input 
                   type="text" 
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
@@ -389,7 +392,9 @@ export function AgentAddShop() {
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Category *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Category <span className="text-red-500">*</span>
+                </label>
                 <select 
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
                   value={form.category} 
@@ -428,7 +433,9 @@ export function AgentAddShop() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Shop Phone Number *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    Shop Phone Number <span className="text-red-500">*</span>
+                  </label>
                   <input 
                     type="tel" 
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
@@ -453,7 +460,9 @@ export function AgentAddShop() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Physical Address *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Physical Address <span className="text-red-500">*</span>
+                </label>
                 <input 
                   type="text" 
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
@@ -466,7 +475,9 @@ export function AgentAddShop() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Postal Code *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Postal Code <span className="text-red-500">*</span>
+                </label>
                 <input 
                   type="text" 
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
@@ -490,7 +501,9 @@ export function AgentAddShop() {
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Contact Person *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Contact Person <span className="text-red-500">*</span>
+                </label>
                 <input 
                   type="text" 
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
@@ -517,7 +530,9 @@ export function AgentAddShop() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Mobile Number (for login) *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Mobile Number (for login) <span className="text-red-500">*</span>
+                </label>
                 <input 
                   type="tel" 
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
@@ -530,7 +545,9 @@ export function AgentAddShop() {
                 <p className="text-xs text-gray-500 mt-1">10-digit mobile number for system login</p>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">PIN (6 digits) *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  PIN (6 digits) <span className="text-red-500">*</span>
+                </label>
                 <input 
                   type="text" 
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
@@ -552,7 +569,9 @@ export function AgentAddShop() {
               Cashback Configuration
             </h2>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Cashback Percentage (3% - 40%) *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Cashback Percentage (3% - 40%) <span className="text-red-500">*</span>
+              </label>
               <input 
                 type="number" 
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 

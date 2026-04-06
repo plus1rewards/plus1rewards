@@ -10,6 +10,7 @@ interface Partner {
   name: string;
   status: string;
   cashback_percent: number;
+  store_logo_url?: string;
 }
 
 interface MonthlyStats {
@@ -55,7 +56,7 @@ export default function Dashboard() {
 
       const { data: partnerData, error: partnerError } = await supabase
         .from('partners')
-        .select('id, shop_name, status, cashback_percent')
+        .select('id, shop_name, status, cashback_percent, store_logo_url')
         .eq('id', partnerId)
         .single();
 
@@ -156,8 +157,34 @@ export default function Dashboard() {
     <div className="max-w-4xl mx-auto space-y-4 md:space-y-6 px-2 md:px-0">
       {/* Header */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Partner Dashboard</h1>
-        <p className="text-sm md:text-base text-gray-600">Welcome back, {partner?.shop_name || partner?.name}</p>
+        <div className="flex items-center gap-4">
+          {/* Logo */}
+          <div className="w-16 h-16 md:w-20 md:h-20 flex-shrink-0">
+            {partner.store_logo_url ? (
+              <img
+                src={partner.store_logo_url}
+                alt={`${partner.shop_name} Logo`}
+                className="w-full h-full object-contain rounded-lg border border-gray-200 bg-gray-50"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                  if (fallback) fallback.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <div 
+              className={`w-full h-full bg-gray-100 border border-gray-200 rounded-lg flex items-center justify-center ${partner.store_logo_url ? 'hidden' : 'flex'}`}
+            >
+              <span className="material-symbols-outlined text-gray-400 text-2xl md:text-3xl">storefront</span>
+            </div>
+          </div>
+          
+          {/* Header Text */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 truncate">Partner Dashboard</h1>
+            <p className="text-sm md:text-base text-gray-600 truncate">Welcome back, {partner?.shop_name || partner?.name}</p>
+          </div>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -177,7 +204,7 @@ export default function Dashboard() {
             <span className="material-symbols-outlined text-[#1a558b] text-xl md:text-2xl">payments</span>
             <div>
               <p className="text-gray-900 font-bold text-lg md:text-xl">R{monthlyStats.cashbackLiability.toFixed(2)}</p>
-              <p className="text-gray-600 text-xs md:text-sm">Cashback Liability</p>
+              <p className="text-gray-600 text-xs md:text-sm">Cashback Issued</p>
             </div>
           </div>
         </div>

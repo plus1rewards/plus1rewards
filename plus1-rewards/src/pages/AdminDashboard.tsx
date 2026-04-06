@@ -1017,6 +1017,7 @@ export function AdminDashboard() {
                       <th>Platform Fee</th>
                       <th>Status</th>
                       <th>Date</th>
+                      <th>Time</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1056,6 +1057,9 @@ export function AdminDashboard() {
                         </td>
                         <td style={{ fontSize: '0.875rem', color: 'var(--gray-text)' }}>
                           {new Date(transaction.created_at).toLocaleDateString()}
+                        </td>
+                        <td style={{ fontSize: '0.875rem', color: 'var(--gray-text)' }}>
+                          {transaction.transaction_time || new Date(transaction.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </td>
                       </tr>
                     ))}

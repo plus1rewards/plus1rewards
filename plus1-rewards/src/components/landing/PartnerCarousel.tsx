@@ -12,6 +12,7 @@ interface Partner {
   address: string;
   cashback_percent: number;
   status: string;
+  store_logo_url?: string;
 }
 
 export default function PartnerCarousel() {
@@ -28,7 +29,7 @@ export default function PartnerCarousel() {
     try {
       const { data, error } = await supabase
         .from('partners')
-        .select('id, shop_name, category, address, cashback_percent, status')
+        .select('id, shop_name, category, address, cashback_percent, status, store_logo_url')
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(12);
@@ -51,8 +52,8 @@ export default function PartnerCarousel() {
   };
 
   const handlePartnerClick = (partnerId: string) => {
-    // Navigate to find-partners page with the selected partner highlighted
-    navigate(`/find-partners?highlight=${partnerId}`);
+    // Navigate to find-partner page with the selected partner highlighted
+    navigate(`/find-partner?highlight=${partnerId}`);
   };
 
   if (loading) {
@@ -138,13 +139,27 @@ export default function PartnerCarousel() {
                           {partner.category || 'General Store'}
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="flex flex-col items-end gap-2">
+                        {/* Partner Logo */}
+                        {partner.store_logo_url && (
+                          <div className="w-14 h-14 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+                            <img
+                              src={partner.store_logo_url}
+                              alt={partner.shop_name}
+                              className="w-full h-full object-contain p-1"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        )}
+                        {/* Member Cashback Percentage */}
                         <div 
                           className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold"
                           style={{ backgroundColor: '#e0f2fe', color: BLUE }}
                         >
                           <span className="material-symbols-outlined text-sm">percent</span>
-                          {partner.cashback_percent}%
+                          {Math.max(0, partner.cashback_percent - 2)}%
                         </div>
                       </div>
                     </div>
@@ -173,7 +188,7 @@ export default function PartnerCarousel() {
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-gray-600">Earn cashback on every purchase</span>
                       <span className="font-bold" style={{ color: BLUE }}>
-                        Up to {partner.cashback_percent}%
+                        Up to {Math.max(0, partner.cashback_percent - 2)}%
                       </span>
                     </div>
                   </div>

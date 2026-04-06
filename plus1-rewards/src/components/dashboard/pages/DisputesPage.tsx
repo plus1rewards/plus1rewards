@@ -117,7 +117,11 @@ export default function DisputesPage() {
   };
 
   const handleViewDetails = (dispute: any) => {
-    alert(`Dispute Details:\n\nID: ${dispute.id}\nMember: ${dispute.members?.full_name || 'Unknown'}\nPartner: ${dispute.partners?.shop_name || 'Unknown'}\nType: ${dispute.dispute_type}\nStatus: ${dispute.status}\nDescription: ${dispute.description}\n\nCreated: ${new Date(dispute.created_at).toLocaleString('en-ZA')}`);
+    const memberInfo = dispute.dispute_type === 'call_request' ? 'N/A (Agent Request)' : (dispute.members?.full_name || 'Unknown');
+    const partnerInfo = dispute.dispute_type === 'call_request' ? 'N/A (Agent Request)' : (dispute.partners?.shop_name || 'Unknown');
+    const disputeTypeDisplay = dispute.dispute_type === 'call_request' ? 'Call Requested' : dispute.dispute_type;
+    
+    alert(`Dispute Details:\n\nID: ${dispute.id}\nMember: ${memberInfo}\nPartner: ${partnerInfo}\nType: ${disputeTypeDisplay}\nStatus: ${dispute.status}\nDescription: ${dispute.description}\n\nCreated: ${new Date(dispute.created_at).toLocaleString('en-ZA')}`);
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -201,16 +205,25 @@ export default function DisputesPage() {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
                           <div>
                             <p className="text-xs text-gray-600 uppercase font-bold">Member</p>
-                            <p className="text-sm text-gray-900">{dispute.members?.full_name || 'Unknown'}</p>
+                            <p className="text-sm text-gray-900">
+                              {dispute.dispute_type === 'call_request' ? 'N/A (Agent Request)' : 
+                               dispute.members?.full_name || 'Unknown'}
+                            </p>
                             <p className="text-xs text-gray-500">{dispute.members?.phone || '-'}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 uppercase font-bold">Partner</p>
-                            <p className="text-sm text-gray-900">{dispute.partners?.shop_name || 'Unknown'}</p>
+                            <p className="text-sm text-gray-900">
+                              {dispute.dispute_type === 'call_request' ? 'N/A (Agent Request)' : 
+                               dispute.partners?.shop_name || 'Unknown'}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 uppercase font-bold">Dispute Type</p>
-                            <p className="text-sm text-gray-900 capitalize">{dispute.dispute_type?.replace('_', ' ') || '-'}</p>
+                            <p className="text-sm text-gray-900 capitalize">
+                              {dispute.dispute_type === 'call_request' ? 'Call Requested' : 
+                               dispute.dispute_type?.replace('_', ' ') || '-'}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 uppercase font-bold">Transaction Amount</p>

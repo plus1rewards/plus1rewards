@@ -41,6 +41,7 @@ interface Partner {
   commission_rate?: number;
   total_revenue?: number;
   member_count?: number;
+  store_logo_url?: string;
 }
 
 // Haversine formula to calculate distance in km
@@ -364,7 +365,7 @@ export default function App() {
                   )}
                   
                   <div className="flex justify-between items-start mb-6">
-                    <div className="space-y-1">
+                    <div className="space-y-1 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="px-2 py-0.5 rounded-md bg-primary/5 text-primary text-[9px] font-black uppercase tracking-widest">
                           {partner.category || 'Partner'}
@@ -380,7 +381,20 @@ export default function App() {
                         {partner.shop_name}
                       </h3>
                     </div>
-                    <div className="flex flex-col items-end">
+                    <div className="flex flex-col items-end gap-3">
+                      {/* Partner Logo */}
+                      {partner.store_logo_url && (
+                        <div className="w-16 h-16 rounded-lg border border-primary/20 bg-surface-container flex items-center justify-center overflow-hidden">
+                          <img
+                            src={partner.store_logo_url}
+                            alt={partner.shop_name}
+                            className="w-full h-full object-contain p-1"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
                       <div className="bg-primary text-on-primary px-4 py-2.5 rounded-2xl text-center shadow-lg shadow-primary/20">
                         <span className="text-xl font-black leading-none">{partner.cashback_percent}%</span>
                         <span className="block text-[8px] font-black uppercase tracking-widest opacity-70 mt-0.5">Back</span>

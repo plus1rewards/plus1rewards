@@ -417,6 +417,7 @@ export default function CommissionsPage() {
                           <thead className="bg-[#1a558b]/10">
                             <tr>
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Date</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Time</th>
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Member</th>
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Partner</th>
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Purchase Amount</th>
@@ -428,6 +429,7 @@ export default function CommissionsPage() {
                             {commissionDetails.transactions.map((transaction: any) => (
                               <tr key={transaction.id} className="hover:bg-gray-50">
                                 <td className="px-4 py-3 text-sm text-gray-600">{new Date(transaction.created_at).toLocaleDateString()}</td>
+                                <td className="px-4 py-3 text-sm text-gray-600">{transaction.transaction_time || new Date(transaction.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.members?.full_name || 'Unknown'}</td>
                                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.partners?.shop_name || 'Unknown'}</td>
                                 <td className="px-4 py-3 text-sm text-gray-900 font-bold">R{parseFloat(transaction.purchase_amount || 0).toFixed(2)}</td>

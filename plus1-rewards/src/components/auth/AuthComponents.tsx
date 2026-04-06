@@ -6,9 +6,10 @@ interface AuthInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon: string
   suffix?: React.ReactNode
   hint?: string
+  required?: boolean
 }
 
-export function AuthInput({ label, icon, suffix, hint, id, ...props }: AuthInputProps) {
+export function AuthInput({ label, icon, suffix, hint, id, required, ...props }: AuthInputProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', width: '100%', position: 'relative' }}>
       <label 
@@ -31,6 +32,7 @@ export function AuthInput({ label, icon, suffix, hint, id, ...props }: AuthInput
       >
         <span className="material-symbols-outlined" style={{ fontSize: '16px', color: BLUE }}>{icon}</span>
         {label}
+        {required && <span style={{ color: '#ef4444', marginLeft: '2px' }}>*</span>}
       </label>
       <div style={{ position: 'relative' }}>
         <input

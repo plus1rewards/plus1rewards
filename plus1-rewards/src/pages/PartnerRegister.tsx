@@ -387,6 +387,7 @@ export default function PartnerRegister() {
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-sm">category</span>
                     Business Category
+                    <span style={{ color: '#ef4444', marginLeft: '2px' }}>*</span>
                   </span>
                 </label>
                 <select
@@ -455,6 +456,7 @@ export default function PartnerRegister() {
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-sm">percent</span>
                     Cashback Percentage (3% - 40%)
+                    <span style={{ color: '#ef4444', marginLeft: '2px' }}>*</span>
                   </span>
                 </label>
                 <div className="flex items-center gap-4">

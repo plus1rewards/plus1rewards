@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Notification, useNotification } from '../components/Notification';
+import { supabase } from '../lib/supabase';
 
 const BLUE = '#1a558b';
 
@@ -39,8 +40,35 @@ export function AgentSupport() {
     setRequestType('general');
   };
 
-  const handleCallRequest = () => {
-    showInfo('Call Requested', 'An admin will call you within 24 hours');
+  const handleCallRequest = async () => {
+    if (!agent) {
+      showError('Error', 'Agent information not found');
+      return;
+    }
+
+    try {
+      // Save call request to disputes table
+      const { error } = await supabase
+        .from('disputes')
+        .insert({
+          dispute_type: 'call_request',
+          description: `Agent requesting callback - Name: ${agent.name || agent.full_name || 'N/A'}, Mobile: ${agent.mobile_number || 'N/A'}, Email: ${agent.email || 'N/A'}`,
+          status: 'open',
+          member_id: null, // No member involved in agent call requests
+          partner_id: null // No partner involved in agent call requests
+        });
+
+      if (error) {
+        console.error('Error saving call request:', error);
+        showError('Error', 'Failed to submit call request. Please try again.');
+        return;
+      }
+
+      showSuccess('Call Requested', 'An admin will call you within 24 hours');
+    } catch (error) {
+      console.error('Error submitting call request:', error);
+      showError('Error', 'Failed to submit call request. Please try again.');
+    }
   };
 
   const showInfo = (title: string, message: string) => {
@@ -101,18 +129,18 @@ export function AgentSupport() {
           </button>
 
           <button
-            onClick={() => window.open('mailto:support@plus1rewards.co.za', '_blank')}
+            onClick={() => window.open('mailto:plus1rewards@gmail.com', '_blank')}
             className="bg-white border border-gray-200 rounded-xl p-6 hover:border-blue-300 hover:shadow-md transition-all text-left group"
           >
             <div className="size-12 rounded-xl flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform" style={{ backgroundColor: BLUE }}>
               <span className="material-symbols-outlined text-2xl">email</span>
             </div>
             <h3 className="font-bold text-gray-900 mb-1">Email Support</h3>
-            <p className="text-sm text-gray-600">support@plus1rewards.co.za</p>
+            <p className="text-sm text-gray-600">plus1rewards@gmail.com</p>
           </button>
 
           <button
-            onClick={() => window.open('https://wa.me/27123456789', '_blank')}
+            onClick={() => window.open('https://wa.me/0714329190', '_blank')}
             className="bg-white border border-gray-200 rounded-xl p-6 hover:border-blue-300 hover:shadow-md transition-all text-left group"
           >
             <div className="size-12 rounded-xl flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform bg-green-600">

@@ -230,14 +230,15 @@ export default function TransactionsPage() {
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Amount</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Member Cashback</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Date</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Time</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {loading ? (
-                    <tr><td className="px-6 py-12 text-center" colSpan={8}><p className="text-gray-600">Loading transactions...</p></td></tr>
+                    <tr><td className="px-6 py-12 text-center" colSpan={9}><p className="text-gray-600">Loading transactions...</p></td></tr>
                   ) : filteredTransactions.length === 0 ? (
-                    <tr><td className="px-6 py-4" colSpan={8}><p className="text-sm text-gray-600 text-center">No transactions found</p></td></tr>
+                    <tr><td className="px-6 py-4" colSpan={9}><p className="text-sm text-gray-600 text-center">No transactions found</p></td></tr>
                   ) : (
                     filteredTransactions.map((tx) => (
                       <tr key={tx.id} className="hover:bg-gray-50 transition-colors group">
@@ -266,6 +267,7 @@ export default function TransactionsPage() {
                         <td className="px-6 py-4"><span className="text-sm font-bold text-gray-900">R{parseFloat(tx.purchase_amount || 0).toFixed(2)}</span></td>
                         <td className="px-6 py-4"><span className="text-sm font-bold text-[#1a558b]">R{parseFloat(tx.member_amount || 0).toFixed(2)}</span></td>
                         <td className="px-6 py-4"><span className="text-sm text-gray-600">{new Date(tx.created_at).toLocaleDateString()}</span></td>
+                        <td className="px-6 py-4"><span className="text-sm text-gray-600">{tx.transaction_time || new Date(tx.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></td>
                         <td className="px-6 py-4 text-center">
                           <button
                             onClick={() => handleViewDetails(tx)}

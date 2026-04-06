@@ -178,9 +178,9 @@ export default function AgentsPage() {
     const searchTerms = searchLower.split(/\s+/);
     
     const matchesSearch = searchLower === '' || searchTerms.every(term => 
-      a.users?.full_name?.toLowerCase().includes(term) ||
-      a.users?.email?.toLowerCase().includes(term) ||
-      a.users?.mobile_number?.includes(term) ||
+      a.full_name?.toLowerCase().includes(term) ||
+      a.email?.toLowerCase().includes(term) ||
+      a.mobile_number?.includes(term) ||
       a.id?.toLowerCase().includes(term) ||
       a.id_number?.includes(term)
     );

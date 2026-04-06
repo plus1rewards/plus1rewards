@@ -122,7 +122,17 @@ export default function PartnersPage() {
     try {
       const { data: partner } = await supabaseAdmin
         .from('partners')
-        .select('*')
+        .select(`
+          *,
+          partner_agent_links(
+            agent_id,
+            agents(
+              full_name,
+              mobile_number,
+              email
+            )
+          )
+        `)
         .eq('id', partnerId)
         .single();
 
@@ -177,7 +187,8 @@ export default function PartnersPage() {
           signature_public_url: signaturePublicUrl
         },
         transactions: transactions || [],
-        invoices: invoices || []
+        invoices: invoices || [],
+        assignedAgent: partner?.partner_agent_links?.[0]?.agents || null
       });
     } catch (error) {
       console.error('Error fetching partner details:', error);
@@ -648,6 +659,34 @@ export default function PartnersPage() {
                   </div>
                 </section>
 
+                {/* Assigned Agent */}
+                <section>
+                  <h3 className="text-lg font-bold text-[#1a558b] mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined">person_pin</span>
+                    Assigned Agent
+                  </h3>
+                  {partnerDetails.assignedAgent ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="bg-white border border-gray-200 rounded-lg p-4">
+                        <p className="text-xs text-gray-600 uppercase font-bold mb-1">Agent Name</p>
+                        <p className="text-sm text-gray-900 font-semibold">{partnerDetails.assignedAgent.full_name || 'Not provided'}</p>
+                      </div>
+                      <div className="bg-white border border-gray-200 rounded-lg p-4">
+                        <p className="text-xs text-gray-600 uppercase font-bold mb-1">Mobile Number</p>
+                        <p className="text-sm text-gray-900">{partnerDetails.assignedAgent.mobile_number || 'Not provided'}</p>
+                      </div>
+                      <div className="bg-white border border-gray-200 rounded-lg p-4">
+                        <p className="text-xs text-gray-600 uppercase font-bold mb-1">Email Address</p>
+                        <p className="text-sm text-gray-900">{partnerDetails.assignedAgent.email || 'Not provided'}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                      <p className="text-gray-600">No agent assigned to this partner</p>
+                    </div>
+                  )}
+                </section>
+
                 {/* Contact Information */}
                 <section>
                   <h3 className="text-lg font-bold text-[#1a558b] mb-4 flex items-center gap-2">
@@ -850,6 +889,7 @@ export default function PartnersPage() {
                           <thead className="bg-[#1a558b]/10">
                             <tr>
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Date</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Time</th>
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Member</th>
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Purchase Amount</th>
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Member Cashback</th>
@@ -860,7 +900,8 @@ export default function PartnersPage() {
                           <tbody className="divide-y divide-gray-200">
                             {partnerDetails.transactions.map((transaction: any) => (
                               <tr key={transaction.id} className="hover:bg-gray-50">
-                                <td className="px-4 py-3 text-sm text-gray-600">{new Date(transaction.created_at).toLocaleString()}</td>
+                                <td className="px-4 py-3 text-sm text-gray-600">{new Date(transaction.created_at).toLocaleDateString()}</td>
+                                <td className="px-4 py-3 text-sm text-gray-600">{transaction.transaction_time || new Date(transaction.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                                 <td className="px-4 py-3">
                                   <div className="text-sm text-gray-900 font-semibold">{transaction.members?.full_name || 'Unknown'}</div>
                                   <div className="text-xs text-gray-500">{transaction.members?.cell_phone || transaction.members?.phone || 'No phone'}</div>

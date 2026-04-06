@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import AuthLayout from '../components/auth/AuthLayout';
 import { AuthInput, AuthButton, AuthError, AuthLink } from '../components/auth/AuthComponents';
+import { FileUpload } from '../components/auth/FileUpload';
 import { Notification, useNotification } from '../components/Notification';
 import AgentDigitalSignature from '../components/AgentDigitalSignature';
 
@@ -36,12 +37,15 @@ export default function AgentRegister() {
     const { name, value, type } = e.target;
     const target = e.target as HTMLInputElement;
     const checked = target.checked;
-    const files = target.files;
     
     setFormData(prev => ({ 
       ...prev, 
-      [name]: type === 'checkbox' ? checked : type === 'file' ? files?.[0] || null : value 
+      [name]: type === 'checkbox' ? checked : value 
     }));
+  };
+
+  const handleFileChange = (file: File | null) => {
+    setFormData(prev => ({ ...prev, documentFile: file }));
   };
 
   const validateStep1 = () => {
@@ -389,20 +393,16 @@ export default function AgentRegister() {
               />
 
               {/* ID Document upload */}
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-gray-700">Upload ID / Passport / Driver's License</label>
-                <label
-                  className="flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl py-6 cursor-pointer transition-all"
-                  style={{ borderColor: formData.documentFile ? BLUE : '#e5e7eb', backgroundColor: formData.documentFile ? BLUE_LIGHT : '#fafafa' }}
-                >
-                  <span className="material-symbols-outlined text-3xl" style={{ color: formData.documentFile ? BLUE : '#9ca3af' }}>upload_file</span>
-                  <span className="text-sm font-semibold" style={{ color: formData.documentFile ? BLUE : '#6b7280' }}>
-                    {formData.documentFile ? formData.documentFile.name : 'Click to upload file'}
-                  </span>
-                  <span className="text-xs text-gray-400">JPG, PNG or PDF — max 5MB</span>
-                  <input type="file" name="documentFile" accept="image/*,.pdf" onChange={handleInputChange} className="hidden" required />
-                </label>
-              </div>
+              <FileUpload
+                label="Upload ID / Passport / Driver's License"
+                icon="upload_file"
+                accept="image/*,.pdf"
+                maxSize={5}
+                required={true}
+                value={formData.documentFile}
+                onChange={handleFileChange}
+                hint="JPG, PNG or PDF — max 5MB"
+              />
 
               <div className="flex gap-3">
                 <AuthButton type="button" onClick={handleBack} variant="outline">

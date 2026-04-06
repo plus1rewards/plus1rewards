@@ -132,7 +132,7 @@ export function AgentCommission() {
       setCurrentMonthBreakdown(Object.values(breakdown));
 
       // Load detailed transaction history
-      const { data: allTransactionsDetail } = await supabase
+      const { data: allTransactionsDetail } = await supabaseAdmin
         .from('transactions')
         .select('id, purchase_amount, agent_amount, created_at, partners(shop_name), members(full_name)')
         .in('partner_id', partnerIds)
@@ -287,6 +287,7 @@ export function AgentCommission() {
                 <thead>
                   <tr className="bg-gray-50">
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Date</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Time</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Member</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Partner Shop</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600 text-right">Purchase Amount</th>
@@ -301,10 +302,13 @@ export function AgentCommission() {
                           {new Date(transaction.created_at).toLocaleDateString('en-ZA', { 
                             year: 'numeric', 
                             month: 'short', 
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
+                            day: 'numeric'
                           })}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-600">
+                          {transaction.transaction_time || new Date(transaction.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </td>
                       <td className="px-6 py-4">

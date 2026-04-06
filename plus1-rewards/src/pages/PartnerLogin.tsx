@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import AuthLayout from '../components/auth/AuthLayout';
 import { AuthInput, AuthButton, AuthDivider, AuthError, AuthLink } from '../components/auth/AuthComponents';
 import { useNotification, Notification } from '../components/Notification';
+import { normalizePhoneNumber, isValidMobileNumber } from '../utils/phoneValidation';
 
 const BLUE = '#1a558b'
 
@@ -32,11 +33,12 @@ export default function PartnerLogin() {
       }
 
       // Determine if identifier is mobile number or email
-      const isMobile = /^\d{10}$/.test(identifier);
+      const normalizedPhone = normalizePhoneNumber(identifier);
+      const isMobile = isValidMobileNumber(identifier);
       const isEmail = identifier.includes('@');
 
       if (!isMobile && !isEmail) {
-        showNotification('error', 'Invalid Input', 'Please enter a valid 10-digit mobile number or email address');
+        showNotification('error', 'Invalid Input', 'Please enter a valid 10-digit mobile number (e.g., 060 296 2491) or email address');
         setLoading(false);
         return;
       }
@@ -47,7 +49,8 @@ export default function PartnerLogin() {
         .select('*');
 
       if (isMobile) {
-        partnerQuery = partnerQuery.eq('mobile_number', identifier);
+        // Use normalized phone number for database query
+        partnerQuery = partnerQuery.eq('mobile_number', normalizedPhone);
       } else {
         partnerQuery = partnerQuery.eq('email', identifier);
       }
