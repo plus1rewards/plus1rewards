@@ -2,8 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { X, Check, AlertCircle, QrCode } from 'lucide-react';
-import QRScanner from '../components/QRScanner';
+import { X, Check, AlertCircle } from 'lucide-react';
 
 interface Partner {
   id: string;
@@ -29,7 +28,6 @@ export default function PartnerSalesTerminal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeField, setActiveField] = useState<'phone' | 'amount'>('phone');
-  const [showQRScanner, setShowQRScanner] = useState(false);
 
   useEffect(() => {
     loadPartner();
@@ -298,20 +296,6 @@ export default function PartnerSalesTerminal() {
     }
   };
 
-  const handleQRScan = (scannedData: string) => {
-    // Extract phone number from QR code data
-    // Assuming QR code contains phone number or member ID
-    const phoneMatch = scannedData.match(/\d{10}/);
-    if (phoneMatch) {
-      setPhoneNumber(phoneMatch[0]);
-      setShowQRScanner(false);
-      setActiveField('amount');
-    } else {
-      setError('Invalid QR code. Please scan a valid member QR code.');
-      setShowQRScanner(false);
-    }
-  };
-
   const handleNewTransaction = () => {
     setStep('input');
     setPhoneNumber('');
@@ -401,17 +385,6 @@ export default function PartnerSalesTerminal() {
                     <div className="text-white text-4xl font-mono tracking-wider min-h-[50px] flex items-center justify-center">
                       {phoneNumber || '___-___-____'}
                     </div>
-                  </div>
-
-                  {/* QR Code Scanner Button */}
-                  <div className="mb-6">
-                    <button
-                      onClick={() => setShowQRScanner(true)}
-                      className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-lg"
-                    >
-                      <QrCode className="w-6 h-6" />
-                      Scan Partner QR Code
-                    </button>
                   </div>
 
                   {/* Transaction Amount Field */}
@@ -597,14 +570,6 @@ export default function PartnerSalesTerminal() {
           </div>
         </div>
       </div>
-
-      {/* QR Scanner Modal */}
-      {showQRScanner && (
-        <QRScanner
-          onScan={handleQRScan}
-          onClose={() => setShowQRScanner(false)}
-        />
-      )}
     </div>
   );
 }
