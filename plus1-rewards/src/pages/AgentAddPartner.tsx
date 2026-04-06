@@ -10,6 +10,7 @@ interface FormData {
   phone: string;
   email: string;
   address: string;
+  postal_code: string;
   category: string;
   cashback_percent: string;
   responsible_person: string;
@@ -26,6 +27,7 @@ export function AgentAddShop() {
     phone: '', 
     email: '', 
     address: '', 
+    postal_code: '',
     category: '',
     cashback_percent: '5',
     responsible_person: '',
@@ -101,6 +103,7 @@ export function AgentAddShop() {
           phone: form.phone.trim(),
           email: form.email.trim() || null,
           address: form.address.trim(),
+          postal_code: form.postal_code.trim(),
           category: form.category.trim() || null,
           cashback_percent: cashback,
           responsible_person: form.responsible_person.trim(),
@@ -454,11 +457,27 @@ export function AgentAddShop() {
                 <input 
                   type="text" 
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
-                  placeholder="123 Main Road, Johannesburg" 
+                  placeholder="e.g. 123 Voortrekker Road, Bellville, Cape Town, Western Cape" 
                   value={form.address} 
                   onChange={e => update('address', e.target.value)} 
                   required 
                 />
+                <p className="text-xs text-gray-500 mt-1">Format: Street Number, Street Name, Suburb, City, Province</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Postal Code *</label>
+                <input 
+                  type="text" 
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
+                  placeholder="e.g. 7530" 
+                  value={form.postal_code} 
+                  onChange={e => update('postal_code', e.target.value)} 
+                  maxLength="4"
+                  pattern="\d{4}"
+                  required 
+                />
+                <p className="text-xs text-gray-500 mt-1">4-digit South African postal code</p>
               </div>
             </div>
           </div>

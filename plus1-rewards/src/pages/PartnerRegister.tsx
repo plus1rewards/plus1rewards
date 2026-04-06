@@ -38,6 +38,7 @@ export default function PartnerRegister() {
   const [formData, setFormData] = useState({
     businessName: '',
     address: '',
+    postalCode: '',
     category: '',
     responsiblePerson: '',
     mobileNumber: '',
@@ -64,6 +65,10 @@ export default function PartnerRegister() {
     }
     if (!formData.address.trim()) {
       setError('Address is required');
+      return false;
+    }
+    if (!formData.postalCode.trim() || !/^\d{4}$/.test(formData.postalCode.trim())) {
+      setError('Valid 4-digit postal code is required');
       return false;
     }
     if (!formData.category) {
@@ -244,6 +249,7 @@ export default function PartnerRegister() {
           id: partnerId,
           shop_name: formData.businessName,
           address: formData.address,
+          postal_code: formData.postalCode,
           category: formData.category,
           phone: cleanPhone,
           email: formData.email,
@@ -350,11 +356,27 @@ export default function PartnerRegister() {
                 id="address"
                 name="address"
                 type="text"
-                placeholder="123 Main Street, Cape Town"
+                placeholder="e.g. 123 Voortrekker Road, Bellville, Cape Town, Western Cape"
                 value={formData.address}
                 onChange={handleInputChange}
                 required
               />
+              <p className="text-xs text-gray-500 -mt-2 mb-2">Format: Street Number, Street Name, Suburb, City, Province</p>
+
+              <AuthInput
+                label="Postal Code"
+                icon="markunread_mailbox"
+                id="postalCode"
+                name="postalCode"
+                type="text"
+                placeholder="e.g. 7530"
+                value={formData.postalCode}
+                onChange={handleInputChange}
+                maxLength={4}
+                pattern="\d{4}"
+                required
+              />
+              <p className="text-xs text-gray-500 -mt-2 mb-2">4-digit South African postal code</p>
 
               <div>
                 <label 
