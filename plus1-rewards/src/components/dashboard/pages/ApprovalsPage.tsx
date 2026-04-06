@@ -499,6 +499,10 @@ export default function ApprovalsPage() {
                                 <p className="text-sm text-gray-900">{partner.address || 'Not specified'}</p>
                               </div>
                               <div>
+                                <p className="text-xs text-gray-600 uppercase font-bold">Postal Code</p>
+                                <p className="text-sm text-gray-900">{partner.postal_code || 'Not specified'}</p>
+                              </div>
+                              <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">Cashback Percent</p>
                                 <p className="text-sm text-[#1a558b] font-bold">{partner.cashback_percent || 0}%</p>
                               </div>
@@ -853,6 +857,10 @@ export default function ApprovalsPage() {
                           <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">Address</p>
                             <p className="text-sm text-gray-900 font-semibold">{selectedItem.address || selectedItem.location || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600 uppercase tracking-wider">Postal Code</p>
+                            <p className="text-sm text-gray-900 font-semibold">{selectedItem.postal_code || '-'}</p>
                           </div>
                         </div>
                       </div>

@@ -234,7 +234,7 @@ export default function PartnersPage() {
 
   const handleExport = () => {
     const csv = [
-      ['ID', 'Shop Name', 'Phone', 'Email', 'Cashback %', 'Status', 'Address', 'Category', 'Joined'].join(','),
+      ['ID', 'Shop Name', 'Phone', 'Email', 'Cashback %', 'Status', 'Address', 'Postal Code', 'Category', 'Joined'].join(','),
       ...partners.map(s => [
         s.id,
         s.shop_name,
@@ -243,6 +243,7 @@ export default function PartnersPage() {
         s.cashback_percent || '',
         s.status,
         s.address || '',
+        s.postal_code || '',
         s.category || '',
         new Date(s.created_at).toLocaleDateString()
       ].join(','))
@@ -452,6 +453,7 @@ export default function PartnersPage() {
                         <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Partner</th>
                         <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Contact</th>
                         <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Address</th>
+                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Postal Code</th>
                         <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Responsible Person</th>
                         <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Cashback %</th>
                         <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Status</th>
@@ -478,6 +480,9 @@ export default function PartnersPage() {
                           </td>
                           <td className="px-4 py-4">
                             <div className="text-xs text-gray-700">{partner.address || '-'}</div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="text-xs text-gray-700">{partner.postal_code || '-'}</div>
                           </td>
                           <td className="px-4 py-4">
                             <div className="text-xs text-gray-700">{partner.responsible_person || '-'}</div>
@@ -705,6 +710,10 @@ export default function PartnersPage() {
                     <div className="bg-white border border-gray-200 rounded-lg p-4 md:col-span-2">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Physical Address</p>
                       <p className="text-sm text-gray-900">{partnerDetails.partner.address || 'Not provided'}</p>
+                    </div>
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">Postal Code</p>
+                      <p className="text-sm text-gray-900">{partnerDetails.partner.postal_code || 'Not provided'}</p>
                     </div>
                   </div>
                 </section>

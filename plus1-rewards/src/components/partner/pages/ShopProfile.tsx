@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import LogoUpload from '../LogoUpload';
 import SupplierExpiryBanner from '../SupplierExpiryBanner';
+import { geocodeAddress } from '../../../utils/geocoding';
 
 interface Partner {
   id: string;
@@ -47,6 +48,7 @@ export default function ShopProfile() {
     name: '', contact_person: '', phone: '', email: ''
   });
   const [canAddSuppliers, setCanAddSuppliers] = useState(true);
+  const [geocoding, setGeocoding] = useState(false);
 
   useEffect(() => {
     loadPartnerProfile();
@@ -113,6 +115,9 @@ export default function ShopProfile() {
         phone: formData.phone,
         email: formData.email,
         address: formData.address,
+        postal_code: formData.postal_code,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
         store_description: formData.store_description,
         suppliers: suppliers
       };
@@ -271,6 +276,33 @@ export default function ShopProfile() {
     // Refresh the partner data after expired suppliers are cleared
     loadPartnerProfile();
     setCanAddSuppliers(true);
+  };
+
+  const handleAutoGeocode = async () => {
+    if (!formData.address) {
+      alert('Please enter an address first');
+      return;
+    }
+
+    setGeocoding(true);
+    try {
+      const coords = await geocodeAddress(formData.address);
+      if (coords) {
+        setFormData({
+          ...formData,
+          latitude: coords.latitude,
+          longitude: coords.longitude
+        });
+        alert('Coordinates found and updated!');
+      } else {
+        alert('Could not find coordinates for this address. Please enter them manually.');
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      alert('Error finding coordinates. Please try again or enter them manually.');
+    } finally {
+      setGeocoding(false);
+    }
   };
 
   if (loading) {
@@ -466,6 +498,94 @@ export default function ShopProfile() {
                     <p className="text-gray-900 font-medium py-3">{partner.address || 'Not provided'}</p>
                   )}
                 </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Postal Code</label>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      value={formData.postal_code || ''}
+                      onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                      placeholder="e.g., 7530"
+                      maxLength={4}
+                      pattern="\d{4}"
+                    />
+                  ) : (
+                    <p className="text-gray-900 font-medium py-3">{partner.postal_code || 'Not provided'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Latitude</label>
+                  {editMode ? (
+                    <input
+                      type="number"
+                      step="any"
+                      value={formData.latitude || ''}
+                      onChange={(e) => setFormData({ ...formData, latitude: parseFloat(e.target.value) || null })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                      placeholder="e.g., -33.9249"
+                    />
+                  ) : (
+                    <p className="text-gray-900 font-medium py-3">{partner.latitude || 'Not provided'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Longitude</label>
+                  {editMode ? (
+                    <input
+                      type="number"
+                      step="any"
+                      value={formData.longitude || ''}
+                      onChange={(e) => setFormData({ ...formData, longitude: parseFloat(e.target.value) || null })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                      placeholder="e.g., 18.4241"
+                    />
+                  ) : (
+                    <p className="text-gray-900 font-medium py-3">{partner.longitude || 'Not provided'}</p>
+                  )}
+                </div>
+
+                {editMode && (
+                  <div className="md:col-span-2">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <span className="material-symbols-outlined text-blue-600 text-xl">location_on</span>
+                        <div className="flex-1">
+                          <h4 className="text-blue-800 font-semibold text-sm mb-2">Location Coordinates</h4>
+                          <p className="text-blue-700 text-sm mb-3">
+                            Accurate coordinates help customers find your business on maps. You can either:
+                          </p>
+                          <ul className="text-blue-700 text-sm mb-4 space-y-1">
+                            <li>• Use the auto-geocode button to find coordinates from your address</li>
+                            <li>• Manually enter coordinates from Google Maps (right-click your location)</li>
+                            <li>• Use GPS coordinates from your phone's location app</li>
+                          </ul>
+                          <button
+                            type="button"
+                            onClick={handleAutoGeocode}
+                            disabled={geocoding || !formData.address}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+                          >
+                            {geocoding ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                Finding coordinates...
+                              </>
+                            ) : (
+                              <>
+                                <span className="material-symbols-outlined text-lg">my_location</span>
+                                Auto-find coordinates
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Business Description</label>

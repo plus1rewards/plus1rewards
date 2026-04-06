@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapContainer, TileLayer, Marker, useMap, ZoomControl, Popup } from "react-leaflet";
 import L from "leaflet";
 import { supabase } from "../lib/supabase";
+import { geocodeAddress, getCityCoordinates, extractCityFromAddress } from "../utils/geocoding";
 import "leaflet/dist/leaflet.css";
 
 // Partner interface matching database schema
@@ -136,11 +137,66 @@ export default function App() {
             })
           );
 
-          setPartners(partnersWithStats);
+          // Geocode partners that don't have coordinates
+          const partnersWithCoords = await Promise.all(
+            partnersWithStats.map(async (partner) => {
+              if (partner.latitude && partner.longitude) {
+                return partner; // Already has coordinates
+              }
+
+              // Try to geocode the address
+              if (partner.address) {
+                console.log(`Geocoding address for ${partner.shop_name}: ${partner.address}`);
+                const coords = await geocodeAddress(partner.address);
+                
+                if (coords) {
+                  console.log(`Found coordinates for ${partner.shop_name}:`, coords);
+                  
+                  // Update the database with the new coordinates
+                  try {
+                    await supabase
+                      .from('partners')
+                      .update({
+                        latitude: coords.latitude,
+                        longitude: coords.longitude
+                      })
+                      .eq('id', partner.id);
+                    
+                    return {
+                      ...partner,
+                      latitude: coords.latitude,
+                      longitude: coords.longitude
+                    };
+                  } catch (updateError) {
+                    console.error(`Failed to update coordinates for ${partner.shop_name}:`, updateError);
+                  }
+                }
+              }
+
+              // Fallback: try to get city coordinates
+              const city = extractCityFromAddress(partner.address || '');
+              if (city) {
+                const cityCoords = getCityCoordinates(city);
+                if (cityCoords) {
+                  console.log(`Using city coordinates for ${partner.shop_name} in ${city}:`, cityCoords);
+                  return {
+                    ...partner,
+                    latitude: cityCoords.latitude,
+                    longitude: cityCoords.longitude
+                  };
+                }
+              }
+
+              console.log(`No coordinates found for ${partner.shop_name}`);
+              return partner;
+            })
+          );
+
+          setPartners(partnersWithCoords);
           
           // Handle highlighted partner from URL
           if (highlightPartnerId) {
-            const highlightedPartner = partnersWithStats.find(p => p.id === highlightPartnerId);
+            const highlightedPartner = partnersWithCoords.find(p => p.id === highlightPartnerId);
             if (highlightedPartner) {
               setSelectedPartnerId(highlightedPartner.id);
               setIsDetailOpen(true);
@@ -151,7 +207,7 @@ export default function App() {
             }
           } else {
             // Set initial map center to first partner with coordinates
-            const firstPartnerWithCoords = partnersWithStats.find(p => p.latitude && p.longitude);
+            const firstPartnerWithCoords = partnersWithCoords.find(p => p.latitude && p.longitude);
             if (firstPartnerWithCoords && firstPartnerWithCoords.latitude && firstPartnerWithCoords.longitude) {
               setMapCenter([firstPartnerWithCoords.latitude, firstPartnerWithCoords.longitude]);
               setSelectedPartnerId(firstPartnerWithCoords.id);
@@ -495,72 +551,91 @@ export default function App() {
           <ZoomControl position="bottomright" />
           
           {filteredPartners
-            .filter(p => p.latitude && p.longitude)
-            .map((p) => (
-            <Marker 
-              key={p.id} 
-              position={[p.latitude!, p.longitude!]} 
-              icon={createCustomIcon(p)}
-              eventHandlers={{
-                click: () => {
-                  setSelectedPartnerId(p.id);
-                  setIsDetailOpen(true);
-                },
-              }}
-            >
-              <Popup className="custom-popup" closeButton={false}>
-                <div className="p-6 bg-white">
-                  <div className="flex justify-between items-start gap-4 mb-6">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="px-2 py-0.5 rounded bg-primary/5 text-primary text-[8px] font-black uppercase tracking-widest">{p.category || 'Partner'}</span>
-                        <div className="flex items-center gap-1">
-                          <div className="w-1 h-1 rounded-full bg-green-500" />
-                          <span className="text-[8px] font-bold text-green-600 uppercase">Live</span>
+            .map((p) => {
+              // Use partner coordinates if available, otherwise use city coordinates as fallback
+              let lat = p.latitude;
+              let lng = p.longitude;
+              
+              if (!lat || !lng) {
+                const city = extractCityFromAddress(p.address || '');
+                const cityCoords = city ? getCityCoordinates(city) : null;
+                if (cityCoords) {
+                  lat = cityCoords.latitude;
+                  lng = cityCoords.longitude;
+                }
+              }
+              
+              // Only render marker if we have coordinates
+              if (!lat || !lng) return null;
+              
+              return (
+                <Marker 
+                  key={p.id} 
+                  position={[lat, lng]} 
+                  icon={createCustomIcon(p)}
+                  eventHandlers={{
+                    click: () => {
+                      setSelectedPartnerId(p.id);
+                      setIsDetailOpen(true);
+                    },
+                  }}
+                >
+                  <Popup className="custom-popup" closeButton={false}>
+                    <div className="p-6 bg-white">
+                      <div className="flex justify-between items-start gap-4 mb-6">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="px-2 py-0.5 rounded bg-primary/5 text-primary text-[8px] font-black uppercase tracking-widest">{p.category || 'Partner'}</span>
+                            <div className="flex items-center gap-1">
+                              <div className="w-1 h-1 rounded-full bg-green-500" />
+                              <span className="text-[8px] font-bold text-green-600 uppercase">Live</span>
+                            </div>
+                          </div>
+                          <h4 className="text-xl font-display font-bold text-primary m-0 leading-tight tracking-tighter">{p.shop_name}</h4>
+                        </div>
+                        <div className="bg-primary text-white w-12 h-12 rounded-2xl flex flex-col items-center justify-center shadow-lg shadow-primary/20 shrink-0">
+                          <span className="text-sm font-black leading-none">{p.cashback_percent}%</span>
+                          <span className="text-[6px] font-black uppercase opacity-70">Back</span>
                         </div>
                       </div>
-                      <h4 className="text-xl font-display font-bold text-primary m-0 leading-tight tracking-tighter">{p.shop_name}</h4>
-                    </div>
-                    <div className="bg-primary text-white w-12 h-12 rounded-2xl flex flex-col items-center justify-center shadow-lg shadow-primary/20 shrink-0">
-                      <span className="text-sm font-black leading-none">{p.cashback_percent}%</span>
-                      <span className="text-[6px] font-black uppercase opacity-70">Back</span>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3 mb-6">
-                    <div className="flex items-center gap-3 text-on-surface-variant">
-                      <MapPin size={12} strokeWidth={2.5} className="text-primary/40" />
-                      <span className="text-[11px] font-bold text-on-surface/70 leading-tight">{p.address || 'Address not available'}, {p.city || 'City'}</span>
-                    </div>
-                    {p.phone && (
-                      <div className="flex items-center gap-3 text-on-surface-variant">
-                        <Phone size={12} strokeWidth={2.5} className="text-primary/40" />
-                        <span className="text-[11px] font-bold text-on-surface/70">{p.phone}</span>
+                      
+                      <div className="space-y-3 mb-6">
+                        <div className="flex items-center gap-3 text-on-surface-variant">
+                          <MapPin size={12} strokeWidth={2.5} className="text-primary/40" />
+                          <span className="text-[11px] font-bold text-on-surface/70 leading-tight">{p.address || 'Address not available'}, {p.city || 'City'}</span>
+                        </div>
+                        {p.phone && (
+                          <div className="flex items-center gap-3 text-on-surface-variant">
+                            <Phone size={12} strokeWidth={2.5} className="text-primary/40" />
+                            <span className="text-[11px] font-bold text-on-surface/70">{p.phone}</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <a 
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${p.latitude},${p.longitude}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 h-11 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary-container transition-all duration-300 no-underline shadow-lg shadow-primary/10"
-                    >
-                      <Navigation size={14} strokeWidth={2.5} />
-                      Directions
-                    </a>
-                    <button 
-                      onClick={() => setIsDetailOpen(true)}
-                      className="w-11 h-11 bg-surface-container rounded-xl flex items-center justify-center text-primary hover:bg-primary/10 transition-all duration-300"
-                    >
-                      <Info size={18} strokeWidth={2.5} />
-                    </button>
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+                      
+                      <div className="flex gap-2">
+                        <a 
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 h-11 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary-container transition-all duration-300 no-underline shadow-lg shadow-primary/10"
+                        >
+                          <Navigation size={14} strokeWidth={2.5} />
+                          Directions
+                        </a>
+                        <button 
+                          onClick={() => setIsDetailOpen(true)}
+                          className="w-11 h-11 bg-surface-container rounded-xl flex items-center justify-center text-primary hover:bg-primary/10 transition-all duration-300"
+                        >
+                          <Info size={18} strokeWidth={2.5} />
+                        </button>
+                      </div>
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })
+            .filter(Boolean) // Remove null entries
+          }
         </MapContainer>
 
         {/* Floating Map Controls */}
@@ -825,18 +900,38 @@ export default function App() {
 
                   {/* Action Button */}
                   <div className="pt-4">
-                    {selectedPartner.latitude && selectedPartner.longitude && (
-                      <a 
-                        href={`https://www.google.com/maps/dir/?api=1&destination=${selectedPartner.latitude},${selectedPartner.longitude}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full py-6 premium-gradient text-white rounded-[28px] font-black text-sm uppercase tracking-[0.25em] flex items-center justify-center gap-4 shadow-2xl shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-1 transition-all duration-500 no-underline"
-                      >
-                        <Navigation size={20} strokeWidth={2.5} />
-                        Start Navigation
-                        <ArrowRight size={20} strokeWidth={2.5} />
-                      </a>
-                    )}
+                    {(() => {
+                      // Use partner coordinates if available, otherwise use city coordinates as fallback
+                      let lat = selectedPartner.latitude;
+                      let lng = selectedPartner.longitude;
+                      
+                      if (!lat || !lng) {
+                        const city = extractCityFromAddress(selectedPartner.address || '');
+                        const cityCoords = city ? getCityCoordinates(city) : null;
+                        if (cityCoords) {
+                          lat = cityCoords.latitude;
+                          lng = cityCoords.longitude;
+                        }
+                      }
+                      
+                      return lat && lng ? (
+                        <a 
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-6 premium-gradient text-white rounded-[28px] font-black text-sm uppercase tracking-[0.25em] flex items-center justify-center gap-4 shadow-2xl shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-1 transition-all duration-500 no-underline"
+                        >
+                          <Navigation size={20} strokeWidth={2.5} />
+                          Start Navigation
+                          <ArrowRight size={20} strokeWidth={2.5} />
+                        </a>
+                      ) : (
+                        <div className="w-full py-6 bg-gray-100 text-gray-500 rounded-[28px] font-black text-sm uppercase tracking-[0.25em] flex items-center justify-center gap-4">
+                          <MapPin size={20} strokeWidth={2.5} />
+                          Location Not Available
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </motion.div>
