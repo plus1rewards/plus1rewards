@@ -481,7 +481,7 @@ export default function AgentRegister() {
                   <li>• Commissions are calculated and paid out on a monthly basis.</li>
                   <li>• You are required to manage all partner and member functionality professionaly.</li>
                   <li>• Your account will be approved by an administrator before it becomes active.</li>
-                  <li>• Please read and sign the full agreement before final submission.</li>
+                  <li>• Please read and sign the agreement summary before final submission.</li>
                 </ul>
               </div>
 
