@@ -93,7 +93,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
       } else if (err.name === 'NotFoundError') {
         setError('No camera found on this device.');
       } else if (err.name === 'NotReadableError') {
-        setError('Camera is being used by another application.');
+        setError('Camera is being used by another application or browser tab. Please:\n1. Close other camera apps or browser tabs\n2. Refresh this page\n3. Try again');
       } else {
         setError(`Camera error: ${err.message || 'Unknown error'}`);
       }
@@ -190,7 +190,20 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
             <div className="bg-red-500/20 border border-red-500/50 rounded-2xl p-6 mb-6">
               <AlertCircle className="w-16 h-16 text-red-300 mx-auto mb-4" />
               <p className="text-red-200 text-lg mb-2">Camera Access Issue</p>
-              <p className="text-red-200/80 text-sm mb-4">{error}</p>
+              <div className="text-red-200/80 text-sm mb-4 whitespace-pre-line">{error}</div>
+              
+              {error.includes('being used') && (
+                <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-xl p-4 mb-4">
+                  <p className="text-yellow-200 text-sm font-semibold mb-2">Quick Fix:</p>
+                  <ul className="text-yellow-200/90 text-xs space-y-1 text-left">
+                    <li>• Close any other browser tabs using camera</li>
+                    <li>• Close camera apps (Zoom, Teams, etc.)</li>
+                    <li>• Refresh this page (F5 or Ctrl+R)</li>
+                    <li>• Check browser address bar for camera icon</li>
+                  </ul>
+                </div>
+              )}
+              
               <button
                 onClick={handleRetry}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2 mx-auto"
