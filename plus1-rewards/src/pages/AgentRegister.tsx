@@ -477,7 +477,7 @@ export default function AgentRegister() {
                   Sales Agent Agreement Summary
                 </h4>
                 <ul className="text-xs text-gray-700 space-y-1">
-                  <li>• You will earn 1% commission on every partner you successfully register.</li>
+                  <li>• You earn 1% commission on total sales at every partner shop you register and manage.</li>
                   <li>• Commissions are calculated and paid out on a monthly basis.</li>
                   <li>• You are required to manage all partner and member functionality professionaly.</li>
                   <li>• Your account will be approved by an administrator before it becomes active.</li>
