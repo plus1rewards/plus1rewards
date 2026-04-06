@@ -159,6 +159,20 @@ export default function PartnerSalesTerminal() {
   const handleConfirmTransaction = async () => {
     if (!member || !purchaseAmount || !partner) return;
 
+    // Check if partner is suspended
+    if (partner.status === 'suspended') {
+      setError('Your account has been suspended. You cannot process transactions. Please contact admin.');
+      setLoading(false);
+      return;
+    }
+
+    // Check if partner is not active
+    if (partner.status !== 'active') {
+      setError('Your account is not active. Only active partners can process transactions.');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError('');
 

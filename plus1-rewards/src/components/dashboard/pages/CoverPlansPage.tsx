@@ -25,44 +25,74 @@ export default function CoverPlansPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const { data: memberCoverPlans } = await supabaseAdmin
+      console.log('Fetching cover plans data...');
+      
+      // First get all member cover plans
+      const { data: memberCoverPlans, error: coverPlansError } = await supabaseAdmin
         .from('member_cover_plans')
-        .select(`
-          *,
-          member:members(full_name, phone),
-          cover_plan:cover_plans(plan_name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (!memberCoverPlans) {
+      console.log('Member cover plans raw data:', memberCoverPlans);
+      console.log('Member cover plans error:', coverPlansError);
+
+      if (coverPlansError) {
+        console.error('Error fetching cover plans:', coverPlansError);
         setCoverPlans([]);
         setLoading(false);
         return;
       }
 
-      // Transform to display format
-      const plans = memberCoverPlans.map(mcp => ({
-        id: mcp.id,
-        member_id: mcp.member_id,
-        member_name: mcp.member?.full_name || 'Unknown',
-        member_phone: mcp.member?.phone || 'N/A',
-        cover_plan_name: mcp.cover_plan?.plan_name || 'Unknown Plan',
-        creation_order: mcp.creation_order,
-        target_amount: parseFloat(mcp.target_amount),
-        funded_amount: parseFloat(mcp.funded_amount || 0),
-        status: mcp.status,
-        active_from: mcp.active_from,
-        active_to: mcp.active_to,
-        created_at: mcp.created_at
-      }));
+      if (!memberCoverPlans || memberCoverPlans.length === 0) {
+        console.log('No cover plans found');
+        setCoverPlans([]);
+        setLoading(false);
+        return;
+      }
 
-      const totalCoverPlans = plans.length;
-      const active = plans.filter(p => p.status === 'active').length;
-      const suspended = plans.filter(p => p.status === 'suspended' || p.status === 'in_progress').length;
-      const totalFunded = plans.reduce((sum, p) => sum + p.funded_amount, 0);
+      // Get member details for each plan
+      const plansWithDetails = await Promise.all(
+        memberCoverPlans.map(async (mcp) => {
+          // Get member details
+          const { data: member } = await supabaseAdmin
+            .from('members')
+            .select('full_name, cell_phone, phone')
+            .eq('id', mcp.member_id)
+            .single();
+
+          // Get cover plan details
+          const { data: coverPlan } = await supabaseAdmin
+            .from('cover_plans')
+            .select('plan_name')
+            .eq('id', mcp.cover_plan_id)
+            .single();
+
+          return {
+            id: mcp.id,
+            member_id: mcp.member_id,
+            member_name: member?.full_name || 'Unknown',
+            member_phone: member?.cell_phone || member?.phone || 'N/A',
+            cover_plan_name: coverPlan?.plan_name || 'Unknown Plan',
+            creation_order: mcp.creation_order,
+            target_amount: parseFloat(mcp.target_amount),
+            funded_amount: parseFloat(mcp.funded_amount || 0),
+            status: mcp.status,
+            active_from: mcp.active_from,
+            active_to: mcp.active_to,
+            created_at: mcp.created_at
+          };
+        })
+      );
+
+      console.log('Plans with details:', plansWithDetails);
+
+      const totalCoverPlans = plansWithDetails.length;
+      const active = plansWithDetails.filter(p => p.status === 'active').length;
+      const suspended = plansWithDetails.filter(p => p.status === 'suspended' || p.status === 'in_progress').length;
+      const totalFunded = plansWithDetails.reduce((sum, p) => sum + p.funded_amount, 0);
 
       setStats({ totalCoverPlans, active, suspended, totalFunded });
-      setCoverPlans(plans);
+      setCoverPlans(plansWithDetails);
     } catch (error) {
       console.error('Error fetching cover plans:', error);
     } finally {

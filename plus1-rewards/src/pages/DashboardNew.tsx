@@ -6,6 +6,7 @@ import { encodeMemberQR } from '../lib/config';
 import QRCode from 'qrcode';
 import UpgradePromptModal from '../components/member/UpgradePromptModal';
 import ProfileIncompleteModal from '../components/member/ProfileIncompleteModal';
+import PlanSelectionModal from '../components/member/PlanSelectionModal';
 import { Notification, useNotification } from '../components/Notification';
 
 interface Member {
@@ -82,6 +83,7 @@ const DashboardNew: React.FC = () => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [showProfileIncomplete, setShowProfileIncomplete] = useState(false);
   const [missingFields, setMissingFields] = useState<string[]>([]);
+  const [showPlanSelection, setShowPlanSelection] = useState(false);
 
   const generateQRCode = async (qrCode: string, phone: string) => {
     const qrValue = encodeMemberQR(qrCode, phone);
@@ -165,7 +167,10 @@ const DashboardNew: React.FC = () => {
         .eq('member_id', memberData.id)
         .order('creation_order', { ascending: true });
 
+      console.log('Cover plans query result:', { coverPlansData, memberId: memberData.id });
+
       if (coverPlansData && coverPlansData.length > 0) {
+        console.log('Found cover plan:', coverPlansData[0]);
         const planWithNumbers = {
           ...coverPlansData[0],
           target_amount: typeof coverPlansData[0].target_amount === 'string' 
@@ -179,6 +184,9 @@ const DashboardNew: React.FC = () => {
             : (coverPlansData[0].overflow_balance || 0)
         };
         setMainCoverPlan(planWithNumbers);
+      } else {
+        console.log('No cover plans found - showing plan selection modal');
+        setShowPlanSelection(true);
       }
 
       // Get recent transactions
@@ -1068,6 +1076,20 @@ const DashboardNew: React.FC = () => {
           }}
           onForceClose={() => {
             setShowProfileIncomplete(false);
+          }}
+        />
+      )}
+
+      {/* Plan Selection Modal - Show for new members */}
+      {showPlanSelection && member && (
+        <PlanSelectionModal
+          memberId={member.id}
+          onPlanSelected={() => {
+            setShowPlanSelection(false);
+            // Reload page after a short delay to ensure database is updated
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
           }}
         />
       )}

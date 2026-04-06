@@ -808,6 +808,14 @@ export default function Dashboard() {
             <span className="hidden sm:inline">Register Member</span>
             <span className="sm:hidden">Register</span>
           </button>
+          <button
+            onClick={() => navigate('/partner/support')}
+            className="py-2 md:py-3 px-3 md:px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-1 md:gap-2 text-xs md:text-base bg-gray-50 text-gray-600 hover:bg-gray-100"
+            title="Get Help & Support"
+          >
+            <span className="material-symbols-outlined text-lg">help</span>
+            <span className="hidden sm:inline">Help</span>
+          </button>
         </div>
 
         {/* Success/Error Messages */}

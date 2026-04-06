@@ -18,7 +18,7 @@ export default function ProvidersPage() {
     setLoading(true);
     try {
       const { data } = await supabaseAdmin
-        .from('providers')
+        .from('insurers')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -45,7 +45,7 @@ export default function ProvidersPage() {
       const { data: coverPlans } = await supabaseAdmin
         .from('cover_plans')
         .select('*')
-        .eq('provider_id', provider.id);
+        .eq('insurer_id', provider.id);
 
       // Fetch active member cover plans for each plan
       const plansWithCounts = await Promise.all(
@@ -65,9 +65,9 @@ export default function ProvidersPage() {
 
       // Fetch exports
       const { data: exports } = await supabaseAdmin
-        .from('provider_exports')
+        .from('insurer_exports')
         .select('*')
-        .eq('provider_id', provider.id)
+        .eq('insurer_id', provider.id)
         .order('created_at', { ascending: false });
 
       setProviderDetails({
@@ -157,7 +157,7 @@ export default function ProvidersPage() {
                           <div className="text-sm font-semibold text-gray-900">{provider.provider_name || 'N/A'}</div>
                         </td>
                         <td className="px-4 py-4">
-                          <span className="text-sm text-gray-900">{provider.provider_name || 'N/A'}</span>
+                          <span className="text-sm text-gray-900">{provider.full_name || provider.provider_name || 'N/A'}</span>
                         </td>
                         <td className="px-4 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${

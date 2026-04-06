@@ -100,7 +100,13 @@ export default function ProcessTransaction() {
 
     // Check if partner is suspended
     if (partner.status === 'suspended') {
-      setError('Transaction error, please contact administrator');
+      setError('Your account has been suspended. You cannot process transactions. Please contact admin.');
+      return;
+    }
+
+    // Check if partner is active
+    if (partner.status !== 'active') {
+      setError('Your account is not active. Only active partners can process transactions.');
       return;
     }
 

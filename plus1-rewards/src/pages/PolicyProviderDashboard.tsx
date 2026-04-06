@@ -72,43 +72,97 @@ export function PolicyProviderDashboard() {
   const loadCoverPlans = async () => {
     setLoading(true);
     try {
+      console.log('Starting to load cover plans...');
+      
+      // First, try a simple query to test connectivity
+      const { data: testData, error: testError } = await supabase
+        .from('member_cover_plans')
+        .select('id')
+        .limit(1);
+      
+      console.log('Test query result:', { testData, testError });
+
       // Load all member cover plans (Day1Health sees all plans)
       const { data: memberCoverPlans, error } = await supabase
         .from('member_cover_plans')
         .select(`
-          *,
-          members (
-            id,
-            full_name,
-            phone
-          ),
-          cover_plans (
-            plan_name,
-            monthly_target_amount
-          )
+          id,
+          member_id,
+          cover_plan_id,
+          target_amount,
+          funded_amount,
+          status,
+          active_from,
+          active_to,
+          suspended_at,
+          created_at
         `);
+
+      console.log('Member cover plans query result:', { memberCoverPlans, error });
 
       if (error) {
         console.error('Error loading cover plans:', error);
+        console.log('Error details:', JSON.stringify(error, null, 2));
         setActivePlans([]);
         setSuspendedPlans([]);
+        setInProgressPlans([]);
+        setLoading(false);
         return;
       }
 
+      if (!memberCoverPlans || memberCoverPlans.length === 0) {
+        console.log('No member cover plans found');
+        setActivePlans([]);
+        setSuspendedPlans([]);
+        setInProgressPlans([]);
+        setLoading(false);
+        return;
+      }
+
+      console.log('Loaded member cover plans:', memberCoverPlans);
+
+      // Get member details
+      const memberIds = memberCoverPlans.map(mcp => mcp.member_id);
+      const { data: members, error: membersError } = await supabase
+        .from('members')
+        .select('id, full_name, phone')
+        .in('id', memberIds);
+
+      console.log('Members query result:', { members, membersError });
+
+      // Get cover plan details
+      const coverPlanIds = memberCoverPlans.map(mcp => mcp.cover_plan_id);
+      const { data: coverPlans, error: coverPlansError } = await supabase
+        .from('cover_plans')
+        .select('id, plan_name')
+        .in('id', coverPlanIds);
+
+      console.log('Cover plans query result:', { coverPlans, coverPlansError });
+
+      const membersMap = new Map(members?.map(m => [m.id, m]) || []);
+      const coverPlansMap = new Map(coverPlans?.map(cp => [cp.id, cp]) || []);
+
       // Count linked people separately for each member_cover_plan
       const plansWithLinkedPeople = await Promise.all((memberCoverPlans || []).map(async (mcp: any) => {
-        const { data: linkedPeople } = await supabase
+        const { data: linkedPeople, error: linkedError } = await supabase
           .from('linked_people')
           .select('id')
           .eq('member_cover_plan_id', mcp.id);
 
+        if (linkedError) {
+          console.error(`Error fetching linked people for ${mcp.id}:`, linkedError);
+        }
+
+        const member = membersMap.get(mcp.member_id);
+        const coverPlan = coverPlansMap.get(mcp.cover_plan_id);
+
         return {
           id: mcp.id,
           member_id: mcp.member_id,
-          member_name: mcp.members?.full_name || 'Unknown',
-          member_phone: mcp.members?.phone || 'N/A',
-          plan_name: mcp.cover_plans?.plan_name || 'Unknown Plan',
-          target_amount: parseFloat(mcp.target_amount || mcp.cover_plans?.monthly_target_amount || 0),
+          member_name: member?.full_name || 'Unknown',
+          member_phone: member?.phone || 'N/A',
+          plan_name: coverPlan?.plan_name || 'Unknown Plan',
+          target_amount: parseFloat(mcp.target_amount || 0),
           funded_amount: parseFloat(mcp.funded_amount || 0),
           status: mcp.status,
           active_from: mcp.active_from,
@@ -118,12 +172,21 @@ export function PolicyProviderDashboard() {
         };
       }));
 
+      console.log('Plans with linked people:', plansWithLinkedPeople);
+
       // Separate by status
-      setActivePlans(plansWithLinkedPeople.filter(p => p.status === 'active'));
-      setSuspendedPlans(plansWithLinkedPeople.filter(p => p.status === 'suspended'));
-      setInProgressPlans(plansWithLinkedPeople.filter(p => p.status === 'in_progress'));
+      const activePlansData = plansWithLinkedPeople.filter(p => p.status === 'active');
+      const suspendedPlansData = plansWithLinkedPeople.filter(p => p.status === 'suspended');
+      const inProgressPlansData = plansWithLinkedPeople.filter(p => p.status === 'in_progress');
+
+      console.log('Separated plans:', { activePlansData, suspendedPlansData, inProgressPlansData });
+
+      setActivePlans(activePlansData);
+      setSuspendedPlans(suspendedPlansData);
+      setInProgressPlans(inProgressPlansData);
     } catch (error) {
       console.error('Error loading cover plans:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
     } finally {
       setLoading(false);
     }
@@ -170,8 +233,11 @@ export function PolicyProviderDashboard() {
   };
 
   const totalActivePremium = activePlans.reduce((sum, p) => sum + p.target_amount, 0);
+  const totalActiveFunded = activePlans.reduce((sum, p) => sum + p.funded_amount, 0);
   const totalSuspendedPremium = suspendedPlans.reduce((sum, p) => sum + p.target_amount, 0);
   const totalInProgressPremium = inProgressPlans.reduce((sum, p) => sum + p.target_amount, 0);
+  const totalInProgressFunded = inProgressPlans.reduce((sum, p) => sum + p.funded_amount, 0);
+  const totalLinkedPeople = activePlans.reduce((sum, p) => sum + p.linked_people_count, 0);
   const currentMonth = new Date().toISOString().slice(0, 7);
 
   if (loading) {
@@ -222,6 +288,7 @@ export function PolicyProviderDashboard() {
             </div>
             <p className="text-3xl font-black text-gray-900 mb-1">{activePlans.length}</p>
             <p className="text-sm text-gray-600">Ready for coverage</p>
+            <p className="text-xs text-green-600 font-bold mt-2">R{totalActivePremium.toFixed(2)} premium</p>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-xl p-6">
@@ -231,6 +298,7 @@ export function PolicyProviderDashboard() {
             </div>
             <p className="text-3xl font-black text-gray-900 mb-1">{inProgressPlans.length}</p>
             <p className="text-sm text-gray-600">Building up funds</p>
+            <p className="text-xs text-blue-600 font-bold mt-2">R{totalInProgressFunded.toFixed(2)} / R{totalInProgressPremium.toFixed(2)}</p>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-xl p-6">
@@ -240,15 +308,17 @@ export function PolicyProviderDashboard() {
             </div>
             <p className="text-3xl font-black text-gray-900 mb-1">{suspendedPlans.length}</p>
             <p className="text-sm text-gray-600">Awaiting funding</p>
+            <p className="text-xs text-orange-600 font-bold mt-2">R{totalSuspendedPremium.toFixed(2)} premium</p>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-xl p-6">
             <div className="flex items-center justify-between mb-3">
-              <span className="material-symbols-outlined text-cyan-600 text-2xl">account_balance</span>
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Total Premium</span>
+              <span className="material-symbols-outlined text-cyan-600 text-2xl">people</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Linked People</span>
             </div>
-            <p className="text-3xl font-black text-cyan-600 mb-1">R{(totalActivePremium + totalInProgressPremium).toFixed(2)}</p>
-            <p className="text-sm text-gray-600">Active + In Progress</p>
+            <p className="text-3xl font-black text-cyan-600 mb-1">{totalLinkedPeople}</p>
+            <p className="text-sm text-gray-600">Dependants & Spouses</p>
+            <p className="text-xs text-cyan-600 font-bold mt-2">On active plans</p>
           </div>
         </div>
 
@@ -258,6 +328,72 @@ export function PolicyProviderDashboard() {
           <div className="text-sm text-blue-900">
             <p className="font-semibold mb-1">Monthly Batch Submission</p>
             <p>Active cover plans are submitted on the <strong>10th of each month</strong>. Download your CSV export for integration into your policy management system.</p>
+          </div>
+        </div>
+
+        {/* Key Metrics Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-green-900">Active Coverage</h3>
+              <span className="material-symbols-outlined text-green-600 text-2xl">verified</span>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-green-800">Total Premium:</span>
+                <span className="text-lg font-bold text-green-900">R{totalActivePremium.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-green-800">Funded Amount:</span>
+                <span className="text-lg font-bold text-green-900">R{totalActiveFunded.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-green-800">Coverage Rate:</span>
+                <span className="text-lg font-bold text-green-900">{totalActivePremium > 0 ? ((totalActiveFunded / totalActivePremium) * 100).toFixed(1) : 0}%</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-blue-900">In Progress</h3>
+              <span className="material-symbols-outlined text-blue-600 text-2xl">hourglass_empty</span>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-blue-800">Total Target:</span>
+                <span className="text-lg font-bold text-blue-900">R{totalInProgressPremium.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-blue-800">Currently Funded:</span>
+                <span className="text-lg font-bold text-blue-900">R{totalInProgressFunded.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-blue-800">Funding Progress:</span>
+                <span className="text-lg font-bold text-blue-900">{totalInProgressPremium > 0 ? ((totalInProgressFunded / totalInProgressPremium) * 100).toFixed(1) : 0}%</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-purple-900">Portfolio Summary</h3>
+              <span className="material-symbols-outlined text-purple-600 text-2xl">summarize</span>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-purple-800">Total Members:</span>
+                <span className="text-lg font-bold text-purple-900">{activePlans.length + inProgressPlans.length + suspendedPlans.length}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-purple-800">Total Premium Value:</span>
+                <span className="text-lg font-bold text-purple-900">R{(totalActivePremium + totalInProgressPremium + totalSuspendedPremium).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-purple-800">Linked Dependants:</span>
+                <span className="text-lg font-bold text-purple-900">{totalLinkedPeople}</span>
+              </div>
+            </div>
           </div>
         </div>
 

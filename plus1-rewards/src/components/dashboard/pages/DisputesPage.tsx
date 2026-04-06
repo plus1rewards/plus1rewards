@@ -10,6 +10,10 @@ export default function DisputesPage() {
   const [disputes, setDisputes] = useState<any[]>([]);
   const [stats, setStats] = useState({ total: 0, open: 0, resolved: 0, rejected: 0 });
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [selectedDispute, setSelectedDispute] = useState<any>(null);
+  const [resolutionNote, setResolutionNote] = useState('');
+  const [showResolutionModal, setShowResolutionModal] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -36,6 +40,84 @@ export default function DisputesPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleInvestigate = async (disputeId: string) => {
+    setActionLoading(`investigate-${disputeId}`);
+    try {
+      const { error } = await supabaseAdmin
+        .from('disputes')
+        .update({ status: 'investigating' })
+        .eq('id', disputeId);
+
+      if (error) throw error;
+      await fetchData();
+    } catch (error) {
+      console.error('Error investigating dispute:', error);
+      alert('Failed to update dispute status');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResolve = async (disputeId: string) => {
+    setSelectedDispute(disputeId);
+    setShowResolutionModal(true);
+  };
+
+  const submitResolution = async () => {
+    if (!resolutionNote.trim()) {
+      alert('Please enter a resolution note');
+      return;
+    }
+
+    setActionLoading(`resolve-${selectedDispute}`);
+    try {
+      const { error } = await supabaseAdmin
+        .from('disputes')
+        .update({
+          status: 'resolved',
+          resolution_note: resolutionNote.trim(),
+          resolved_at: new Date().toISOString()
+        })
+        .eq('id', selectedDispute);
+
+      if (error) throw error;
+      
+      setShowResolutionModal(false);
+      setResolutionNote('');
+      setSelectedDispute(null);
+      await fetchData();
+    } catch (error) {
+      console.error('Error resolving dispute:', error);
+      alert('Failed to resolve dispute');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReject = async (disputeId: string) => {
+    if (!window.confirm('Are you sure you want to reject this dispute?')) return;
+
+    setActionLoading(`reject-${disputeId}`);
+    try {
+      const { error } = await supabaseAdmin
+        .from('disputes')
+        .update({ status: 'rejected' })
+        .eq('id', disputeId);
+
+      if (error) throw error;
+      await fetchData();
+    } catch (error) {
+      console.error('Error rejecting dispute:', error);
+      alert('Failed to reject dispute');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleViewDetails = (dispute: any) => {
+    alert(`Dispute Details:\n\nID: ${dispute.id}\nMember: ${dispute.members?.full_name || 'Unknown'}\nPartner: ${dispute.partners?.shop_name || 'Unknown'}\nType: ${dispute.dispute_type}\nStatus: ${dispute.status}\nDescription: ${dispute.description}\n\nCreated: ${new Date(dispute.created_at).toLocaleString('en-ZA')}`);
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -159,33 +241,50 @@ export default function DisputesPage() {
                       <div className="flex flex-col gap-2 ml-4">
                         {dispute.status === 'open' && (
                           <>
-                            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
-                              <span className="material-symbols-outlined text-lg">search</span>
-                              Investigate
+                            <button 
+                              onClick={() => handleInvestigate(dispute.id)}
+                              disabled={actionLoading === `investigate-${dispute.id}`}
+                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
+                              <span className="material-symbols-outlined text-lg">{actionLoading === `investigate-${dispute.id}` ? 'hourglass_empty' : 'search'}</span>
+                              {actionLoading === `investigate-${dispute.id}` ? 'Investigating...' : 'Investigate'}
                             </button>
-                            <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
-                              <span className="material-symbols-outlined text-lg">check_circle</span>
-                              Resolve
+                            <button 
+                              onClick={() => handleResolve(dispute.id)}
+                              disabled={actionLoading === `resolve-${dispute.id}`}
+                              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
+                              <span className="material-symbols-outlined text-lg">{actionLoading === `resolve-${dispute.id}` ? 'hourglass_empty' : 'check_circle'}</span>
+                              {actionLoading === `resolve-${dispute.id}` ? 'Resolving...' : 'Resolve'}
                             </button>
-                            <button className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
-                              <span className="material-symbols-outlined text-lg">cancel</span>
-                              Reject
+                            <button 
+                              onClick={() => handleReject(dispute.id)}
+                              disabled={actionLoading === `reject-${dispute.id}`}
+                              className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
+                              <span className="material-symbols-outlined text-lg">{actionLoading === `reject-${dispute.id}` ? 'hourglass_empty' : 'cancel'}</span>
+                              {actionLoading === `reject-${dispute.id}` ? 'Rejecting...' : 'Reject'}
                             </button>
                           </>
                         )}
                         {dispute.status === 'investigating' && (
                           <>
-                            <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
-                              <span className="material-symbols-outlined text-lg">check_circle</span>
-                              Resolve
+                            <button 
+                              onClick={() => handleResolve(dispute.id)}
+                              disabled={actionLoading === `resolve-${dispute.id}`}
+                              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
+                              <span className="material-symbols-outlined text-lg">{actionLoading === `resolve-${dispute.id}` ? 'hourglass_empty' : 'check_circle'}</span>
+                              {actionLoading === `resolve-${dispute.id}` ? 'Resolving...' : 'Resolve'}
                             </button>
-                            <button className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
-                              <span className="material-symbols-outlined text-lg">cancel</span>
-                              Reject
+                            <button 
+                              onClick={() => handleReject(dispute.id)}
+                              disabled={actionLoading === `reject-${dispute.id}`}
+                              className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
+                              <span className="material-symbols-outlined text-lg">{actionLoading === `reject-${dispute.id}` ? 'hourglass_empty' : 'cancel'}</span>
+                              {actionLoading === `reject-${dispute.id}` ? 'Rejecting...' : 'Reject'}
                             </button>
                           </>
                         )}
-                        <button className="px-4 py-2 bg-[#1a558b] hover:bg-[#1a558b]/90 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
+                        <button 
+                          onClick={() => handleViewDetails(dispute)}
+                          className="px-4 py-2 bg-[#1a558b] hover:bg-[#1a558b]/90 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
                           <span className="material-symbols-outlined text-lg">visibility</span>
                           View Details
                         </button>
@@ -217,6 +316,47 @@ export default function DisputesPage() {
             </p>
           </div>
         </div>
+
+        {/* Resolution Modal */}
+        {showResolutionModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Resolve Dispute</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Resolution Note *</label>
+                  <textarea
+                    value={resolutionNote}
+                    onChange={(e) => setResolutionNote(e.target.value)}
+                    placeholder="Explain how this dispute was resolved..."
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm resize-none"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowResolutionModal(false);
+                      setResolutionNote('');
+                      setSelectedDispute(null);
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitResolution}
+                    disabled={actionLoading?.startsWith('resolve-')}
+                    className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg font-bold transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-lg">{actionLoading?.startsWith('resolve-') ? 'hourglass_empty' : 'check_circle'}</span>
+                    {actionLoading?.startsWith('resolve-') ? 'Resolving...' : 'Resolve'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </DashboardLayout>
   );

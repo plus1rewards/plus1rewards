@@ -31,6 +31,18 @@ export default function MemberRegister() {
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
+  // Calculate age from date of birth
+  const calculateAge = (dateString: string): number | null => {
+    if (!dateString) return null;
+    const birthDate = new Date(dateString);
+    const today = new Date();
+    const age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    return monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
+  };
+
+  const memberAge = calculateAge(formData.dateOfBirth);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -89,25 +101,10 @@ export default function MemberRegister() {
         return; 
       }
 
-      // Get default cover plan (Hospital - Value - Single - R390)
-      const { data: defaultPlan, error: planError } = await supabase
-        .from('cover_plans')
-        .select('id, plan_name, monthly_target_amount')
-        .eq('status', 'active')
-        .eq('monthly_target_amount', 390)
-        .limit(1)
-        .single();
-
-      if (planError || !defaultPlan) {
-        setError('System error: Default cover plan not found. Please contact support.');
-        setLoading(false);
-        return;
-      }
-
       // Generate unique QR code
       const qrCode = `PLUS1-${phoneDigits}-${Date.now()}`;
 
-      // Create member in members table
+      // Create member in members table (NO auto-assigned plan)
       const { data: memberData, error: memberError } = await supabase
         .from('members')
         .insert({
@@ -124,20 +121,6 @@ export default function MemberRegister() {
         .single();
 
       if (memberError) throw memberError;
-
-      // Create member's first cover plan in member_cover_plans table
-      const { error: coverPlanError } = await supabase
-        .from('member_cover_plans')
-        .insert({
-          member_id: memberData.id,
-          cover_plan_id: defaultPlan.id,
-          creation_order: 1,
-          target_amount: defaultPlan.monthly_target_amount,
-          funded_amount: 0,
-          status: 'in_progress'
-        });
-
-      if (coverPlanError) throw coverPlanError;
 
       showSuccess(
         'Account Created Successfully!',
@@ -234,7 +217,14 @@ export default function MemberRegister() {
             required
             max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
           />
-          <p className="text-xs text-gray-500 -mt-2">You must be at least 18 years old to register</p>
+          <div className="flex items-center justify-between -mt-2">
+            <p className="text-xs text-gray-500">You must be at least 18 years old to register</p>
+            {memberAge !== null && (
+              <p className={`text-xs font-bold ${memberAge >= 18 ? 'text-green-600' : 'text-red-600'}`}>
+                Age: {memberAge} years old
+              </p>
+            )}
+          </div>
           <AuthInput
             label="6-Digit PIN"
             icon="pin"

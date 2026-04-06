@@ -45,8 +45,10 @@ export default function PartnerRegister() {
     cashbackPercent: 3,
     pin: '',
     confirmPin: '',
-    agreementAccepted: false
+    agreementAccepted: false,
+    suppliers: [] as Array<{ name: string; contactPerson: string; phone: string; email: string }>
   });
+  const [expandedSupplier, setExpandedSupplier] = useState<number | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -55,6 +57,33 @@ export default function PartnerRegister() {
       ...prev, 
       [name]: type === 'checkbox' ? checked : value 
     }));
+  };
+
+  const handleSupplierChange = (index: number, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      suppliers: prev.suppliers.map((supplier, i) => 
+        i === index ? { ...supplier, [field]: value } : supplier
+      )
+    }));
+  };
+
+  const addSupplier = () => {
+    if (formData.suppliers.length < 3) {
+      setFormData(prev => ({
+        ...prev,
+        suppliers: [...prev.suppliers, { name: '', contactPerson: '', phone: '', email: '' }]
+      }));
+      setExpandedSupplier(formData.suppliers.length);
+    }
+  };
+
+  const removeSupplier = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      suppliers: prev.suppliers.filter((_, i) => i !== index)
+    }));
+    setExpandedSupplier(null);
   };
 
   const validateStep1 = () => {
@@ -131,12 +160,12 @@ export default function PartnerRegister() {
 
         setCurrentStep(2);
       } else if (currentStep === 2 && validateStep2()) {
-        // Check for duplicate phone number
+        // Check for duplicate phone number in partners table
         const cleanPhone = formData.mobileNumber.replace(/\D/g, '');
         const { data: existingPhone } = await supabase
-          .from('users')
+          .from('partners')
           .select('id')
-          .eq('mobile_number', cleanPhone)
+          .eq('phone', cleanPhone)
           .maybeSingle();
 
         if (existingPhone) {
@@ -192,11 +221,11 @@ export default function PartnerRegister() {
     try {
       const cleanPhone = formData.mobileNumber.replace(/\D/g, '');
 
-      // Check if mobile number already exists
+      // Check if mobile number already exists in partners table
       const { data: existingPhone } = await supabase
-        .from('users')
+        .from('partners')
         .select('id')
-        .eq('mobile_number', cleanPhone)
+        .eq('phone', cleanPhone)
         .maybeSingle();
 
       if (existingPhone) {
@@ -218,24 +247,12 @@ export default function PartnerRegister() {
         return;
       }
 
-      // Create user in users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .insert({
-          role: 'partner',
-          full_name: formData.responsiblePerson,
-          mobile_number: cleanPhone,
-          pin_code: formData.pin,
-          status: 'pending'
-        })
-        .select()
-        .single();
-
-      if (userError) throw userError;
+      // Generate a unique ID for the partner
+      const partnerId = crypto.randomUUID();
 
       // Upload signature to storage
       const signatureBlob = await fetch(signatureDataUrl).then(r => r.blob());
-      const signatureFileName = `partner-signatures/${userData.id}_${Date.now()}.png`;
+      const signatureFileName = `partner-signatures/${partnerId}_${Date.now()}.png`;
       
       const { error: uploadError } = await supabase.storage
         .from('documents')
@@ -249,12 +266,11 @@ export default function PartnerRegister() {
         // Continue even if signature upload fails
       }
 
-      // Create partner profile
+      // Create partner profile directly in partners table
       const { error: partnerError } = await supabase
         .from('partners')
         .insert({
-          id: userData.id,
-          user_id: userData.id,
+          id: partnerId,
           shop_name: formData.businessName,
           address: formData.address,
           category: formData.category,
@@ -263,7 +279,19 @@ export default function PartnerRegister() {
           cashback_percent: cashbackPercent,
           responsible_person: formData.responsiblePerson,
           status: 'pending',
-          signature_url: uploadError ? null : signatureFileName
+          signature_url: uploadError ? null : signatureFileName,
+          suppliers: formData.suppliers.filter(s => s.name.trim()).map((s, idx) => ({
+            id: `supplier-${idx + 1}`,
+            name: s.name,
+            contact_person: s.contactPerson,
+            phone: s.phone,
+            email: s.email
+          })),
+          pin_code: formData.pin,
+          full_name: formData.responsiblePerson,
+          mobile_number: cleanPhone,
+          role: 'partner',
+          kyc_status: 'pending'
         });
 
       if (partnerError) throw partnerError;
@@ -514,6 +542,157 @@ export default function PartnerRegister() {
                   transform: scale(1.05);
                 }
               `}</style>
+
+              {/* Suppliers Section */}
+              <div className="pt-6 border-t-2" style={{ borderColor: BLUE_LIGHT }}>
+                <div className="flex items-center justify-between mb-4">
+                  <label className="block text-xs font-bold" style={{ color: BLUE }}>
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">local_shipping</span>
+                      Suppliers (Optional - Up to 3)
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addSupplier}
+                    disabled={formData.suppliers.length >= 3}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                    style={{
+                      backgroundColor: formData.suppliers.length >= 3 ? '#e5e7eb' : BLUE,
+                      color: formData.suppliers.length >= 3 ? '#9ca3af' : 'white',
+                      cursor: formData.suppliers.length >= 3 ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    <span className="material-symbols-outlined text-sm">add</span>
+                    Add Supplier
+                  </button>
+                </div>
+                <p className="text-xs text-gray-600 mb-4">
+                  Add suppliers you get your products from that you'd like to sign up to Plus1 Rewards
+                </p>
+
+                {formData.suppliers.length === 0 ? (
+                  <div className="p-4 rounded-xl text-center" style={{ backgroundColor: BLUE_LIGHT, border: `2px dashed ${BLUE}` }}>
+                    <span className="material-symbols-outlined text-3xl" style={{ color: BLUE }}>
+                      local_shipping
+                    </span>
+                    <p className="text-sm font-semibold mt-2" style={{ color: BLUE }}>
+                      No suppliers added yet
+                    </p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Click "Add Supplier" to get started
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {formData.suppliers.map((supplier, idx) => (
+                      <div key={idx} className="rounded-xl overflow-hidden border-2" style={{ borderColor: BLUE }}>
+                        {/* Dropdown Header */}
+                        <button
+                          type="button"
+                          onClick={() => setExpandedSupplier(expandedSupplier === idx ? null : idx)}
+                          className="w-full px-4 py-3 flex items-center justify-between transition-colors"
+                          style={{
+                            backgroundColor: expandedSupplier === idx ? BLUE : BLUE_LIGHT,
+                            color: expandedSupplier === idx ? 'white' : BLUE
+                          }}
+                        >
+                          <div className="flex items-center gap-3 flex-1 text-left">
+                            <span className="material-symbols-outlined text-lg">
+                              {supplier.name ? 'check_circle' : 'radio_button_unchecked'}
+                            </span>
+                            <div>
+                              <p className="text-xs font-bold uppercase tracking-wider">
+                                Supplier {idx + 1}
+                              </p>
+                              <p className="text-sm font-semibold">
+                                {supplier.name || 'Click to add details'}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="material-symbols-outlined transition-transform" style={{
+                            transform: expandedSupplier === idx ? 'rotate(180deg)' : 'rotate(0deg)'
+                          }}>
+                            expand_more
+                          </span>
+                        </button>
+
+                        {/* Dropdown Content */}
+                        {expandedSupplier === idx && (
+                          <div className="px-4 py-4 bg-white border-t-2" style={{ borderColor: BLUE }}>
+                            <div className="space-y-3">
+                              <div>
+                                <label className="text-xs font-bold mb-1.5 block" style={{ color: BLUE }}>
+                                  Supplier Name *
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g., ABC Wholesale"
+                                  value={supplier.name}
+                                  onChange={(e) => handleSupplierChange(idx, 'name', e.target.value)}
+                                  className="w-full px-3 py-2 rounded-lg border-2 text-sm font-medium"
+                                  style={{ borderColor: BLUE }}
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold mb-1.5 block" style={{ color: BLUE }}>
+                                  Contact Person
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g., John Smith"
+                                  value={supplier.contactPerson}
+                                  onChange={(e) => handleSupplierChange(idx, 'contactPerson', e.target.value)}
+                                  className="w-full px-3 py-2 rounded-lg border-2 text-sm font-medium"
+                                  style={{ borderColor: BLUE }}
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="text-xs font-bold mb-1.5 block" style={{ color: BLUE }}>
+                                    Phone
+                                  </label>
+                                  <input
+                                    type="tel"
+                                    placeholder="082 555 1234"
+                                    value={supplier.phone}
+                                    onChange={(e) => handleSupplierChange(idx, 'phone', e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg border-2 text-sm font-medium"
+                                    style={{ borderColor: BLUE }}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs font-bold mb-1.5 block" style={{ color: BLUE }}>
+                                    Email
+                                  </label>
+                                  <input
+                                    type="email"
+                                    placeholder="supplier@example.com"
+                                    value={supplier.email}
+                                    onChange={(e) => handleSupplierChange(idx, 'email', e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg border-2 text-sm font-medium"
+                                    style={{ borderColor: BLUE }}
+                                  />
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeSupplier(idx)}
+                                className="w-full mt-3 px-3 py-2 rounded-lg text-sm font-bold text-red-600 hover:bg-red-50 transition-colors border-2 border-red-200"
+                              >
+                                <span className="flex items-center justify-center gap-1">
+                                  <span className="material-symbols-outlined text-sm">delete</span>
+                                  Remove Supplier
+                                </span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div className="flex gap-3">
                 <AuthButton type="button" onClick={handleBack} variant="outline">

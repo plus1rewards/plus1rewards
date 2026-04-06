@@ -10,27 +10,46 @@ export default function ExportsPage() {
   const [exports, setExports] = useState<any[]>([]);
   const [stats, setStats] = useState({ total: 0, thisMonth: 0, totalPlans: 0, totalValue: 0 });
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const { data } = await supabaseAdmin
-        .from('provider_exports')
+      // Fetch all cover plans with member data
+      const { data: coverPlans } = await supabaseAdmin
+        .from('cover_plans')
         .select(`
           *,
-          provider:providers(provider_name)
+          insurers(name)
         `)
         .order('created_at', { ascending: false });
 
-      const exportsList = data || [];
-      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-      
-      const total = exportsList.length;
-      const thisMonth = exportsList.filter(e => e.export_month === currentMonth).length;
-      const totalPlans = exportsList.reduce((sum, e) => sum + (e.total_cover_plans || 0), 0);
-      const totalValue = exportsList.reduce((sum, e) => sum + parseFloat(e.total_value || 0), 0);
+      // Fetch member cover plans to get active plans
+      const { data: memberPlans } = await supabaseAdmin
+        .from('member_cover_plans')
+        .select(`
+          *,
+          members(name, phone),
+          cover_plans(plan_name, monthly_target_amount)
+        `)
+        .order('created_at', { ascending: false });
 
-      setStats({ total, thisMonth, totalPlans, totalValue });
+      const exportsList = (memberPlans || []).map((mp: any) => ({
+        id: mp.id,
+        member_name: mp.members?.name || 'Unknown',
+        plan_name: mp.cover_plans?.plan_name || 'Unknown',
+        monthly_target: mp.cover_plans?.monthly_target_amount || 0,
+        amount_funded: mp.amount_funded || 0,
+        status: mp.status,
+        created_at: mp.created_at
+      }));
+
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const thisMonth = exportsList.filter(e => e.created_at.startsWith(currentMonth)).length;
+      const totalPlans = exportsList.length;
+      const totalValue = exportsList.reduce((sum, e) => sum + parseFloat(e.monthly_target || 0), 0);
+
+      setStats({ total: exportsList.length, thisMonth, totalPlans, totalValue });
       setExports(exportsList);
     } catch (error) {
       console.error('Error fetching exports:', error);
@@ -40,6 +59,77 @@ export default function ExportsPage() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const generateCSVExport = async () => {
+    setExporting(true);
+    try {
+      // Fetch all active member cover plans
+      const { data: memberPlans } = await supabaseAdmin
+        .from('member_cover_plans')
+        .select(`
+          *,
+          members(name, phone, email),
+          cover_plans(plan_name, monthly_target_amount),
+          linked_people(name, relationship)
+        `)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (!memberPlans || memberPlans.length === 0) {
+        alert('No active cover plans to export');
+        setExporting(false);
+        return;
+      }
+
+      // Build CSV content
+      const headers = ['Member Name', 'Phone', 'Email', 'Plan Name', 'Monthly Target', 'Amount Funded', 'Funding %', 'Status', 'Linked Dependants', 'Created Date'];
+      const rows = memberPlans.map((mp: any) => {
+        const fundingPercent = mp.cover_plans?.monthly_target_amount 
+          ? ((mp.amount_funded / mp.cover_plans.monthly_target_amount) * 100).toFixed(1)
+          : '0';
+        const linkedCount = (mp.linked_people || []).length;
+        
+        return [
+          mp.members?.name || 'Unknown',
+          mp.members?.phone || '',
+          mp.members?.email || '',
+          mp.cover_plans?.plan_name || 'Unknown',
+          `R${parseFloat(mp.cover_plans?.monthly_target_amount || 0).toFixed(2)}`,
+          `R${parseFloat(mp.amount_funded || 0).toFixed(2)}`,
+          `${fundingPercent}%`,
+          mp.status,
+          linkedCount,
+          new Date(mp.created_at).toLocaleDateString()
+        ];
+      });
+
+      // Create CSV string
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `cover-plans-export-${currentMonth}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      alert(`Successfully exported ${memberPlans.length} active cover plans`);
+      fetchData();
+    } catch (error) {
+      console.error('Error generating export:', error);
+      alert('Failed to generate export');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const statsData = [
     { icon: 'upload_file', title: 'Total Exports', value: stats.total.toString(), change: '', description: 'All time' },
@@ -57,8 +147,9 @@ export default function ExportsPage() {
             <p className="text-gray-600 mt-1">Generate and manage cover plan exports for providers</p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-5 py-2.5 font-bold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-all text-sm">
-              <span className="material-symbols-outlined text-lg">add</span>Create Export
+            <button onClick={generateCSVExport} disabled={exporting} className="flex items-center gap-2 px-5 py-2.5 font-bold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-all text-sm disabled:opacity-50">
+              <span className="material-symbols-outlined text-lg">{exporting ? 'hourglass_empty' : 'add'}</span>
+              {exporting ? 'Exporting...' : 'Export Cover Plans'}
             </button>
             <button onClick={() => fetchData()} className="flex items-center gap-2 px-5 py-2.5 font-bold rounded-lg border border-[#1a558b] bg-white text-[#1a558b] hover:bg-[#1a558b] hover:text-white transition-all text-sm">
               <span className="material-symbols-outlined text-lg">refresh</span>Refresh
@@ -91,11 +182,11 @@ export default function ExportsPage() {
             ) : exports.length === 0 ? (
               <div className="px-6 py-20 text-center">
                 <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">upload_file</span>
-                <p className="text-gray-600 text-lg font-bold">No exports created yet</p>
-                <p className="text-sm text-gray-500 mt-2">Create your first export to send cover plan data to providers</p>
-                <button className="mt-6 px-6 py-3 bg-[#1a558b] text-white rounded-lg font-bold hover:opacity-90 transition-all flex items-center gap-2 mx-auto">
-                  <span className="material-symbols-outlined">add</span>
-                  Create First Export
+                <p className="text-gray-600 text-lg font-bold">No active cover plans to export</p>
+                <p className="text-sm text-gray-500 mt-2">Active cover plans will appear here and can be exported as CSV</p>
+                <button onClick={generateCSVExport} disabled={exporting} className="mt-6 px-6 py-3 bg-[#1a558b] text-white rounded-lg font-bold hover:opacity-90 transition-all flex items-center gap-2 mx-auto disabled:opacity-50">
+                  <span className="material-symbols-outlined">{exporting ? 'hourglass_empty' : 'add'}</span>
+                  {exporting ? 'Exporting...' : 'Generate Export'}
                 </button>
               </div>
             ) : (
@@ -103,61 +194,58 @@ export default function ExportsPage() {
                 <table className="w-full text-left border-collapse min-w-[700px]">
                   <thead>
                     <tr className="bg-gray-50">
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Provider</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Month</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Cover Plans</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Total Value</th>
+                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Member</th>
+                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Plan</th>
+                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Monthly Target</th>
+                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Funded</th>
+                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Progress</th>
                       <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Status</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Exported</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Actions</th>
+                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Date</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {exports.map((exp) => (
-                      <tr key={exp.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-4">
-                          <div className="text-sm font-semibold text-gray-900">{exp.provider?.provider_name || 'Unknown'}</div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-sm text-gray-900">{exp.export_month}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-sm font-bold text-gray-900">{exp.total_cover_plans || 0}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-sm font-bold text-[#1a558b]">R{parseFloat(exp.total_value || 0).toFixed(2)}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                            exp.status === 'completed'
-                              ? 'bg-green-500/20 text-green-700 border border-green-500/30'
-                              : exp.status === 'failed'
-                              ? 'bg-red-500/20 text-red-700 border border-red-500/30'
-                              : 'bg-yellow-500/20 text-yellow-700 border border-yellow-500/30'
-                          }`}>
-                            <span className={`size-1.5 rounded-full ${
-                              exp.status === 'completed' ? 'bg-green-600' : exp.status === 'failed' ? 'bg-red-600' : 'bg-yellow-500'
-                            }`}></span>
-                            {exp.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-xs text-gray-600">
-                            {exp.exported_at ? new Date(exp.exported_at).toLocaleDateString() : 'Not yet'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-2">
-                            <button className="p-2 text-gray-600 hover:text-[#1a558b] transition-colors rounded-lg bg-gray-100 hover:bg-[#1a558b]/10" title="View Details">
-                              <span className="material-symbols-outlined text-sm">visibility</span>
-                            </button>
-                            <button className="p-2 text-gray-600 hover:text-blue-600 transition-colors rounded-lg bg-gray-100 hover:bg-blue-50" title="Download">
-                              <span className="material-symbols-outlined text-sm">download</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {exports.map((exp) => {
+                      const progress = exp.monthly_target ? ((exp.amount_funded / exp.monthly_target) * 100).toFixed(1) : 0;
+                      return (
+                        <tr key={exp.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-4">
+                            <div className="text-sm font-semibold text-gray-900">{exp.member_name}</div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="text-sm text-gray-900">{exp.plan_name}</span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="text-sm font-bold text-gray-900">R{parseFloat(exp.monthly_target || 0).toFixed(2)}</span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="text-sm font-bold text-[#1a558b]">R{parseFloat(exp.amount_funded || 0).toFixed(2)}</span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 bg-gray-200 rounded-full h-2">
+                                <div className="bg-[#1a558b] h-2 rounded-full" style={{ width: `${Math.min(progress, 100)}%` }}></div>
+                              </div>
+                              <span className="text-xs font-bold text-gray-600">{progress}%</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                              exp.status === 'active'
+                                ? 'bg-green-500/20 text-green-700 border border-green-500/30'
+                                : 'bg-yellow-500/20 text-yellow-700 border border-yellow-500/30'
+                            }`}>
+                              <span className={`size-1.5 rounded-full ${exp.status === 'active' ? 'bg-green-600' : 'bg-yellow-500'}`}></span>
+                              {exp.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="text-xs text-gray-600">
+                              {new Date(exp.created_at).toLocaleDateString()}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -23,55 +23,81 @@ export default function CommissionsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Get all agent commissions
-      const { data: commissionsData, error: commissionsError } = await supabaseAdmin
-        .from('agent_commissions')
-        .select('*')
+      // Get all agents
+      const { data: agentsData, error: agentsError } = await supabaseAdmin
+        .from('agents')
+        .select('id, full_name, mobile_number, email')
         .order('created_at', { ascending: false });
 
-      if (commissionsError) {
-        console.error('Error fetching commissions:', commissionsError);
+      if (agentsError) {
+        console.error('Error fetching agents:', agentsError);
         setCommissions([]);
         setLoading(false);
         return;
       }
 
-      // Get all agents with user info
-      const agentIds = commissionsData?.map(c => c.agent_id).filter(Boolean) || [];
-      const { data: agentsData } = await supabaseAdmin
-        .from('agents')
-        .select('id, user_id')
-        .in('id', agentIds);
+      // Get all transactions to calculate commissions
+      const { data: transactionsData, error: transactionsError } = await supabaseAdmin
+        .from('transactions')
+        .select('id, agent_id, agent_amount, created_at, status')
+        .order('created_at', { ascending: false });
 
-      // Get users data
-      const userIds = agentsData?.map(a => a.user_id).filter(Boolean) || [];
-      const { data: usersData } = await supabaseAdmin
-        .from('users')
-        .select('id, full_name, mobile_number, email')
-        .in('id', userIds);
+      if (transactionsError) {
+        console.error('Error fetching transactions:', transactionsError);
+        setCommissions([]);
+        setLoading(false);
+        return;
+      }
 
-      // Create maps for quick lookup
-      const usersMap = new Map(usersData?.map(u => [u.id, u]) || []);
-      const agentsMap = new Map(agentsData?.map(a => [a.id, { ...a, user: usersMap.get(a.user_id) }]) || []);
+      // Group transactions by agent and calculate commissions
+      const agentCommissionsMap = new Map();
+      
+      transactionsData?.forEach(transaction => {
+        if (transaction.agent_id && transaction.status === 'completed') {
+          if (!agentCommissionsMap.has(transaction.agent_id)) {
+            agentCommissionsMap.set(transaction.agent_id, {
+              agent_id: transaction.agent_id,
+              total_amount: 0,
+              transaction_count: 0,
+              payout_status: 'pending'
+            });
+          }
+          const commission = agentCommissionsMap.get(transaction.agent_id);
+          commission.total_amount += parseFloat(transaction.agent_amount) || 0;
+          commission.transaction_count += 1;
+          // Mark as ready if total >= 100
+          if (commission.total_amount >= 100) {
+            commission.payout_status = 'ready';
+          }
+        }
+      });
 
-      // Combine commissions with agent/user data
-      const commissionsWithAgents = commissionsData?.map(commission => {
-        const agent = agentsMap.get(commission.agent_id);
+      // Combine with agent data
+      const commissionsWithAgents = agentsData?.map(agent => {
+        const commission = agentCommissionsMap.get(agent.id) || {
+          agent_id: agent.id,
+          total_amount: 0,
+          transaction_count: 0,
+          payout_status: 'pending'
+        };
         return {
           ...commission,
-          agent_name: agent?.user?.full_name || 'Unknown',
-          agent_phone: agent?.user?.mobile_number || 'N/A',
-          agent_email: agent?.user?.email || 'N/A'
+          agent_name: agent.full_name || 'Unknown',
+          agent_phone: agent.mobile_number || 'N/A',
+          agent_email: agent.email || 'N/A'
         };
       }) || [];
 
-      const totalCommissions = commissionsWithAgents.length;
-      const paid = commissionsWithAgents.filter(c => c.payout_status === 'paid').length;
-      const pending = commissionsWithAgents.filter(c => c.payout_status === 'pending').length;
-      const totalAmount = commissionsWithAgents.reduce((sum, c) => sum + (parseFloat(c.total_amount) || 0), 0);
+      // Filter out agents with no commissions
+      const commissionsWithData = commissionsWithAgents.filter(c => c.transaction_count > 0);
+
+      const totalCommissions = commissionsWithData.length;
+      const paid = commissionsWithData.filter(c => c.payout_status === 'paid').length;
+      const pending = commissionsWithData.filter(c => c.payout_status === 'pending').length;
+      const totalAmount = commissionsWithData.reduce((sum, c) => sum + (c.total_amount || 0), 0);
 
       setStats({ totalCommissions, paid, pending, totalAmount });
-      setCommissions(commissionsWithAgents);
+      setCommissions(commissionsWithData);
     } catch (error) {
       console.error('Error fetching commissions:', error);
       setCommissions([]);
@@ -112,7 +138,7 @@ export default function CommissionsPage() {
     setSelectedCommission(commission);
     setDetailsLoading(true);
     try {
-      // Fetch transactions for this agent in the commission month
+      // Fetch transactions for this agent
       const { data: transactions } = await supabaseAdmin
         .from('transactions')
         .select(`
@@ -121,6 +147,7 @@ export default function CommissionsPage() {
           partners(shop_name)
         `)
         .eq('agent_id', commission.agent_id)
+        .eq('status', 'completed')
         .order('created_at', { ascending: false });
 
       setCommissionDetails({

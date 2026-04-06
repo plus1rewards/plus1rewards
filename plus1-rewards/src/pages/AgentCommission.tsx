@@ -1,7 +1,7 @@
 // plus1-rewards/src/pages/AgentCommission.tsx
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabaseAdmin } from '../lib/supabase';
 
 const BLUE = '#1a558b';
 
@@ -20,6 +20,15 @@ interface PartnerCommission {
   commission_earned: number;
 }
 
+interface TransactionDetail {
+  id: string;
+  partner_name: string;
+  member_name: string;
+  purchase_amount: number;
+  agent_amount: number;
+  created_at: string;
+}
+
 export function AgentCommission() {
   const navigate = useNavigate();
   const [agent, setAgent] = useState<any>(null);
@@ -29,6 +38,7 @@ export function AgentCommission() {
   const [totalEarned, setTotalEarned] = useState(0);
   const [totalPaid, setTotalPaid] = useState(0);
   const [totalPending, setTotalPending] = useState(0);
+  const [transactionHistory, setTransactionHistory] = useState<TransactionDetail[]>([]);
 
   useEffect(() => {
     loadCommissionData();
@@ -48,8 +58,42 @@ export function AgentCommission() {
 
       const agentId = agentData.agent_id || agentData.id;
 
-      // Load commission records
-      const { data: commissionData } = await supabase
+      // Get partner links
+      const { data: links } = await supabaseAdmin
+        .from('partner_agent_links')
+        .select('partner_id')
+        .eq('agent_id', agentId)
+        .eq('status', 'active');
+
+      if (!links || links.length === 0) {
+        setCommissions([]);
+        setTotalEarned(0);
+        setTotalPaid(0);
+        setTotalPending(0);
+        setCurrentMonthBreakdown([]);
+        return;
+      }
+
+      const partnerIds = links.map(l => l.partner_id);
+
+      // Get ALL transactions for this agent's partners (for total earned)
+      const { data: allTransactions } = await supabaseAdmin
+        .from('transactions')
+        .select('agent_amount, created_at')
+        .in('partner_id', partnerIds)
+        .eq('status', 'completed');
+
+      // Calculate total earned from all transactions
+      const totalEarned = (allTransactions || []).reduce((sum, t) => sum + (parseFloat(t.agent_amount) || 0), 0);
+      setTotalEarned(totalEarned);
+
+      // For now, set pending = total earned (since we don't have payout tracking yet)
+      // In production, this would come from a payouts table
+      setTotalPending(totalEarned);
+      setTotalPaid(0);
+
+      // Load commission records from agent_commissions table (if any exist)
+      const { data: commissionData } = await supabaseAdmin
         .from('agent_commissions')
         .select('*')
         .eq('agent_id', agentId)
@@ -57,53 +101,54 @@ export function AgentCommission() {
 
       setCommissions(commissionData || []);
 
-      // Calculate totals
-      const total = (commissionData || []).reduce((sum, c) => sum + parseFloat(c.total_amount), 0);
-      const paid = (commissionData || []).filter(c => c.payout_status === 'paid').reduce((sum, c) => sum + parseFloat(c.total_amount), 0);
-      const pending = (commissionData || []).filter(c => c.payout_status === 'pending').reduce((sum, c) => sum + parseFloat(c.total_amount), 0);
-
-      setTotalEarned(total);
-      setTotalPaid(paid);
-      setTotalPending(pending);
-
       // Load current month breakdown
       const currentMonth = new Date().toISOString().slice(0, 7);
-      
-      // Get partner links
-      const { data: links } = await supabase
-        .from('partner_agent_links')
-        .select('partner_id')
-        .eq('agent_id', agentId)
-        .eq('status', 'active');
+      const nextMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString().slice(0, 7);
 
-      if (links && links.length > 0) {
-        const partnerIds = links.map(l => l.partner_id);
+      // Get transactions for this month
+      const { data: transactions } = await supabaseAdmin
+        .from('transactions')
+        .select('partner_id, agent_amount, partners(shop_name)')
+        .in('partner_id', partnerIds)
+        .gte('created_at', `${currentMonth}-01T00:00:00`)
+        .lt('created_at', `${nextMonth}-01T00:00:00`)
+        .eq('status', 'completed');
 
-        // Get transactions for this month
-        const { data: transactions } = await supabase
-          .from('transactions')
-          .select('partner_id, agent_amount, partners(shop_name)')
-          .in('partner_id', partnerIds)
-          .gte('created_at', `${currentMonth}-01`)
-          .lt('created_at', `${currentMonth}-32`);
+      // Group by partner
+      const breakdown: { [key: string]: PartnerCommission } = {};
+      (transactions || []).forEach(t => {
+        const partnerName = (t.partners as any)?.shop_name || 'Unknown';
+        if (!breakdown[partnerName]) {
+          breakdown[partnerName] = {
+            partner_name: partnerName,
+            transaction_count: 0,
+            commission_earned: 0
+          };
+        }
+        breakdown[partnerName].transaction_count++;
+        breakdown[partnerName].commission_earned += parseFloat(t.agent_amount || '0');
+      });
 
-        // Group by partner
-        const breakdown: { [key: string]: PartnerCommission } = {};
-        (transactions || []).forEach(t => {
-          const partnerName = (t.partners as any)?.shop_name || 'Unknown';
-          if (!breakdown[partnerName]) {
-            breakdown[partnerName] = {
-              partner_name: partnerName,
-              transaction_count: 0,
-              commission_earned: 0
-            };
-          }
-          breakdown[partnerName].transaction_count++;
-          breakdown[partnerName].commission_earned += parseFloat(t.agent_amount || '0');
-        });
+      setCurrentMonthBreakdown(Object.values(breakdown));
 
-        setCurrentMonthBreakdown(Object.values(breakdown));
-      }
+      // Load detailed transaction history
+      const { data: allTransactionsDetail } = await supabase
+        .from('transactions')
+        .select('id, purchase_amount, agent_amount, created_at, partners(shop_name), members(full_name)')
+        .in('partner_id', partnerIds)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false });
+
+      const transactionDetails: TransactionDetail[] = (allTransactionsDetail || []).map(t => ({
+        id: t.id,
+        partner_name: (t.partners as any)?.shop_name || 'Unknown Partner',
+        member_name: (t.members as any)?.full_name || 'Unknown Member',
+        purchase_amount: parseFloat(t.purchase_amount || '0'),
+        agent_amount: parseFloat(t.agent_amount || '0'),
+        created_at: t.created_at
+      }));
+
+      setTransactionHistory(transactionDetails);
     } catch (error) {
       console.error('Error loading commission data:', error);
     } finally {
@@ -222,54 +267,57 @@ export function AgentCommission() {
           )}
         </div>
 
-        {/* Commission History */}
+        {/* Transaction History */}
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-6 py-5 border-b border-gray-200 bg-gray-50">
             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <span className="material-symbols-outlined" style={{ color: BLUE }}>history</span>
-              Payout History
+              <span className="material-symbols-outlined" style={{ color: BLUE }}>receipt_long</span>
+              Transaction History & Commission Details
             </h3>
           </div>
 
-          {commissions.length === 0 ? (
+          {transactionHistory.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <span className="material-symbols-outlined text-gray-300 text-6xl mb-4">history</span>
-              <p className="text-gray-600">No payout history yet</p>
+              <span className="material-symbols-outlined text-gray-300 text-6xl mb-4">receipt_long</span>
+              <p className="text-gray-600">No transactions yet</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50">
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Month</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Amount</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Status</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Paid Date</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Date</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Member</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Partner Shop</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600 text-right">Purchase Amount</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600 text-right">Your Commission (1%)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {commissions.map((commission) => (
-                    <tr key={commission.id} className="hover:bg-gray-50 transition-colors">
+                  {transactionHistory.map((transaction) => (
+                    <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
-                        <span className="text-sm font-semibold text-gray-900">{commission.month}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm font-bold" style={{ color: BLUE }}>R{parseFloat(commission.total_amount).toFixed(2)}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                          commission.payout_status === 'paid'
-                            ? 'bg-green-500/20 text-green-600 border border-green-500/30'
-                            : 'bg-orange-500/20 text-orange-600 border border-orange-500/30'
-                        }`}>
-                          <span className={`size-1.5 rounded-full ${commission.payout_status === 'paid' ? 'bg-green-600' : 'bg-orange-600'}`}></span>
-                          {commission.payout_status}
+                        <span className="text-sm font-semibold text-gray-900">
+                          {new Date(transaction.created_at).toLocaleDateString('en-ZA', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm text-gray-600">
-                          {commission.paid_at ? new Date(commission.paid_at).toLocaleDateString() : '-'}
-                        </span>
+                        <span className="text-sm font-semibold text-gray-900">{transaction.member_name}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-700">{transaction.partner_name}</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="text-sm font-semibold text-gray-900">R{transaction.purchase_amount.toFixed(2)}</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="text-sm font-bold" style={{ color: BLUE }}>R{transaction.agent_amount.toFixed(2)}</span>
                       </td>
                     </tr>
                   ))}

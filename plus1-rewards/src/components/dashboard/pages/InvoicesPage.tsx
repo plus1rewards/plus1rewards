@@ -17,6 +17,12 @@ export default function InvoicesPage() {
   });
   const [loading, setLoading] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [selectedPartner, setSelectedPartner] = useState<any>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [showTestEmailModal, setShowTestEmailModal] = useState(false);
+  const [testEmailType, setTestEmailType] = useState<'due' | 'overdue' | 'payment_received' | 'suspended' | 'reactivated' | null>(null);
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -86,6 +92,140 @@ export default function InvoicesPage() {
     }
   };
 
+  const handleSendTestEmail = async (emailType: 'due' | 'overdue' | 'payment_received' | 'suspended' | 'reactivated') => {
+    setSendingTestEmail(true);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const resendApiKey = import.meta.env.VITE_RESEND_API_KEY;
+
+      const templateMap = {
+        due: 'partner-invoice-due',
+        overdue: 'partner-invoice-overdue',
+        payment_received: 'partner-payment-received',
+        suspended: 'partner-suspended',
+        reactivated: 'partner-reactivated', // Create this template in Resend
+      };
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/send-statement-email`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            partnerEmail: 'theodt.bmm@gmail.com',
+            templateId: templateMap[emailType],
+            variables: {
+              Month_Year: '2026-03',
+              Issue_Date: new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
+              Due_Date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
+              Responsible_Person_Name: 'Test Partner',
+              Total_sales: 'R15,420.00',
+              Total_Cashback: 'R771.00',
+              Member_cashback_percentage: '5%',
+              Member_Rewards: 'R755.00',
+              System_Reward: 'R8.00',
+              Agent_commision: 'R8.00',
+              Total_Amount: 'R771.00',
+            },
+            resendApiKey: resendApiKey,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send test email');
+      }
+
+      alert(`Test email (${emailType}) sent successfully to theodt.bmm@gmail.com`);
+      setShowTestEmailModal(false);
+      setTestEmailType(null);
+    } catch (error) {
+      console.error('Error sending test email:', error);
+      alert(`Failed to send test email: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSendingTestEmail(false);
+    }
+  };
+
+  const handleSendStatement = async () => {
+    if (!selectedPartner) {
+      alert('Please select a partner');
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      // Fetch transactions for this partner in the statement month
+      const [year, month] = selectedPartner.invoice_month.split('-');
+      const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const endDate = new Date(parseInt(year), parseInt(month), 0);
+
+      const { data: transactions } = await supabaseAdmin
+        .from('transactions')
+        .select('purchase_amount, member_amount, system_amount, agent_amount')
+        .eq('partner_id', selectedPartner.partner_id)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
+
+      // Calculate totals
+      const totalSales = transactions?.reduce((sum, t) => sum + (parseFloat(t.purchase_amount) || 0), 0) || 0;
+      const memberRewards = transactions?.reduce((sum, t) => sum + (parseFloat(t.member_amount) || 0), 0) || 0;
+      const systemReward = transactions?.reduce((sum, t) => sum + (parseFloat(t.system_amount) || 0), 0) || 0;
+      const agentCommission = transactions?.reduce((sum, t) => sum + (parseFloat(t.agent_amount) || 0), 0) || 0;
+      const totalAmount = parseFloat(selectedPartner.total_amount);
+      const cashbackPercent = totalSales > 0 ? ((totalAmount / totalSales) * 100).toFixed(1) : '0';
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const resendApiKey = import.meta.env.VITE_RESEND_API_KEY;
+      
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/send-statement-email`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            partnerEmail: selectedPartner.partners?.email,
+            variables: {
+              Month_Year: selectedPartner.invoice_month,
+              Issue_Date: new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
+              Due_Date: new Date(selectedPartner.due_date).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
+              Responsible_Person_Name: selectedPartner.partners?.shop_name || 'Partner',
+              Total_sales: `R${totalSales.toFixed(2)}`,
+              Total_Cashback: `R${totalAmount.toFixed(2)}`,
+              Member_cashback_percentage: `${cashbackPercent}%`,
+              Member_Rewards: `R${memberRewards.toFixed(2)}`,
+              System_Reward: `R${systemReward.toFixed(2)}`,
+              Agent_commision: `R${agentCommission.toFixed(2)}`,
+              Total_Amount: `R${totalAmount.toFixed(2)}`,
+            },
+            resendApiKey: resendApiKey,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send email');
+      }
+
+      alert(`Statement sent successfully to ${selectedPartner.partners?.email}`);
+      setShowSendModal(false);
+      setSelectedPartner(null);
+    } catch (error) {
+      console.error('Error sending statement:', error);
+      alert(`Failed to send statement: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const handleRefresh = () => fetchData();
   const handleLogout = () => navigate('/');
 
@@ -138,6 +278,14 @@ export default function InvoicesPage() {
               Refresh
             </button>
             <button
+              onClick={() => setShowTestEmailModal(true)}
+              className="flex items-center gap-2 px-5 py-2.5 font-bold rounded-lg border border-orange-500 bg-white text-orange-500 hover:bg-orange-500 hover:text-white transition-all text-sm"
+              title="Send test emails to theodt.bmm@gmail.com"
+            >
+              <span className="material-symbols-outlined text-lg">mail</span>
+              Test Emails
+            </button>
+            <button
               onClick={handleLogout}
               className="flex items-center gap-2 px-5 py-2.5 bg-[#1a558b] text-white rounded-lg hover:opacity-90 transition-all text-sm"
             >
@@ -165,9 +313,12 @@ export default function InvoicesPage() {
                 <span className="material-symbols-outlined text-[#1a558b]">list_alt</span>
                 All Invoices ({filteredInvoices.length})
               </h3>
-              <button className="text-xs text-gray-600 hover:text-[#1a558b] flex items-center gap-1 font-medium transition-colors">
+              <button 
+                onClick={() => setShowSendModal(true)}
+                className="text-xs text-gray-600 hover:text-[#1a558b] flex items-center gap-1 font-medium transition-colors"
+              >
                 <span className="material-symbols-outlined text-sm">add</span>
-                Generate Invoice
+                Send Statement
               </button>
             </div>
 
@@ -425,6 +576,188 @@ export default function InvoicesPage() {
                 )}
               </section>
             )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Send Statement Modal */}
+    {showSendModal && (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-white border border-gray-200 rounded-2xl max-w-md w-full shadow-2xl">
+          {/* Modal Header */}
+          <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <h2 className="text-xl font-black text-gray-900">Send Statement</h2>
+            <button
+              onClick={() => {
+                setShowSendModal(false);
+                setSelectedPartner(null);
+              }}
+              className="size-8 rounded-full bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-colors"
+            >
+              <span className="material-symbols-outlined text-sm">close</span>
+            </button>
+          </div>
+
+          {/* Modal Content */}
+          <div className="px-6 py-6 space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-900 mb-2">
+                Select Partner
+              </label>
+              <select
+                value={selectedPartner?.id || ''}
+                onChange={(e) => {
+                  const partner = invoices.find(inv => inv.id === e.target.value);
+                  setSelectedPartner(partner);
+                }}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none transition-all"
+              >
+                <option value="">Choose a partner...</option>
+                {invoices.map((invoice) => (
+                  <option key={invoice.id} value={invoice.id}>
+                    {invoice.partners?.shop_name} - {invoice.invoice_month} (R{parseFloat(invoice.total_amount).toFixed(2)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedPartner && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                <p className="text-xs text-blue-600 font-bold uppercase">Statement Details</p>
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-900">
+                    <span className="font-semibold">Partner:</span> {selectedPartner.partners?.shop_name}
+                  </p>
+                  <p className="text-sm text-gray-900">
+                    <span className="font-semibold">Email:</span> {selectedPartner.partners?.email}
+                  </p>
+                  <p className="text-sm text-gray-900">
+                    <span className="font-semibold">Month:</span> {selectedPartner.invoice_month}
+                  </p>
+                  <p className="text-sm text-gray-900">
+                    <span className="font-semibold">Amount:</span> R{parseFloat(selectedPartner.total_amount).toFixed(2)}
+                  </p>
+                  <p className="text-sm text-gray-900">
+                    <span className="font-semibold">Due Date:</span> {new Date(selectedPartner.due_date).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Modal Footer */}
+          <div className="border-t border-gray-200 px-6 py-4 flex gap-3 justify-end">
+            <button
+              onClick={() => {
+                setShowSendModal(false);
+                setSelectedPartner(null);
+              }}
+              className="px-4 py-2 border border-gray-200 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSendStatement}
+              disabled={!selectedPartner || sendingEmail}
+              className="px-4 py-2 bg-[#1a558b] text-white rounded-lg hover:opacity-90 transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {sendingEmail ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-sm">send</span>
+                  Send Statement
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Test Email Modal */}
+    {showTestEmailModal && (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-white border border-gray-200 rounded-2xl max-w-md w-full shadow-2xl">
+          {/* Modal Header */}
+          <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <h2 className="text-xl font-black text-gray-900">Test Email Templates</h2>
+            <button
+              onClick={() => {
+                setShowTestEmailModal(false);
+                setTestEmailType(null);
+              }}
+              className="size-8 rounded-full bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-colors"
+            >
+              <span className="material-symbols-outlined text-sm">close</span>
+            </button>
+          </div>
+
+          {/* Modal Content */}
+          <div className="px-6 py-6 space-y-3">
+            <p className="text-sm text-gray-600 mb-4">Send test emails to theodt.bmm@gmail.com</p>
+
+            <button
+              onClick={() => handleSendTestEmail('due')}
+              disabled={sendingTestEmail}
+              className="w-full px-4 py-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-sm">mail</span>
+              Partner Invoice Due
+            </button>
+
+            <button
+              onClick={() => handleSendTestEmail('overdue')}
+              disabled={sendingTestEmail}
+              className="w-full px-4 py-3 bg-orange-50 border border-orange-200 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-sm">mail</span>
+              Partner Invoice Overdue
+            </button>
+
+            <button
+              onClick={() => handleSendTestEmail('payment_received')}
+              disabled={sendingTestEmail}
+              className="w-full px-4 py-3 bg-green-50 border border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-sm">mail</span>
+              Partner Payment Received
+            </button>
+
+            <button
+              onClick={() => handleSendTestEmail('suspended')}
+              disabled={sendingTestEmail}
+              className="w-full px-4 py-3 bg-red-50 border border-red-200 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-sm">mail</span>
+              Partner Suspended
+            </button>
+
+            <button
+              onClick={() => handleSendTestEmail('reactivated')}
+              disabled={sendingTestEmail}
+              className="w-full px-4 py-3 bg-purple-50 border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-sm">mail</span>
+              Partner Reactivated
+            </button>
+          </div>
+
+          {/* Modal Footer */}
+          <div className="border-t border-gray-200 px-6 py-4 flex justify-end">
+            <button
+              onClick={() => {
+                setShowTestEmailModal(false);
+                setTestEmailType(null);
+              }}
+              className="px-4 py-2 border border-gray-200 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+            >
+              Close
+            </button>
           </div>
         </div>
       </div>

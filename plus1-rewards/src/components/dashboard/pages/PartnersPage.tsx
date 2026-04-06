@@ -126,21 +126,44 @@ export default function PartnersPage() {
         .eq('id', partnerId)
         .single();
 
-      const { data: wallets } = await supabaseAdmin
-        .from('wallets')
-        .select('*, members(name, phone)')
-        .eq('partner_id', partnerId);
+      // Generate public URL for signature if it exists
+      let signaturePublicUrl = null;
+      if (partner?.signature_url) {
+        console.log('Partner signature URL:', partner.signature_url);
+        
+        // Check if it's already a full URL
+        if (partner.signature_url.startsWith('http')) {
+          signaturePublicUrl = partner.signature_url;
+        } else {
+          // It's just a path, generate the public URL
+          const { data: { publicUrl } } = supabaseAdmin.storage
+            .from('documents')
+            .getPublicUrl(partner.signature_url);
+          signaturePublicUrl = publicUrl;
+        }
+        
+        console.log('Final signature public URL:', signaturePublicUrl);
+      } else {
+        console.log('No signature URL found for partner');
+      }
 
-      const { data: transactions } = await supabaseAdmin
+      // Get transactions for this partner
+      console.log('Fetching transactions for partner ID:', partnerId);
+      const { data: transactions, error: transError } = await supabaseAdmin
         .from('transactions')
         .select(`
           *,
-          members(name, phone),
-          agents(name)
+          members(full_name, cell_phone, phone)
         `)
         .eq('partner_id', partnerId)
         .order('created_at', { ascending: false })
         .limit(20);
+
+      console.log('Transactions query result:', { transactions, transError });
+      console.log('Number of transactions found:', transactions?.length || 0);
+      if (transactions && transactions.length > 0) {
+        console.log('First transaction:', transactions[0]);
+      }
 
       const { data: invoices } = await supabaseAdmin
         .from('monthly_invoices')
@@ -149,8 +172,10 @@ export default function PartnersPage() {
         .order('invoice_month', { ascending: false });
 
       setPartnerDetails({
-        partner,
-        wallets: wallets || [],
+        partner: {
+          ...partner,
+          signature_public_url: signaturePublicUrl
+        },
         transactions: transactions || [],
         invoices: invoices || []
       });
@@ -481,12 +506,56 @@ export default function PartnersPage() {
                             )}
                           </td>
                           <td className="px-4 py-4">
-                            <button
-                              onClick={() => handleViewDetails(partner)}
-                              className="px-3 py-1.5 bg-[#1a558b] text-white rounded-lg text-xs font-bold hover:opacity-80 transition-opacity"
-                            >
-                              View Details
-                            </button>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleViewDetails(partner)}
+                                className="px-3 py-1.5 bg-[#1a558b] text-white rounded-lg text-xs font-bold hover:opacity-80 transition-opacity"
+                              >
+                                View Details
+                              </button>
+                              {partner.status === 'active' && (
+                                <button
+                                  onClick={async () => {
+                                    if (confirm('Suspend this partner?')) {
+                                      try {
+                                        await supabaseAdmin
+                                          .from('partners')
+                                          .update({ status: 'suspended' })
+                                          .eq('id', partner.id);
+                                        alert('Partner suspended');
+                                        fetchData();
+                                      } catch (err: any) {
+                                        alert('Error: ' + err.message);
+                                      }
+                                    }
+                                  }}
+                                  className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold hover:opacity-80 transition-opacity"
+                                >
+                                  Suspend
+                                </button>
+                              )}
+                              {partner.status === 'suspended' && (
+                                <button
+                                  onClick={async () => {
+                                    if (confirm('Reactivate this partner?')) {
+                                      try {
+                                        await supabaseAdmin
+                                          .from('partners')
+                                          .update({ status: 'active' })
+                                          .eq('id', partner.id);
+                                        alert('Partner reactivated');
+                                        fetchData();
+                                      } catch (err: any) {
+                                        alert('Error: ' + err.message);
+                                      }
+                                    }
+                                  }}
+                                  className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:opacity-80 transition-opacity"
+                                >
+                                  Activate
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -607,14 +676,10 @@ export default function PartnersPage() {
                     <span className="material-symbols-outlined">person</span>
                     Owner Information
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Owner Name</p>
                       <p className="text-sm text-gray-900">{partnerDetails.partner.responsible_person || 'Not provided'}</p>
-                    </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">Owner ID Number</p>
-                      <p className="text-sm text-gray-900 font-mono">{partnerDetails.partner.owner_id_number || 'Not provided'}</p>
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Owner Phone</p>
@@ -691,77 +756,86 @@ export default function PartnersPage() {
                   </div>
                 </section>
 
-                {/* Additional Details */}
+                {/* Digital Signature */}
                 <section>
                   <h3 className="text-lg font-bold text-[#1a558b] mb-4 flex items-center gap-2">
-                    <span className="material-symbols-outlined">description</span>
-                    Additional Details
+                    <span className="material-symbols-outlined">edit_note</span>
+                    Digital Signature
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">Description</p>
-                      <p className="text-sm text-gray-900">{partnerDetails.partner.description || 'No description provided'}</p>
-                    </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">Operating Hours</p>
-                      <p className="text-sm text-gray-900">{partnerDetails.partner.operating_hours || 'Not specified'}</p>
-                    </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">Tax Number</p>
-                      <p className="text-sm text-gray-900">{partnerDetails.partner.tax_number || 'Not provided'}</p>
-                    </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">VAT Number</p>
-                      <p className="text-sm text-gray-900">{partnerDetails.partner.vat_number || 'Not provided'}</p>
-                    </div>
-                  </div>
-                </section>
-
-                {/* Connected Members (Wallets) */}
-                <section>
-                  <h3 className="text-lg font-bold text-[#1a558b] mb-4 flex items-center gap-2">
-                    <span className="material-symbols-outlined">group</span>
-                    Connected Members ({partnerDetails.wallets.length})
-                  </h3>
-                  {partnerDetails.wallets.length > 0 ? (
-                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead className="bg-[#1a558b]/10">
-                            <tr>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Member</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Phone</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Balance</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Status</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Joined</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200">
-                            {partnerDetails.wallets.map((wallet: any) => (
-                              <tr key={wallet.id} className="hover:bg-gray-50">
-                                <td className="px-4 py-3 text-sm text-gray-900">{wallet.members?.name || 'Unknown'}</td>
-                                <td className="px-4 py-3 text-sm text-slate-300">{wallet.members?.phone || 'N/A'}</td>
-                                <td className="px-4 py-3 text-sm text-[#1a558b] font-bold">R{wallet.balance?.toFixed(2) || '0.00'}</td>
-                                <td className="px-4 py-3">
-                                  <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                                    wallet.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
-                                  }`}>
-                                    {wallet.status}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-sm text-gray-600">{new Date(wallet.created_at).toLocaleDateString()}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                  {partnerDetails.partner.signature_public_url ? (
+                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                      <img 
+                        src={partnerDetails.partner.signature_public_url}
+                        alt="Partner Signature"
+                        className="max-w-md h-auto border border-gray-300 rounded-lg"
+                        onLoad={() => {
+                          console.log('Signature image loaded successfully');
+                        }}
+                        onError={(e) => {
+                          console.error('Failed to load signature image:', partnerDetails.partner.signature_public_url);
+                          e.currentTarget.style.display = 'none';
+                          const parent = e.currentTarget.parentElement;
+                          if (parent) {
+                            parent.innerHTML = `
+                              <div class="text-center py-8">
+                                <p class="text-red-600 font-semibold mb-2">Signature image could not be loaded</p>
+                                <p class="text-xs text-gray-500 mb-2">URL: ${partnerDetails.partner.signature_public_url}</p>
+                                <button onclick="window.open('${partnerDetails.partner.signature_public_url}', '_blank')" class="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
+                                  Try Direct Link
+                                </button>
+                              </div>
+                            `;
+                          }
+                        }}
+                      />
                     </div>
                   ) : (
-                    <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
-                      <p className="text-gray-600">No members connected to this partner yet</p>
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                      <p className="text-gray-600">No signature on file</p>
                     </div>
                   )}
                 </section>
+
+                {/* Suppliers */}
+                <section>
+                  <h3 className="text-lg font-bold text-[#1a558b] mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined">local_shipping</span>
+                    Suppliers ({(partnerDetails.partner.suppliers || []).length})
+                  </h3>
+                  {partnerDetails.partner.suppliers && partnerDetails.partner.suppliers.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {partnerDetails.partner.suppliers.map((supplier: any, idx: number) => (
+                        <div key={idx} className="bg-white border border-gray-200 rounded-lg p-4">
+                          <p className="text-xs text-gray-600 uppercase font-bold mb-3">Supplier {idx + 1}</p>
+                          <div className="space-y-2">
+                            <div>
+                              <p className="text-[10px] text-gray-500 uppercase font-bold">Name</p>
+                              <p className="text-sm text-gray-900">{supplier.name || 'Not provided'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-500 uppercase font-bold">Contact Person</p>
+                              <p className="text-sm text-gray-900">{supplier.contact_person || 'Not provided'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-500 uppercase font-bold">Phone</p>
+                              <p className="text-sm text-gray-900">{supplier.phone || 'Not provided'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-500 uppercase font-bold">Email</p>
+                              <p className="text-sm text-gray-900">{supplier.email || 'Not provided'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                      <p className="text-gray-600">No suppliers added</p>
+                    </div>
+                  )}
+                </section>
+
+
 
                 {/* Recent Transactions */}
                 <section>
@@ -777,8 +851,8 @@ export default function PartnersPage() {
                             <tr>
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Date</th>
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Member</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Amount</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Partner Contribution</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Purchase Amount</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Member Cashback</th>
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Type</th>
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Status</th>
                             </tr>
@@ -786,16 +860,19 @@ export default function PartnersPage() {
                           <tbody className="divide-y divide-gray-200">
                             {partnerDetails.transactions.map((transaction: any) => (
                               <tr key={transaction.id} className="hover:bg-gray-50">
-                                <td className="px-4 py-3 text-sm text-slate-300">{new Date(transaction.created_at).toLocaleString()}</td>
-                                <td className="px-4 py-3 text-sm text-gray-900">{transaction.members?.name || 'Unknown'}</td>
-                                <td className="px-4 py-3 text-sm text-gray-900 font-bold">R{transaction.amount?.toFixed(2)}</td>
-                                <td className="px-4 py-3 text-sm text-[#1a558b] font-bold">R{transaction.partner_contribution?.toFixed(2)}</td>
-                                <td className="px-4 py-3 text-sm text-slate-300">{transaction.transaction_type}</td>
+                                <td className="px-4 py-3 text-sm text-gray-600">{new Date(transaction.created_at).toLocaleString()}</td>
+                                <td className="px-4 py-3">
+                                  <div className="text-sm text-gray-900 font-semibold">{transaction.members?.full_name || 'Unknown'}</div>
+                                  <div className="text-xs text-gray-500">{transaction.members?.cell_phone || transaction.members?.phone || 'No phone'}</div>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-900 font-bold">R{parseFloat(transaction.purchase_amount || 0).toFixed(2)}</td>
+                                <td className="px-4 py-3 text-sm text-[#1a558b] font-bold">R{parseFloat(transaction.member_amount || transaction.cashback_amount || 0).toFixed(2)}</td>
+                                <td className="px-4 py-3 text-sm text-gray-600">{transaction.transaction_type || 'Purchase'}</td>
                                 <td className="px-4 py-3">
                                   <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                                    transaction.status === 'completed' ? 'bg-green-500/20 text-green-400' : 
-                                    transaction.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                                    'bg-red-500/20 text-red-400'
+                                    transaction.status === 'completed' ? 'bg-green-500/20 text-green-600' : 
+                                    transaction.status === 'pending' ? 'bg-yellow-500/20 text-yellow-600' :
+                                    'bg-red-500/20 text-red-600'
                                   }`}>
                                     {transaction.status}
                                   </span>
@@ -862,30 +939,80 @@ export default function PartnersPage() {
                 </section>
 
                 {/* Action Buttons */}
-                {partnerDetails.partner.status === 'pending' && (
-                  <section className="flex gap-4 justify-center pt-4">
+                <section className="flex gap-4 justify-center pt-4 flex-wrap">
+                  {partnerDetails.partner.status === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => {
+                          handleApprovePartner(partnerDetails.partner.id);
+                          closeDetailsModal();
+                        }}
+                        className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold transition-colors flex items-center gap-2"
+                      >
+                        <span className="material-symbols-outlined">check_circle</span>
+                        Approve Partner
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleRejectPartner(partnerDetails.partner.id);
+                          closeDetailsModal();
+                        }}
+                        className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold transition-colors flex items-center gap-2"
+                      >
+                        <span className="material-symbols-outlined">cancel</span>
+                        Reject Partner
+                      </button>
+                    </>
+                  )}
+                  
+                  {partnerDetails.partner.status === 'active' && (
                     <button
-                      onClick={() => {
-                        handleApprovePartner(partnerDetails.partner.id);
-                        closeDetailsModal();
+                      onClick={async () => {
+                        if (confirm('Are you sure you want to suspend this partner?')) {
+                          try {
+                            await supabaseAdmin
+                              .from('partners')
+                              .update({ status: 'suspended' })
+                              .eq('id', partnerDetails.partner.id);
+                            alert('Partner suspended successfully');
+                            fetchData();
+                            closeDetailsModal();
+                          } catch (err: any) {
+                            alert('Error: ' + err.message);
+                          }
+                        }
+                      }}
+                      className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-bold transition-colors flex items-center gap-2"
+                    >
+                      <span className="material-symbols-outlined">block</span>
+                      Suspend Partner
+                    </button>
+                  )}
+                  
+                  {partnerDetails.partner.status === 'suspended' && (
+                    <button
+                      onClick={async () => {
+                        if (confirm('Are you sure you want to reactivate this partner?')) {
+                          try {
+                            await supabaseAdmin
+                              .from('partners')
+                              .update({ status: 'active' })
+                              .eq('id', partnerDetails.partner.id);
+                            alert('Partner reactivated successfully');
+                            fetchData();
+                            closeDetailsModal();
+                          } catch (err: any) {
+                            alert('Error: ' + err.message);
+                          }
+                        }
                       }}
                       className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold transition-colors flex items-center gap-2"
                     >
                       <span className="material-symbols-outlined">check_circle</span>
-                      Approve Partner
+                      Reactivate Partner
                     </button>
-                    <button
-                      onClick={() => {
-                        handleRejectPartner(partnerDetails.partner.id);
-                        closeDetailsModal();
-                      }}
-                      className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold transition-colors flex items-center gap-2"
-                    >
-                      <span className="material-symbols-outlined">cancel</span>
-                      Reject Partner
-                    </button>
-                  </section>
-                )}
+                  )}
+                </section>
               </div>
             ) : null}
             </div>

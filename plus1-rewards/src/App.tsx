@@ -26,6 +26,7 @@ import ProvidersPage from './components/dashboard/pages/ProvidersPage'
 import ExportsPage from './components/dashboard/pages/ExportsPage'
 import AuditLogsPage from './components/dashboard/pages/AuditLogsPage'
 import SettingsPage from './components/dashboard/pages/SettingsPage'
+import AdminChatDashboard from './components/dashboard/pages/AdminChatDashboard'
 import { default as MemberDashboard } from './pages/DashboardNew'
 import MemberCoverPlans from './pages/MemberCoverPlans'
 import MemberTransactions from './pages/MemberTransactions'
@@ -39,7 +40,7 @@ import TransactionHistory from './components/partner/pages/TransactionHistory'
 import PartnerTransactionDetail from './components/partner/PartnerTransactionDetail'
 import MonthlyInvoice from './components/partner/pages/MonthlyInvoice'
 import PartnerShopProfile from './components/partner/PartnerShopProfile'
-import PartnerSupport from './components/partner/PartnerSupport'
+import PartnerSupport from './pages/PartnerSupport'
 import PartnerProcessTransaction from './components/partner/PartnerProcessTransaction'
 import QuickTransaction from './components/partner/pages/QuickTransaction'
 import PartnerMemberRegistration from './pages/PartnerMemberRegistration'
@@ -143,6 +144,7 @@ export default function App() {
           <Route path="/admin/exports" element={<ExportsPage />} />
           <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />
+          <Route path="/admin/chat" element={<AdminChatDashboard />} />
           <Route path="/member/dashboard" element={<MemberDashboard />} />
           <Route path="/member/cover-plans" element={<MemberCoverPlans />} />
           <Route path="/member/transactions" element={<MemberTransactions />} />

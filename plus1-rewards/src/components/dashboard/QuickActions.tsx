@@ -7,22 +7,22 @@ export default function QuickActions() {
   const handleAction = (action: string) => {
     switch (action) {
       case 'invoices':
-        navigate('/admin/shops');
+        navigate('/admin/invoices');
         break;
       case 'suspensions':
-        navigate('/admin/members');
+        navigate('/admin/partners');
         break;
       case 'payouts':
-        navigate('/admin/agents');
+        navigate('/admin/commissions');
         break;
       case 'export':
-        handleExport();
+        navigate('/admin/exports');
         break;
       case 'providers':
         navigate('/admin/providers');
         break;
       case 'policies':
-        navigate('/admin/policies');
+        navigate('/admin/settings');
         break;
       case 'transactions':
         navigate('/admin/transactions');
@@ -32,15 +32,6 @@ export default function QuickActions() {
         break;
       default:
         console.log('Action not implemented:', action);
-    }
-  };
-
-  const handleExport = async () => {
-    try {
-      alert('Export functionality will be implemented. This would generate a CSV/Excel file with system data.');
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
     }
   };
 
@@ -77,8 +68,8 @@ export default function QuickActions() {
               <span className="material-symbols-outlined">block</span>
             </div>
             <div>
-              <p className="font-bold text-sm text-gray-900">Manage Suspensions</p>
-              <p className="text-[11px] text-gray-600">Handle restricted accounts</p>
+              <p className="font-bold text-sm text-gray-900">Manage Partners</p>
+              <p className="text-[11px] text-gray-600">Handle suspensions &amp; status</p>
             </div>
           </div>
           <span className="material-symbols-outlined text-gray-400 group-hover:text-[#1a558b] transition-all">chevron_right</span>
@@ -93,8 +84,8 @@ export default function QuickActions() {
               <span className="material-symbols-outlined">paid</span>
             </div>
             <div>
-              <p className="font-bold text-sm text-gray-900">Agent Payouts</p>
-              <p className="text-[11px] text-gray-600">Process commission batch</p>
+              <p className="font-bold text-sm text-gray-900">Agent Commissions</p>
+              <p className="text-[11px] text-gray-600">Process commission payouts</p>
             </div>
           </div>
           <span className="material-symbols-outlined text-gray-400 group-hover:text-[#1a558b] transition-all">chevron_right</span>
@@ -157,7 +148,7 @@ export default function QuickActions() {
               <span className="material-symbols-outlined">monitoring</span>
             </div>
             <div>
-              <p className="font-bold text-sm text-gray-900">Transaction Monitor</p>
+              <p className="font-bold text-sm text-gray-900">Transactions</p>
               <p className="text-[11px] text-gray-600">Real-time flow audit</p>
             </div>
           </div>
@@ -173,7 +164,7 @@ export default function QuickActions() {
               <span className="material-symbols-outlined">person_search</span>
             </div>
             <div>
-              <p className="font-bold text-sm text-gray-900">Member Management</p>
+              <p className="font-bold text-sm text-gray-900">Members</p>
               <p className="text-[11px] text-gray-600">Profiles &amp; rewards history</p>
             </div>
           </div>

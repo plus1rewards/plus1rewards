@@ -29,16 +29,30 @@ export default function MembersPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch members with member_cover_plans to calculate stats
+      // Fetch members
       const { data: membersData, error: membersError } = await supabaseAdmin
         .from('members')
-        .select(`
-          *,
-          member_cover_plans(funded_amount, status)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (membersError) throw membersError;
+
+      // Fetch cover plans separately to avoid ambiguous relationship
+      if (membersData && membersData.length > 0) {
+        const memberIds = membersData.map(m => m.id);
+        const { data: coverPlansData } = await supabaseAdmin
+          .from('member_cover_plans')
+          .select('member_id, funded_amount, status')
+          .in('member_id', memberIds);
+
+        // Attach cover plans to members
+        const membersWithPlans = membersData.map(member => ({
+          ...member,
+          member_cover_plans: coverPlansData?.filter(cp => cp.member_id === member.id) || []
+        }));
+
+        membersData.splice(0, membersData.length, ...membersWithPlans);
+      }
 
       // Calculate stats
       const totalMembers = membersData?.length || 0;
@@ -82,7 +96,7 @@ export default function MembersPage() {
       ...members.map(m => [
         m.id,
         m.full_name || '',
-        m.phone || '',
+        m.cell_phone || m.phone || '',
         m.email || '',
         m.qr_code || '',
         m.status || '',
@@ -105,6 +119,7 @@ export default function MembersPage() {
     
     const matchesSearch = searchLower === '' || searchTerms.every(term => 
       m.full_name?.toLowerCase().includes(term) ||
+      m.cell_phone?.includes(term) ||
       m.phone?.includes(term) ||
       m.email?.toLowerCase().includes(term) ||
       m.id?.toLowerCase().includes(term) ||
@@ -112,7 +127,7 @@ export default function MembersPage() {
     );
 
     // Filters
-    const isIncomplete = !m.email || !m.phone;
+    const isIncomplete = !m.email || (!m.cell_phone && !m.phone);
     const matchesStatus = filters.status === '' || 
       (filters.status === 'complete' && !isIncomplete) || 
       (filters.status === 'incomplete' && isIncomplete);
@@ -131,22 +146,45 @@ export default function MembersPage() {
   const fetchMemberDetails = async (memberId: string) => {
     setDetailsLoading(true);
     try {
-      // Get complete member data
-      const { data: member } = await supabaseAdmin
+      // Get complete member data with all fields including phone
+      const { data: member, error: memberError } = await supabaseAdmin
         .from('members')
         .select('*')
         .eq('id', memberId)
         .single();
 
-      // Get member cover plans with plan details
-      const { data: coverPlans } = await supabaseAdmin
+      if (memberError) {
+        console.error('Error fetching member:', memberError);
+        throw memberError;
+      }
+
+      // Get member cover plans with plan details - using simpler approach
+      const { data: coverPlans, error: coverPlansError } = await supabaseAdmin
         .from('member_cover_plans')
-        .select(`
-          *,
-          cover_plans(plan_name, monthly_target_amount, provider_id)
-        `)
+        .select('*')
         .eq('member_id', memberId)
         .order('creation_order', { ascending: true });
+
+      console.log('Cover plans query result:', coverPlans);
+      console.log('Cover plans error:', coverPlansError);
+      console.log('Member ID being queried:', memberId);
+
+      // Get cover plan details separately if we have cover plans
+      let coverPlansWithDetails = [];
+      if (coverPlans && coverPlans.length > 0) {
+        for (const memberPlan of coverPlans) {
+          const { data: planDetails } = await supabaseAdmin
+            .from('cover_plans')
+            .select('plan_name, monthly_target_amount, provider_id')
+            .eq('id', memberPlan.cover_plan_id)
+            .single();
+          
+          coverPlansWithDetails.push({
+            ...memberPlan,
+            cover_plans: planDetails
+          });
+        }
+      }
 
       // Get wallet entries (cashback history)
       const { data: walletEntries } = await supabaseAdmin
@@ -161,8 +199,7 @@ export default function MembersPage() {
         .from('transactions')
         .select(`
           *,
-          partners(shop_name, address),
-          agents(id, users!agents_user_id_fkey(full_name))
+          partners(shop_name, address)
         `)
         .eq('member_id', memberId)
         .order('created_at', { ascending: false })
@@ -195,15 +232,15 @@ export default function MembersPage() {
         .in('member_cover_plan_id', coverPlans?.map(cp => cp.id) || []);
 
       // Calculate totals
-      const totalFunded = coverPlans?.reduce((sum, cp) => sum + (parseFloat(cp.funded_amount) || 0), 0) || 0;
-      const totalTarget = coverPlans?.reduce((sum, cp) => sum + (parseFloat(cp.target_amount) || 0), 0) || 0;
+      const totalFunded = coverPlansWithDetails?.reduce((sum, cp) => sum + (parseFloat(cp.funded_amount) || 0), 0) || 0;
+      const totalTarget = coverPlansWithDetails?.reduce((sum, cp) => sum + (parseFloat(cp.target_amount) || 0), 0) || 0;
       const totalTransactions = transactions?.length || 0;
       const totalSpent = transactions?.reduce((sum, t) => sum + (parseFloat(t.purchase_amount) || 0), 0) || 0;
       const totalCashback = transactions?.reduce((sum, t) => sum + (parseFloat(t.member_amount) || 0), 0) || 0;
 
       setMemberDetails({
         member,
-        coverPlans: coverPlans || [],
+        coverPlans: coverPlansWithDetails || [],
         walletEntries: walletEntries || [],
         transactions: transactions || [],
         topUps: topUps || [],
@@ -411,79 +448,117 @@ export default function MembersPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[800px]">
+                <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-gray-50">
-                      <th className="px-3 md:px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Member</th>
-                      <th className="px-3 md:px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Contact</th>
-                      <th className="px-3 md:px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">QR Code</th>
-                      <th className="px-3 md:px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Status</th>
-                      <th className="px-3 md:px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Funded Amount</th>
-                      <th className="px-3 md:px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Joined</th>
-                      <th className="px-3 md:px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Actions</th>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-600 text-left">Member</th>
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-600 text-left">Phone</th>
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-600 text-left">Email</th>
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-600 text-center">QR Code</th>
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-600 text-center">Status</th>
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-600 text-right">Funded Amount</th>
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-600 text-center">Joined</th>
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-600 text-center">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-gray-200">
                     {filteredMembers.map((member) => {
                       const fundedAmount = member.member_cover_plans?.reduce((s: number, p: any) => s + (parseFloat(p.funded_amount) || 0), 0) || 0;
-                      const isIncomplete = !member.email || !member.phone;
                       
                       return (
-                        <tr key={member.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-3 md:px-4 py-4">
-                            <div className="flex items-center gap-2 md:gap-3">
-                              <div className="size-8 md:size-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                <span className="text-[#1a558b] font-bold text-sm md:text-lg">{member.full_name?.charAt(0) || 'M'}</span>
+                        <tr key={member.id} className="hover:bg-gray-50 transition-colors duration-150">
+                          {/* Member Info */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex-shrink-0 h-10 w-10">
+                                <div className="h-10 w-10 rounded-full bg-[#1a558b] flex items-center justify-center">
+                                  <span className="text-white font-bold text-lg">{member.full_name?.charAt(0) || 'M'}</span>
+                                </div>
                               </div>
-                              <div className="min-w-0">
-                                <div className="text-xs md:text-sm font-semibold text-gray-900 truncate">{member.full_name || 'No name'}</div>
-                                <div className="text-[10px] font-mono text-gray-600 truncate">{member.id.substring(0, 8)}</div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 truncate">{member.full_name || 'No name'}</p>
+                                <p className="text-xs text-gray-500 font-mono">{member.id.substring(0, 8)}...</p>
                               </div>
                             </div>
                           </td>
-                          <td className="px-3 md:px-4 py-4">
-                            <div className="text-xs text-gray-700 truncate">{member.phone || 'No phone'}</div>
-                            <div className="text-[10px] text-gray-600 truncate">{member.email || 'No email'}</div>
+                          
+                          {/* Phone */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {member.cell_phone || member.phone || (
+                                <span className="text-gray-400 italic">No phone</span>
+                              )}
+                            </div>
                           </td>
-                          <td className="px-3 md:px-4 py-4">
+                          
+                          {/* Email */}
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-900 max-w-xs truncate">
+                              {member.email ? (
+                                // Extract only the email part (after @ symbol if phone number is prepended)
+                                member.email.includes('@') ? 
+                                  member.email.split('@')[0].match(/^\d+$/) ? 
+                                    member.email : // If it starts with digits, show full email
+                                    member.email.split(' ').find(part => part.includes('@')) || member.email
+                                  : member.email
+                              ) : (
+                                <span className="text-gray-400 italic">No email</span>
+                              )}
+                            </div>
+                          </td>
+                          
+                          {/* QR Code */}
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
                             {member.qr_code ? (
-                              <div>
-                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold bg-green-500/20 text-green-600">
-                                  ✓ Yes
+                              <div className="flex flex-col items-center space-y-1">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  ✓ Issued
                                 </span>
-                                <div className="text-[10px] text-gray-600 mt-1 font-mono truncate max-w-[100px]">{member.qr_code}</div>
+                                <span className="text-xs text-gray-500 font-mono">{member.qr_code.substring(0, 12)}...</span>
                               </div>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold bg-red-500/20 text-red-700">
-                                ✗ No
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                ✗ Not Issued
                               </span>
                             )}
                           </td>
-                          <td className="px-3 md:px-4 py-4">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase whitespace-nowrap ${
+                          
+                          {/* Status */}
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
                               member.status === 'active' 
-                                ? 'bg-[#1a558b]/20 text-[#1a558b] border border-[#1a558b]/30'
+                                ? 'bg-[#1a558b] text-white'
                                 : member.status === 'pending'
-                                ? 'bg-yellow-500/20 text-yellow-600 border border-yellow-500/30'
-                                : 'bg-red-500/20 text-red-600 border border-red-500/30'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800'
                             }`}>
-                              <span className={`size-1.5 rounded-full ${
-                                member.status === 'active' ? 'bg-[#1a558b]' : 
-                                member.status === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
-                              }`}></span>
-                              {member.status}
+                              {member.status?.toUpperCase()}
                             </span>
                           </td>
-                          <td className="px-3 md:px-4 py-4">
-                            <span className="text-xs md:text-sm font-bold text-[#1a558b] whitespace-nowrap">R{fundedAmount.toFixed(2)}</span>
+                          
+                          {/* Funded Amount */}
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                            <div className="text-sm font-bold text-[#1a558b]">
+                              R{fundedAmount.toFixed(2)}
+                            </div>
                           </td>
-                          <td className="px-3 md:px-4 py-4">
-                            <span className="text-xs text-gray-600 whitespace-nowrap">{new Date(member.created_at).toLocaleDateString()}</span>
+                          
+                          {/* Joined Date */}
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <div className="text-sm text-gray-900">
+                              {new Date(member.created_at).toLocaleDateString('en-ZA', {
+                                day: '2-digit',
+                                month: '2-digit', 
+                                year: 'numeric'
+                              })}
+                            </div>
                           </td>
-                          <td className="px-3 md:px-4 py-4">
+                          
+                          {/* Actions */}
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
                             <button
                               onClick={() => handleViewDetails(member)}
-                              className="px-2 md:px-3 py-1.5 bg-[#1a558b] text-white rounded-lg text-xs font-bold hover:opacity-80 transition-opacity whitespace-nowrap"
+                              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#1a558b] hover:bg-[#1a558b]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1a558b] transition-colors duration-150"
                             >
                               View Details
                             </button>
@@ -582,15 +657,15 @@ export default function MembersPage() {
                         </div>
                         <div>
                           <p className="text-xs text-gray-600 uppercase tracking-wider">Phone</p>
-                          <p className="text-sm text-gray-900 font-semibold">{memberDetails.member.phone || '-'}</p>
+                          <p className="text-sm text-gray-900 font-semibold">{memberDetails.member.cell_phone || memberDetails.member.phone || 'Not provided'}</p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-600 uppercase tracking-wider">Email</p>
-                          <p className="text-sm text-gray-900 font-semibold break-all">{memberDetails.member.email || '-'}</p>
+                          <p className="text-sm text-gray-900 font-semibold break-all">{memberDetails.member.email || 'Not provided'}</p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-600 uppercase tracking-wider">QR Code</p>
-                          <p className="text-sm text-gray-900 font-semibold font-mono truncate">{memberDetails.member.qr_code || '-'}</p>
+                          <p className="text-sm text-gray-900 font-semibold font-mono truncate">{memberDetails.member.qr_code || 'Not issued'}</p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-600 uppercase tracking-wider">Status</p>
@@ -660,11 +735,14 @@ export default function MembersPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-                        <p className="text-yellow-800 flex items-center gap-2">
-                          <span className="material-symbols-outlined">warning</span>
-                          No cover plans found for this member
-                        </p>
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 md:p-6">
+                        <div className="flex items-center gap-3">
+                          <span className="material-symbols-outlined text-yellow-600 text-2xl flex-shrink-0">info</span>
+                          <div>
+                            <p className="text-yellow-900 font-bold text-sm md:text-base">No cover plans found for this member</p>
+                            <p className="text-yellow-800 text-xs md:text-sm mt-1">This member has not enrolled in any cover plans yet.</p>
+                          </div>
+                        </div>
                       </div>
                     )}
 

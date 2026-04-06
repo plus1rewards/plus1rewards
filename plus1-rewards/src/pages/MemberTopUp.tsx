@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { getSession, clearSession } from '../lib/session';
 import MemberLayout from '../components/member/MemberLayout';
+import MemberTopUpChat from './MemberTopUpChat';
 
 interface Member {
   id: string;
@@ -162,28 +163,23 @@ export default function MemberTopUp() {
       {/* Chat Modal */}
       {showChat && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Contact Admin</h3>
-            <p className="text-gray-600 mb-6">
-              In a production environment, this would open a live chat or messaging system. 
-              For now, please contact admin at:
-            </p>
-            <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-3">
+          <div className="bg-white rounded-xl max-w-2xl w-full shadow-xl flex flex-col h-[600px]">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#1a558b] to-[#1a558b]/80 text-white p-4 rounded-t-xl flex items-center justify-between">
               <div>
-                <p className="font-bold text-gray-900">Email:</p>
-                <p className="text-gray-700">support@plus1rewards.co.za</p>
+                <h3 className="text-xl font-bold">Chat with Admin</h3>
+                <p className="text-sm text-[#1a558b]/80">Top-Up Payment Support</p>
               </div>
-              <div>
-                <p className="font-bold text-gray-900">Phone:</p>
-                <p className="text-gray-700">0800 PLUS1 (75871)</p>
-              </div>
+              <button
+                onClick={() => setShowChat(false)}
+                className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
             </div>
-            <button
-              onClick={() => setShowChat(false)}
-              className="w-full bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-4 py-3 rounded-xl transition-colors"
-            >
-              Close
-            </button>
+
+            {/* Chat Content */}
+            <MemberTopUpChat onClose={() => setShowChat(false)} />
           </div>
         </div>
       )}

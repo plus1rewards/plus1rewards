@@ -73,6 +73,19 @@ export function PartnerFindMember() {
 
   const issueReward = async () => {
     if (!foundMember || !rewardAmount || !purchaseAmount) return;
+    
+    // Check if partner is suspended
+    if (partnerData.status === 'suspended') {
+      setError('Your account has been suspended. You cannot process transactions.');
+      return;
+    }
+    
+    // Check if partner is active
+    if (partnerData.status !== 'active') {
+      setError('Your account is not active. Only active partners can process transactions.');
+      return;
+    }
+    
     setIssuing(true);
     try {
       await supabase.from('transactions').insert([{

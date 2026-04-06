@@ -152,48 +152,45 @@ export function AdminDashboard() {
         membersResult, shopsResult, agentsResult, providersResult,
         policiesResult, transactionsResult, invoicesResult
       ] = await Promise.all([
-        supabaseAdmin.from("members").select("*").order('created_at', { ascending: false }).then(result => {
+        supabase.from("members").select("*").order('created_at', { ascending: false }).then(result => {
           if (result.error) {
             console.error('members query error:', result.error);
             return { data: [], error: null };
           }
           return result;
         }),
-        supabaseAdmin.from("partners").select("*").order('created_at', { ascending: false }).then(result => {
+        supabase.from("partners").select("*").order('created_at', { ascending: false }).then(result => {
           if (result.error) {
             console.error('partners query error:', result.error);
             return { data: [], error: null };
           }
           return result;
         }),
-        supabaseAdmin.from("agents").select("*").order('created_at', { ascending: false }).then(result => {
+        supabase.from("agents").select("*").order('created_at', { ascending: false }).then(result => {
           if (result.error) {
             console.error('agents query error:', result.error);
             return { data: [], error: null };
           }
           return result;
         }),
-        supabaseAdmin.from("policy_providers").select("*").order('created_at', { ascending: false }).then(result => {
-          // Handle case where policy_providers table doesn't exist
-          if (result.error && result.error.code === 'PGRST116') {
-            console.warn('policy_providers table does not exist yet');
+        supabaseAdmin.from("insurers").select("*").order('created_at', { ascending: false }).then(result => {
+          if (result.error) {
+            console.warn('insurers query error:', result.error);
             return { data: [], error: null };
           }
           return result;
         }),
-        supabaseAdmin.from("policy_holders").select(`
-          *, policy_plans(name, monthly_target), 
-          policy_providers(name), members(name)
+        supabaseAdmin.from("member_cover_plans").select(`
+          *, cover_plans(plan_name, monthly_target_amount)
         `).order('created_at', { ascending: false }).then(result => {
-          // Handle case where policy_holders table doesn't exist
-          if (result.error && result.error.code === 'PGRST116') {
-            console.warn('policy_holders table does not exist yet');
+          if (result.error) {
+            console.warn('member_cover_plans query error:', result.error);
             return { data: [], error: null };
           }
           return result;
         }),
-        supabaseAdmin.from("transactions").select(`
-          *, partners(name), members(name), agents(name)
+        supabase.from("transactions").select(`
+          *, partners(shop_name), members(full_name), agents(full_name)
         `).order('created_at', { ascending: false }).limit(50).then(result => {
           // Handle case where transactions table has issues
           if (result.error) {
@@ -202,7 +199,7 @@ export function AdminDashboard() {
           }
           return result;
         }),
-        supabaseAdmin.from("monthly_invoices").select("*").then(result => {
+        supabase.from("partner_invoices").select("*").then(result => {
           // Handle case where monthly_invoices table doesn't exist
           if (result.error && result.error.code === 'PGRST116') {
             console.warn('monthly_invoices table does not exist yet');
@@ -215,8 +212,8 @@ export function AdminDashboard() {
       const members = membersResult.data || [];
       const shops = shopsResult.data || [];
       const agents = agentsResult.data || [];
-      const providers = providersResult.data || [];
-      const policies = policiesResult.data || [];
+      const insurers = providersResult.data || [];
+      const coverPlans = policiesResult.data || [];
       const transactions = transactionsResult.data || [];
       const invoices = invoicesResult.data || [];
 
@@ -232,14 +229,14 @@ export function AdminDashboard() {
         activeShops: shops.filter(s => s.status === 'active').length,
         suspendedShops: shops.filter(s => s.status === 'suspended').length,
         totalAgents: agents.length,
-        totalPolicyProviders: providers.length,
+        totalPolicyProviders: insurers.length,
         
         // Policy stats
-        totalPolicies: policies.length,
-        activePolicies: policies.filter(p => p.status === 'active').length,
-        policiesInProgress: policies.filter(p => p.status === 'pending' || (p.amount_funded < p.monthly_premium)).length,
-        totalPolicyValue: policies.reduce((sum, p) => sum + (p.monthly_premium || 0), 0),
-        totalFundedAmount: policies.reduce((sum, p) => sum + (p.amount_funded || 0), 0),
+        totalPolicies: coverPlans.length,
+        activePolicies: coverPlans.filter(p => p.status === 'active').length,
+        policiesInProgress: coverPlans.filter(p => p.status === 'in_progress').length,
+        totalPolicyValue: coverPlans.reduce((sum, p) => sum + (parseFloat(p.target_amount) || 0), 0),
+        totalFundedAmount: coverPlans.reduce((sum, p) => sum + (parseFloat(p.funded_amount) || 0), 0),
         
         // Financial stats
         revenueThisMonth: thisMonthTransactions.reduce((sum, t) => sum + (t.platform_fee || 0), 0),
@@ -262,7 +259,7 @@ export function AdminDashboard() {
       setRecentMembers(members.slice(0, 10).map(m => ({ ...m, type: 'member' })));
       setRecentShops(shops.slice(0, 10).map(s => ({ ...s, type: 'shop' })));
       setRecentAgents(agents.slice(0, 10).map(a => ({ ...a, type: 'agent' })));
-      setRecentProviders(providers.slice(0, 10).map(p => ({ ...p, type: 'policy_provider' })));
+      setRecentProviders(insurers.slice(0, 10).map(p => ({ ...p, type: 'insurer' })));
       
       setRecentPolicies(policies.slice(0, 10).map(p => ({
         id: p.id,
@@ -514,28 +511,38 @@ export function AdminDashboard() {
               {/* Quick Actions */}
               <div className="card">
                 <h2 className="section-title">⚡ Admin Quick Actions</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
                   {[
-                    { label: '📄 Generate Invoices', action: () => navigate('/admin/invoices'), color: 'var(--blue)' },
-                    { label: '🔴 Manage Suspensions', action: () => navigate('/admin/suspensions'), color: 'var(--red)' },
-                    { label: '👥 Agent Payouts', action: () => navigate('/admin/agents'), color: '#0e7490' },
-                    { label: '📊 Export Day1 Batch', action: () => navigate('/admin/day1-batch'), color: 'var(--green-dark)' },
-                    { label: '🏥 Policy Providers', action: () => setActiveView('providers'), color: '#064e3b' },
-                    { label: '🩺 Policy Management', action: () => setActiveView('policies'), color: '#7c3aed' },
-                    { label: '💳 Transaction Monitor', action: () => setActiveView('transactions'), color: 'var(--blue)' },
-                    { label: '👤 Member Management', action: () => setActiveView('members'), color: 'var(--blue)' },
+                    { label: 'Partner Invoices', description: 'Manage billing & payments', action: () => navigate('/admin/invoices'), color: 'var(--blue)', icon: 'receipt' },
+                    { label: 'Manage Partners', description: 'Handle suspensions & status', action: () => navigate('/admin/partners'), color: 'var(--red)', icon: 'block' },
+                    { label: 'Agent Commissions', description: 'Process commission payouts', action: () => navigate('/admin/commissions'), color: '#0e7490', icon: 'paid' },
+                    { label: 'Export System Data', description: 'CSV/Excel system export', action: () => navigate('/admin/exports'), color: 'var(--green-dark)', icon: 'ios_share' },
+                    { label: 'Policy Providers', description: 'Edit insurance partners', action: () => navigate('/admin/providers'), color: '#064e3b', icon: 'corporate_fare' },
+                    { label: 'Policy Management', description: 'Configuration & pricing', action: () => navigate('/admin/settings'), color: '#7c3aed', icon: 'settings_suggest' },
+                    { label: 'Transactions', description: 'Real-time flow audit', action: () => navigate('/admin/transactions'), color: '#0891b2', icon: 'monitoring' },
+                    { label: 'Members', description: 'Profiles & rewards history', action: () => navigate('/admin/members'), color: 'var(--blue)', icon: 'person_search' },
                   ].map((action, i) => (
                     <button key={i} onClick={action.action}
                       style={{ 
                         background: action.color, color: '#fff', border: 'none', 
-                        borderRadius: '12px', padding: '1rem', fontSize: '0.875rem', 
+                        borderRadius: '12px', padding: '1.25rem', fontSize: '0.875rem', 
                         fontWeight: 700, cursor: 'pointer', textAlign: 'left', 
-                        transition: 'all 0.2s', minHeight: '60px'
+                        transition: 'all 0.2s', minHeight: '100px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
                       }}
                       onMouseOver={e => (e.currentTarget.style.transform = 'translateY(-2px)')}
                       onMouseOut={e => (e.currentTarget.style.transform = 'none')}
                     >
-                      {action.label}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '1.5rem', flexShrink: 0 }}>{action.icon}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.25rem' }}>{action.label}</div>
+                          <div style={{ fontSize: '0.75rem', opacity: 0.85 }}>{action.description}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.5rem', fontSize: '0.75rem', opacity: 0.8 }}>
+                        <span>Access</span>
+                        <span className="material-symbols-outlined" style={{ fontSize: '0.875rem' }}>chevron_right</span>
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -671,21 +678,24 @@ export function AdminDashboard() {
                           {new Date(shop.created_at).toLocaleDateString()}
                         </td>
                         <td>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                             <select
                               value={shop.status}
-                              onChange={(e) => updateEntityStatus('shops', shop.id, e.target.value)}
+                              onChange={(e) => updateEntityStatus('partners', shop.id, e.target.value)}
                               style={{
-                                padding: '0.25rem', fontSize: '0.75rem', borderRadius: '4px',
-                                border: '1px solid var(--gray-border)', background: '#fff'
+                                padding: '0.5rem', fontSize: '0.75rem', borderRadius: '4px',
+                                border: '1px solid var(--gray-border)', background: '#fff',
+                                fontWeight: 600,
+                                color: shop.status === 'active' ? '#16a34a' : shop.status === 'suspended' ? '#dc2626' : '#ea580c'
                               }}
                             >
-                              <option value="active">Active</option>
-                              <option value="suspended">Suspended</option>
-                              <option value="pending">Pending</option>
+                              <option value="active">✓ Active</option>
+                              <option value="suspended">⊘ Suspended</option>
+                              <option value="pending">⏳ Pending</option>
+                              <option value="rejected">✗ Rejected</option>
                             </select>
                             <button
-                              onClick={() => deleteEntity('shops', shop.id)}
+                              onClick={() => deleteEntity('partners', shop.id)}
                               style={{
                                 background: '#ef4444', color: '#fff', border: 'none',
                                 borderRadius: '4px', padding: '0.25rem 0.5rem',
@@ -719,6 +729,7 @@ export function AdminDashboard() {
                     <tr>
                       <th>Agent</th>
                       <th>Contact</th>
+                      <th>Status</th>
                       <th>Total Commission</th>
                       <th>Joined</th>
                       <th>Actions</th>
@@ -739,6 +750,15 @@ export function AdminDashboard() {
                             {agent.phone}
                           </div>
                         </td>
+                        <td>
+                          <span className={`badge ${
+                            agent.status === 'active' ? 'badge-green' :
+                            agent.status === 'suspended' ? 'badge-red' :
+                            'badge-yellow'
+                          }`}>
+                            {agent.status}
+                          </span>
+                        </td>
                         <td style={{ fontWeight: 700, color: 'var(--green-dark)' }}>
                           R{(agent.total_commission || 0).toLocaleString()}
                         </td>
@@ -746,16 +766,31 @@ export function AdminDashboard() {
                           {new Date(agent.created_at).toLocaleDateString()}
                         </td>
                         <td>
-                          <button
-                            onClick={() => deleteEntity('agents', agent.id)}
-                            style={{
-                              background: '#ef4444', color: '#fff', border: 'none',
-                              borderRadius: '4px', padding: '0.25rem 0.5rem',
-                              fontSize: '0.75rem', cursor: 'pointer'
-                            }}
-                          >
-                            Delete
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <select
+                              value={agent.status}
+                              onChange={(e) => updateEntityStatus('agents', agent.id, e.target.value)}
+                              style={{
+                                padding: '0.25rem', fontSize: '0.75rem', borderRadius: '4px',
+                                border: '1px solid var(--gray-border)', background: '#fff'
+                              }}
+                            >
+                              <option value="active">Active</option>
+                              <option value="suspended">Suspended</option>
+                              <option value="pending">Pending</option>
+                              <option value="rejected">Rejected</option>
+                            </select>
+                            <button
+                              onClick={() => deleteEntity('agents', agent.id)}
+                              style={{
+                                background: '#ef4444', color: '#fff', border: 'none',
+                                borderRadius: '4px', padding: '0.25rem 0.5rem',
+                                fontSize: '0.75rem', cursor: 'pointer'
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -817,22 +852,22 @@ export function AdminDashboard() {
                     ) : recentProviders.map(provider => (
                       <tr key={provider.id}>
                         <td>
-                          <div style={{ fontWeight: 600 }}>{provider.name}</div>
+                          <div style={{ fontWeight: 600 }}>{provider.full_name || provider.provider_name}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--gray-text)' }}>
                             ID: {provider.id.slice(0, 8)}...
                           </div>
                         </td>
                         <td>
-                          <div style={{ fontWeight: 600 }}>{provider.company_name}</div>
+                          <div style={{ fontWeight: 600 }}>{provider.provider_name}</div>
                         </td>
                         <td>
                           <div>{provider.email}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--gray-text)' }}>
-                            {provider.phone || 'No phone'}
+                            {provider.phone || provider.mobile_number || 'No phone'}
                           </div>
                         </td>
                         <td style={{ fontWeight: 600, color: 'var(--green-dark)' }}>
-                          {provider.commission_rate || 10}%
+                          N/A
                         </td>
                         <td>
                           <span className={`badge ${
@@ -850,7 +885,7 @@ export function AdminDashboard() {
                           <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <select
                               value={provider.status}
-                              onChange={(e) => updateEntityStatus('policy_providers', provider.id, e.target.value)}
+                              onChange={(e) => updateEntityStatus('insurers', provider.id, e.target.value)}
                               style={{
                                 padding: '0.25rem', fontSize: '0.75rem', borderRadius: '4px',
                                 border: '1px solid var(--gray-border)', background: '#fff'
@@ -861,7 +896,7 @@ export function AdminDashboard() {
                               <option value="pending">Pending</option>
                             </select>
                             <button
-                              onClick={() => deleteEntity('policy_providers', provider.id)}
+                              onClick={() => deleteEntity('insurers', provider.id)}
                               style={{
                                 background: '#ef4444', color: '#fff', border: 'none',
                                 borderRadius: '4px', padding: '0.25rem 0.5rem',

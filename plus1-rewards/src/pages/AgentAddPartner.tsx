@@ -13,6 +13,8 @@ interface FormData {
   category: string;
   cashback_percent: string;
   responsible_person: string;
+  mobile_number: string;
+  pin_code: string;
 }
 
 export function AgentAddShop() {
@@ -26,7 +28,9 @@ export function AgentAddShop() {
     address: '', 
     category: '',
     cashback_percent: '5',
-    responsible_person: ''
+    responsible_person: '',
+    mobile_number: '',
+    pin_code: ''
   });
   const [loading, setLoading] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
@@ -61,6 +65,18 @@ export function AgentAddShop() {
       return;
     }
 
+    // Validate mobile number
+    if (!/^\d{10}$/.test(form.mobile_number.trim())) {
+      showError('Invalid Mobile Number', 'Mobile number must be exactly 10 digits');
+      return;
+    }
+
+    // Validate PIN
+    if (!/^\d{6}$/.test(form.pin_code.trim())) {
+      showError('Invalid PIN', 'PIN must be exactly 6 digits');
+      return;
+    }
+
     // Validate email is unique if provided
     if (form.email.trim()) {
       const { data: existingPartner } = await supabase
@@ -88,6 +104,8 @@ export function AgentAddShop() {
           category: form.category.trim() || null,
           cashback_percent: cashback,
           responsible_person: form.responsible_person.trim(),
+          mobile_number: form.mobile_number.trim(),
+          pin_code: form.pin_code.trim(),
           status: 'pending'
         }])
         .select()
@@ -425,6 +443,35 @@ export function AgentAddShop() {
                   onChange={e => update('address', e.target.value)} 
                   required 
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Partner Mobile Number (for login) *</label>
+                  <input 
+                    type="tel" 
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
+                    placeholder="0812345678" 
+                    value={form.mobile_number} 
+                    onChange={e => update('mobile_number', e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                    maxLength="10"
+                    required 
+                  />
+                  <p className="text-xs text-gray-500 mt-1">10-digit mobile number</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Partner PIN (6 digits) *</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
+                    placeholder="000000" 
+                    value={form.pin_code} 
+                    onChange={e => update('pin_code', e.target.value.replace(/\D/g, '').slice(0, 6))} 
+                    maxLength="6"
+                    required 
+                  />
+                  <p className="text-xs text-gray-500 mt-1">6-digit PIN for login</p>
+                </div>
               </div>
             </div>
           </div>

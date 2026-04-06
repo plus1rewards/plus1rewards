@@ -110,6 +110,29 @@ export default function PartnerLayout({ children }: PartnerLayoutProps) {
     );
   }
 
+  // Check if partner is suspended
+  if (partner.status === 'suspended') {
+    return (
+      <div className="bg-[#f5f8fc] min-h-screen flex items-center justify-center">
+        <div className="text-center bg-white rounded-xl p-8 shadow-lg max-w-md">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="material-symbols-outlined text-4xl text-red-600">block</span>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Account Suspended</h2>
+          <p className="text-gray-600 mb-6">
+            Your account has been suspended and you cannot process transactions. Please contact the admin for more information.
+          </p>
+          <button 
+            onClick={handleSignOut}
+            className="bg-[#1a558b] text-white px-6 py-2 rounded-lg font-bold hover:bg-[#1a558b]/90 transition-colors"
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex min-h-screen w-full flex-col" style={{ backgroundColor: '#f5f8fc' }}>
       <div className="layout-container flex h-full grow flex-col w-full">

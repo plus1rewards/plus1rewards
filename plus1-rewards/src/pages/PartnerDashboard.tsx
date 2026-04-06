@@ -70,35 +70,46 @@ export function PartnerDashboard() {
         setPartner(partnerDetails);
 
         // Load assigned agent
-        const { data: agentLink } = await supabase
+        console.log('Loading agent for partner:', partnerId);
+        const { data: agentLink, error: linkError } = await supabase
           .from('partner_agent_links')
           .select('agent_id')
           .eq('partner_id', partnerId)
           .eq('status', 'active')
           .single();
 
-        if (agentLink) {
-          const { data: agentData } = await supabase
+        console.log('Agent link query result:', { agentLink, linkError });
+
+        if (linkError) {
+          console.error('Error fetching agent link:', linkError);
+        }
+
+        if (agentLink?.agent_id) {
+          console.log('Found agent link, fetching agent data for:', agentLink.agent_id);
+          const { data: agentData, error: agentError } = await supabase
             .from('agents')
-            .select('id, user_id')
+            .select('id, full_name, mobile_number')
             .eq('id', agentLink.agent_id)
             .single();
 
-          if (agentData) {
-            const { data: userData } = await supabase
-              .from('users')
-              .select('full_name, mobile_number')
-              .eq('id', agentData.user_id)
-              .single();
+          console.log('Agent data query result:', { agentData, agentError });
 
-            if (userData) {
-              setAgent({
-                id: agentData.id,
-                full_name: userData.full_name,
-                mobile_number: userData.mobile_number
-              });
-            }
+          if (agentError) {
+            console.error('Error fetching agent data:', agentError);
           }
+
+          if (agentData) {
+            console.log('Setting agent:', agentData);
+            setAgent({
+              id: agentData.id,
+              full_name: agentData.full_name,
+              mobile_number: agentData.mobile_number
+            });
+          } else {
+            console.log('No agent data returned');
+          }
+        } else {
+          console.log('No agent link found for partner:', partnerId, 'Error:', linkError);
         }
 
         // Load this month's transactions

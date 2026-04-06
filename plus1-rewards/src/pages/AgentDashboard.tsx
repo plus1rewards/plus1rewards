@@ -125,16 +125,30 @@ export function AgentDashboard() {
         setPartnerShops([]);
       } else {
         // Calculate monthly commission for each partner
-        const currentMonth = new Date().toISOString().slice(0, 7);
+        const now = new Date();
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        
+        console.log('Date range for commission:', {
+          start: currentMonthStart.toISOString(),
+          end: nextMonthStart.toISOString()
+        });
         
         const shopsWithCommission = await Promise.all((partners || []).map(async (partner) => {
           // Get transactions for this partner this month
-          const { data: transactions } = await supabase
+          const { data: transactions, error: txError } = await supabase
             .from('transactions')
             .select('agent_amount')
             .eq('partner_id', partner.id)
-            .gte('created_at', `${currentMonth}-01`)
-            .lt('created_at', `${currentMonth}-32`);
+            .gte('created_at', currentMonthStart.toISOString())
+            .lt('created_at', nextMonthStart.toISOString())
+            .eq('status', 'completed');
+
+          if (txError) {
+            console.error(`Error fetching transactions for partner ${partner.id}:`, txError);
+          }
+          
+          console.log(`Transactions for partner ${partner.shop_name}:`, transactions);
 
           const monthlyCommission = (transactions || []).reduce((sum, t) => sum + (parseFloat(t.agent_amount) || 0), 0);
 
@@ -155,13 +169,20 @@ export function AgentDashboard() {
         const monthlyTotal = shopsWithCommission.reduce((sum, shop) => sum + shop.monthly_commission, 0);
         setMonthlyCommission(monthlyTotal);
 
-        // Get total commission from agent_commissions table
-        const { data: commissionData } = await supabase
-          .from('agent_commissions')
-          .select('total_amount')
-          .eq('agent_id', agentId);
+        // Get total commission from ALL transactions (not just agent_commissions table)
+        const { data: allTransactions, error: allTxError } = await supabase
+          .from('transactions')
+          .select('agent_amount')
+          .eq('agent_id', agentId)
+          .eq('status', 'completed');
 
-        const total = (commissionData || []).reduce((sum, c) => sum + (parseFloat(c.total_amount) || 0), 0);
+        if (allTxError) {
+          console.error('Error fetching all transactions:', allTxError);
+        }
+        
+        console.log('All transactions for agent:', allTransactions);
+
+        const total = (allTransactions || []).reduce((sum, t) => sum + (parseFloat(t.agent_amount) || 0), 0);
         setTotalCommission(total);
       }
     } catch (error) {
@@ -175,6 +196,37 @@ export function AgentDashboard() {
     sessionStorage.removeItem('currentAgent');
     localStorage.removeItem('currentAgent');
     navigate('/agent/login');
+  };
+
+  const handleResendLogin = async (partnerId: string) => {
+    try {
+      const partner = partnerShops.find(s => s.id === partnerId);
+      if (!partner) return;
+
+      // Get partner details from database
+      const { data: partnerData, error } = await supabase
+        .from('partners')
+        .select('mobile_number, pin_code, shop_name, email')
+        .eq('id', partnerId)
+        .single();
+
+      if (error || !partnerData) {
+        alert('Could not retrieve partner details');
+        return;
+      }
+
+      // In production, this would send an SMS/email
+      // For now, show the details in an alert
+      const message = `Partner Login Details for ${partner.shop_name}:\n\nMobile: ${partnerData.mobile_number}\nPIN: ${partnerData.pin_code}\n\nLogin at: /partner/login`;
+      
+      alert(message);
+      
+      // TODO: Integrate with SMS/Email service to send these details
+      console.log('Resend login details:', { partnerId, mobile: partnerData.mobile_number, pin: partnerData.pin_code });
+    } catch (err) {
+      console.error('Error resending login:', err);
+      alert('Failed to resend login details');
+    }
   };
 
   const activeShops = partnerShops.filter(s => s.status === 'active').length;
@@ -393,6 +445,7 @@ export function AgentDashboard() {
                       View Details
                     </button>
                     <button
+                      onClick={() => handleResendLogin(shop.id)}
                       className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-all text-sm font-semibold"
                     >
                       <span className="material-symbols-outlined text-base">mail</span>

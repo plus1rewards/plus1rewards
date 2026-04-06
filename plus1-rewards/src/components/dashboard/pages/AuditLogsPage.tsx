@@ -15,17 +15,69 @@ export default function AuditLogsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Audit logs table would need to be created
-      setLogs([]);
-      setStats({ total: 0, today: 0, thisWeek: 0, approvals: 0 });
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+      // Build query with filters
+      let query = supabaseAdmin
+        .from('audit_logs')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false });
+
+      // Apply filters
+      if (filters.actionType) {
+        query = query.eq('action_type', filters.actionType);
+      }
+      if (filters.table) {
+        query = query.eq('table_name', filters.table);
+      }
+      if (filters.dateFrom) {
+        query = query.gte('created_at', new Date(filters.dateFrom).toISOString());
+      }
+      if (filters.dateTo) {
+        const endDate = new Date(filters.dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        query = query.lte('created_at', endDate.toISOString());
+      }
+
+      const { data: logsData, count } = await query.limit(100);
+
+      // Get stats
+      const { data: todayLogs } = await supabaseAdmin
+        .from('audit_logs')
+        .select('*', { count: 'exact' })
+        .gte('created_at', today);
+
+      const { data: weekLogs } = await supabaseAdmin
+        .from('audit_logs')
+        .select('*', { count: 'exact' })
+        .gte('created_at', sevenDaysAgo);
+
+      const { data: approvalLogs } = await supabaseAdmin
+        .from('audit_logs')
+        .select('*', { count: 'exact' })
+        .eq('action_type', 'approval')
+        .gte('created_at', monthStart);
+
+      setLogs(logsData || []);
+      setStats({
+        total: count || 0,
+        today: todayLogs?.length || 0,
+        thisWeek: weekLogs?.length || 0,
+        approvals: approvalLogs?.length || 0
+      });
     } catch (error) {
       console.error('Error fetching audit logs:', error);
+      setLogs([]);
+      setStats({ total: 0, today: 0, thisWeek: 0, approvals: 0 });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [filters]);
 
   const statsData = [
     { icon: 'history', title: 'Total Actions', value: stats.total.toString(), change: '', description: 'All time' },
@@ -110,15 +162,86 @@ export default function AuditLogsPage() {
             <div className="px-6 py-5 border-b border-gray-200 bg-gray-50">
               <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#1a558b]">list_alt</span>
-                Audit Trail (0)
+                Audit Trail ({logs.length})
               </h3>
             </div>
             
-            <div className="px-6 py-20 text-center">
-              <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">history</span>
-              <p className="text-gray-600 text-lg font-bold">No audit logs yet</p>
-              <p className="text-sm text-gray-500 mt-2">System actions will be tracked here automatically</p>
-            </div>
+            {loading ? (
+              <div className="px-6 py-12 text-center">
+                <p className="text-gray-600">Loading audit logs...</p>
+              </div>
+            ) : logs.length === 0 ? (
+              <div className="px-6 py-20 text-center">
+                <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">history</span>
+                <p className="text-gray-600 text-lg font-bold">No audit logs yet</p>
+                <p className="text-sm text-gray-500 mt-2">System actions will be tracked here automatically</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-200 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-3 text-left font-bold text-gray-700">Timestamp</th>
+                      <th className="px-6 py-3 text-left font-bold text-gray-700">Action</th>
+                      <th className="px-6 py-3 text-left font-bold text-gray-700">Table</th>
+                      <th className="px-6 py-3 text-left font-bold text-gray-700">Record ID</th>
+                      <th className="px-6 py-3 text-left font-bold text-gray-700">User</th>
+                      <th className="px-6 py-3 text-left font-bold text-gray-700">Changes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs.map((log) => (
+                      <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-3 text-gray-900 whitespace-nowrap">
+                          {new Date(log.created_at).toLocaleDateString('en-ZA', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </td>
+                        <td className="px-6 py-3">
+                          <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
+                            log.action_type === 'approval' ? 'bg-green-100 text-green-700' :
+                            log.action_type === 'rejection' ? 'bg-red-100 text-red-700' :
+                            log.action_type === 'suspension' ? 'bg-orange-100 text-orange-700' :
+                            log.action_type === 'activation' ? 'bg-blue-100 text-blue-700' :
+                            log.action_type === 'reversal' ? 'bg-purple-100 text-purple-700' :
+                            log.action_type === 'adjustment' ? 'bg-indigo-100 text-indigo-700' :
+                            'bg-gray-100 text-gray-700'
+                          }`}>
+                            {log.action_type}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3 text-gray-900 capitalize">{log.table_name}</td>
+                        <td className="px-6 py-3 text-gray-600 font-mono text-xs">{log.record_id?.substring(0, 8) || '-'}...</td>
+                        <td className="px-6 py-3 text-gray-900">{log.user_id?.substring(0, 8) || 'System'}...</td>
+                        <td className="px-6 py-3">
+                          <details className="cursor-pointer">
+                            <summary className="text-[#1a558b] font-bold hover:underline">View</summary>
+                            <div className="mt-2 p-2 bg-gray-50 rounded text-xs font-mono max-w-xs overflow-auto">
+                              {log.old_value && (
+                                <div className="mb-2">
+                                  <p className="font-bold text-red-600">Before:</p>
+                                  <pre className="text-red-700">{JSON.stringify(log.old_value, null, 2)}</pre>
+                                </div>
+                              )}
+                              {log.new_value && (
+                                <div>
+                                  <p className="font-bold text-green-600">After:</p>
+                                  <pre className="text-green-700">{JSON.stringify(log.new_value, null, 2)}</pre>
+                                </div>
+                              )}
+                            </div>
+                          </details>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
