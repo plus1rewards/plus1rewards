@@ -62,17 +62,41 @@ export default function ApprovalsPage() {
     try {
       console.log('🔍 Fetching approvals data...');
       
-      // Fetch pending partners
+      // Fetch pending partners with agent information
       const { data: partners, error: partnersError } = await supabaseAdmin
         .from('partners')
-        .select('*')
+        .select(`
+          *,
+          partner_agent_links!inner(
+            agent_id,
+            agents(
+              id,
+              full_name,
+              mobile_number
+            )
+          )
+        `)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
-      if (partnersError) {
-        console.error('❌ Partners error:', partnersError);
+      // Also fetch partners without agents
+      const { data: partnersWithoutAgents, error: partnersWithoutAgentsError } = await supabaseAdmin
+        .from('partners')
+        .select('*')
+        .eq('status', 'pending')
+        .not('id', 'in', `(${partners?.map(p => p.id).join(',') || 'null'})`)
+        .order('created_at', { ascending: false });
+
+      // Combine both results
+      const allPartners = [
+        ...(partners || []),
+        ...(partnersWithoutAgents || [])
+      ];
+
+      if (partnersError || partnersWithoutAgentsError) {
+        console.error('❌ Partners error:', partnersError || partnersWithoutAgentsError);
       } else {
-        console.log('✅ Partners:', partners?.length || 0);
+        console.log('✅ Partners:', allPartners?.length || 0);
       }
 
       // Fetch pending agents
@@ -129,12 +153,12 @@ export default function ApprovalsPage() {
         setLinkedPeopleRequests(linkedPeople || []);
       }
 
-      setPendingPartners(partners || []);
+      setPendingPartners(allPartners || []);
       if (agentsError) {
         setPendingAgents([]);
       }
 
-      const totalPending = (partners?.length || 0) + (agents?.length || 0) + (providers?.length || 0);
+      const totalPending = (allPartners?.length || 0) + (agents?.length || 0) + (providers?.length || 0);
       
       console.log('📊 Total pending:', totalPending);
       
@@ -464,19 +488,19 @@ export default function ApprovalsPage() {
                       <div key={partner.id} className="p-6 hover:bg-gray-50 transition-colors">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h4 className="text-lg font-bold text-gray-900 mb-2">{partner.name}</h4>
+                            <h4 className="text-lg font-bold text-gray-900 mb-2">{partner.shop_name || 'Unknown Shop'}</h4>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">Category</p>
-                                <p className="text-sm text-gray-900">{partner.business_type || 'Not specified'}</p>
+                                <p className="text-sm text-gray-900">{partner.category || 'Not specified'}</p>
                               </div>
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">Address</p>
-                                <p className="text-sm text-gray-900">{partner.location || 'Not specified'}</p>
+                                <p className="text-sm text-gray-900">{partner.address || 'Not specified'}</p>
                               </div>
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">Cashback Percent</p>
-                                <p className="text-sm text-[#1a558b] font-bold">{partner.commission_rate}%</p>
+                                <p className="text-sm text-[#1a558b] font-bold">{partner.cashback_percent || 0}%</p>
                               </div>
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">Phone</p>
@@ -901,35 +925,51 @@ export default function ApprovalsPage() {
                       <div className="bg-white border border-gray-200 rounded-xl p-6">
                         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                           <span className="material-symbols-outlined text-[#1a558b]">person_add</span>
-                          Assign Sales Agent
+                          Sales Agent Assignment
                         </h3>
                         <div className="space-y-3">
-                          <p className="text-sm text-gray-600">
-                            Assign a sales agent to manage this partner shop and earn commissions on transactions.
-                          </p>
-                          <div>
-                            <label className="block text-xs text-gray-600 uppercase tracking-wider mb-2">
-                              Select Agent
-                            </label>
-                            <select
-                              value={selectedAgentId}
-                              onChange={(e) => setSelectedAgentId(e.target.value)}
-                              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
-                            >
-                              <option value="">No agent assigned</option>
-                              {allAgents.map((agent) => (
-                                <option key={agent.id} value={agent.id}>
-                                  {agent.full_name || 'Unknown'} - {agent.mobile_number || 'No phone'}
-                                </option>
-                              ))}
-                            </select>
-                            {allAgents.length === 0 && (
-                              <p className="text-xs text-yellow-600 mt-2 flex items-center gap-1">
-                                <span className="material-symbols-outlined text-sm">warning</span>
-                                No active agents available. Approve agents first.
+                          {/* Show existing agent if assigned */}
+                          {selectedItem.partner_agent_links && selectedItem.partner_agent_links.length > 0 ? (
+                            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="material-symbols-outlined text-green-600">check_circle</span>
+                                <span className="text-sm font-bold text-green-800">Agent Already Assigned</span>
+                              </div>
+                              <div className="text-sm text-green-700">
+                                <p><strong>Agent:</strong> {selectedItem.partner_agent_links[0].agents?.full_name || 'Unknown'}</p>
+                                <p><strong>Phone:</strong> {selectedItem.partner_agent_links[0].agents?.mobile_number || 'Not provided'}</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-sm text-gray-600">
+                                Assign a sales agent to manage this partner shop and earn commissions on transactions.
                               </p>
-                            )}
-                          </div>
+                              <div>
+                                <label className="block text-xs text-gray-600 uppercase tracking-wider mb-2">
+                                  Select Agent
+                                </label>
+                                <select
+                                  value={selectedAgentId}
+                                  onChange={(e) => setSelectedAgentId(e.target.value)}
+                                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                                >
+                                  <option value="">No agent assigned</option>
+                                  {allAgents.map((agent) => (
+                                    <option key={agent.id} value={agent.id}>
+                                      {agent.full_name || 'Unknown'} - {agent.mobile_number || 'No phone'}
+                                    </option>
+                                  ))}
+                                </select>
+                                {allAgents.length === 0 && (
+                                  <p className="text-xs text-yellow-600 mt-2 flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-sm">warning</span>
+                                    No active agents available. Approve agents first.
+                                  </p>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -978,7 +1018,7 @@ export default function ApprovalsPage() {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                           <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">Full Name</p>
-                            <p className="text-sm text-gray-900 font-semibold">{selectedItem.users?.full_name || '-'}</p>
+                            <p className="text-sm text-gray-900 font-semibold">{selectedItem.full_name || '-'}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">ID Number</p>
@@ -986,11 +1026,11 @@ export default function ApprovalsPage() {
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">Mobile Number</p>
-                            <p className="text-sm text-gray-900 font-semibold">{selectedItem.users?.mobile_number || '-'}</p>
+                            <p className="text-sm text-gray-900 font-semibold">{selectedItem.mobile_number || '-'}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">Email</p>
-                            <p className="text-sm text-gray-900 font-semibold break-all">{selectedItem.users?.email || '-'}</p>
+                            <p className="text-sm text-gray-900 font-semibold break-all">{selectedItem.email || '-'}</p>
                           </div>
                         </div>
                       </div>
@@ -1050,11 +1090,11 @@ export default function ApprovalsPage() {
                           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                             <h4 className="font-bold text-sm text-blue-900 mb-2">Sales Agent Agreement Summary</h4>
                             <ul className="text-xs text-blue-800 space-y-1">
-                              <li>• Agent will earn 1% commission on every partner successfully registered.</li>
+                              <li>• You earn 1% commission on total sales at every partner shop you register and manage.</li>
                               <li>• Commissions are calculated and paid out on a monthly basis.</li>
                               <li>• Agent is required to manage all partner and member functionality professionaly.</li>
                               <li>• Account will be approved by an administrator before it becomes active.</li>
-                              <li>• Agent has reviewed and digitally signed the full agreement</li>
+                              <li>• Please read and sign the agreement summary before final submission.</li>
                             </ul>
                           </div>
                         </div>
@@ -1069,7 +1109,7 @@ export default function ApprovalsPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">User ID</p>
-                            <p className="text-sm text-gray-900 font-mono">{selectedItem.user_id || '-'}</p>
+                            <p className="text-sm text-gray-900 font-mono">{selectedItem.id || '-'}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">Applied Date</p>

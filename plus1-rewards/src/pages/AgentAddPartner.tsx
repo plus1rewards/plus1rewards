@@ -385,33 +385,47 @@ export function AgentAddShop() {
                 />
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Contact Person *</label>
-                  <input 
-                    type="text" 
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
-                    placeholder="Manager name" 
-                    value={form.responsible_person} 
-                    onChange={e => update('responsible_person', e.target.value)} 
-                    required 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Category</label>
-                  <input 
-                    type="text" 
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
-                    placeholder="e.g. Grocery, Pharmacy" 
-                    value={form.category} 
-                    onChange={e => update('category', e.target.value)} 
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Category *</label>
+                <select 
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
+                  value={form.category} 
+                  onChange={e => update('category', e.target.value)} 
+                  required
+                >
+                  <option value="">Select a category</option>
+                  <option value="Grocery Store">Grocery Store</option>
+                  <option value="Pharmacy">Pharmacy</option>
+                  <option value="Restaurant">Restaurant</option>
+                  <option value="Fast Food">Fast Food</option>
+                  <option value="Clothing Store">Clothing Store</option>
+                  <option value="Electronics">Electronics</option>
+                  <option value="Hardware Store">Hardware Store</option>
+                  <option value="Beauty Salon">Beauty Salon</option>
+                  <option value="Barber Shop">Barber Shop</option>
+                  <option value="Fuel Station">Fuel Station</option>
+                  <option value="Automotive">Automotive</option>
+                  <option value="Bakery">Bakery</option>
+                  <option value="Butchery">Butchery</option>
+                  <option value="Liquor Store">Liquor Store</option>
+                  <option value="Convenience Store">Convenience Store</option>
+                  <option value="Furniture Store">Furniture Store</option>
+                  <option value="Bookstore">Bookstore</option>
+                  <option value="Sports Store">Sports Store</option>
+                  <option value="Toy Store">Toy Store</option>
+                  <option value="Pet Store">Pet Store</option>
+                  <option value="Garden Center">Garden Center</option>
+                  <option value="Medical Practice">Medical Practice</option>
+                  <option value="Dental Practice">Dental Practice</option>
+                  <option value="Optometrist">Optometrist</option>
+                  <option value="Fitness Center">Fitness Center</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Phone Number *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Shop Phone Number *</label>
                   <input 
                     type="tel" 
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
@@ -420,9 +434,10 @@ export function AgentAddShop() {
                     onChange={e => update('phone', e.target.value)} 
                     required 
                   />
+                  <p className="text-xs text-gray-500 mt-1">Business contact number</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Shop Email</label>
                   <input 
                     type="email" 
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
@@ -430,6 +445,7 @@ export function AgentAddShop() {
                     value={form.email} 
                     onChange={e => update('email', e.target.value)} 
                   />
+                  <p className="text-xs text-gray-500 mt-1">Business email address</p>
                 </div>
               </div>
 
@@ -444,34 +460,68 @@ export function AgentAddShop() {
                   required 
                 />
               </div>
+            </div>
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Partner Mobile Number (for login) *</label>
-                  <input 
-                    type="tel" 
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
-                    placeholder="0812345678" 
-                    value={form.mobile_number} 
-                    onChange={e => update('mobile_number', e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                    maxLength="10"
-                    required 
-                  />
-                  <p className="text-xs text-gray-500 mt-1">10-digit mobile number</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Partner PIN (6 digits) *</label>
-                  <input 
-                    type="text" 
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
-                    placeholder="000000" 
-                    value={form.pin_code} 
-                    onChange={e => update('pin_code', e.target.value.replace(/\D/g, '').slice(0, 6))} 
-                    maxLength="6"
-                    required 
-                  />
-                  <p className="text-xs text-gray-500 mt-1">6-digit PIN for login</p>
-                </div>
+          {/* Personal Contact Information */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined" style={{ color: BLUE }}>person</span>
+              Personal Contact Information
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Contact Person *</label>
+                <input 
+                  type="text" 
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
+                  placeholder="Manager name" 
+                  value={form.responsible_person} 
+                  onChange={e => update('responsible_person', e.target.value)} 
+                  required 
+                />
+                <p className="text-xs text-gray-500 mt-1">Name of person responsible for the shop</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Login Credentials */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined" style={{ color: BLUE }}>login</span>
+              Login Credentials
+            </h2>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-blue-900">
+                <strong>Important:</strong> These credentials will be used by the partner to log into the Plus1 Rewards system.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Mobile Number (for login) *</label>
+                <input 
+                  type="tel" 
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
+                  placeholder="0812345678" 
+                  value={form.mobile_number} 
+                  onChange={e => update('mobile_number', e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                  maxLength="10"
+                  required 
+                />
+                <p className="text-xs text-gray-500 mt-1">10-digit mobile number for system login</p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">PIN (6 digits) *</label>
+                <input 
+                  type="text" 
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
+                  placeholder="000000" 
+                  value={form.pin_code} 
+                  onChange={e => update('pin_code', e.target.value.replace(/\D/g, '').slice(0, 6))} 
+                  maxLength="6"
+                  required 
+                />
+                <p className="text-xs text-gray-500 mt-1">6-digit PIN for system login</p>
               </div>
             </div>
           </div>

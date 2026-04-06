@@ -566,7 +566,7 @@ const DashboardNew: React.FC = () => {
               </div>
               <div>
                 <p className="text-blue-200 text-xs font-bold uppercase tracking-[0.1em] mb-1">
-                  Available Cashback Balance
+                  Overflow Balance
                 </p>
                 <h2 className="text-6xl font-extrabold tracking-tighter">R{overflowBalance.toFixed(2)}</h2>
               </div>

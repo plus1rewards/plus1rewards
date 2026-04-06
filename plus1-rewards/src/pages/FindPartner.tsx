@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { 
   Search, 
   Phone, 
@@ -79,6 +80,9 @@ function MapController({ center, zoom }: { center: [number, number], zoom: numbe
 }
 
 export default function App() {
+  const [searchParams] = useSearchParams();
+  const highlightPartnerId = searchParams.get('highlight');
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All Partners");
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
@@ -132,11 +136,25 @@ export default function App() {
           );
 
           setPartners(partnersWithStats);
-          // Set initial map center to first partner with coordinates
-          const firstPartnerWithCoords = partnersWithStats.find(p => p.latitude && p.longitude);
-          if (firstPartnerWithCoords && firstPartnerWithCoords.latitude && firstPartnerWithCoords.longitude) {
-            setMapCenter([firstPartnerWithCoords.latitude, firstPartnerWithCoords.longitude]);
-            setSelectedPartnerId(firstPartnerWithCoords.id);
+          
+          // Handle highlighted partner from URL
+          if (highlightPartnerId) {
+            const highlightedPartner = partnersWithStats.find(p => p.id === highlightPartnerId);
+            if (highlightedPartner) {
+              setSelectedPartnerId(highlightedPartner.id);
+              setIsDetailOpen(true);
+              if (highlightedPartner.latitude && highlightedPartner.longitude) {
+                setMapCenter([highlightedPartner.latitude, highlightedPartner.longitude]);
+                setZoom(15); // Zoom in closer for highlighted partner
+              }
+            }
+          } else {
+            // Set initial map center to first partner with coordinates
+            const firstPartnerWithCoords = partnersWithStats.find(p => p.latitude && p.longitude);
+            if (firstPartnerWithCoords && firstPartnerWithCoords.latitude && firstPartnerWithCoords.longitude) {
+              setMapCenter([firstPartnerWithCoords.latitude, firstPartnerWithCoords.longitude]);
+              setSelectedPartnerId(firstPartnerWithCoords.id);
+            }
           }
         }
       } catch (error) {
@@ -147,7 +165,7 @@ export default function App() {
     }
 
     fetchPartners();
-  }, []);
+  }, [highlightPartnerId]);
 
   const categories = ["All Partners", "Active", "Appliances", "Service", "Electronics", "Home Decor", "Furniture"];
 
@@ -316,9 +334,11 @@ export default function App() {
                     setIsDetailOpen(true);
                   }}
                   className={`group relative bg-white rounded-[24px] p-7 border transition-all duration-500 cursor-pointer overflow-hidden ${
-                    selectedPartnerId === partner.id 
-                      ? 'border-primary shadow-2xl shadow-primary/10 ring-1 ring-primary/10' 
-                      : 'border-outline-variant/30 hover:border-primary/40 hover:shadow-xl hover:-translate-y-1'
+                    partner.id === highlightPartnerId
+                      ? 'border-blue-500 shadow-2xl shadow-blue-500/20 ring-2 ring-blue-500/20 bg-gradient-to-br from-blue-50/50 to-white'
+                      : selectedPartnerId === partner.id 
+                        ? 'border-primary shadow-2xl shadow-primary/10 ring-1 ring-primary/10' 
+                        : 'border-outline-variant/30 hover:border-primary/40 hover:shadow-xl hover:-translate-y-1'
                   }`}
                 >
                   {/* Selection Indicator */}
@@ -331,6 +351,17 @@ export default function App() {
                       />
                     )}
                   </AnimatePresence>
+
+                  {/* Highlighted Partner Badge */}
+                  {partner.id === highlightPartnerId && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="absolute top-4 right-4 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg"
+                    >
+                      Featured
+                    </motion.div>
+                  )}
                   
                   <div className="flex justify-between items-start mb-6">
                     <div className="space-y-1">
