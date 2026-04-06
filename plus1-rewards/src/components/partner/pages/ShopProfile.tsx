@@ -336,7 +336,7 @@ export default function ShopProfile() {
     { id: 'basic', label: 'Basic Info', icon: 'business' },
     { id: 'contact', label: 'Contact', icon: 'contact_phone' },
     { id: 'branding', label: 'Branding', icon: 'palette' },
-    { id: 'suppliers', label: 'Suppliers', icon: 'local_shipping' }
+    { id: 'suppliers', label: 'References', icon: 'local_shipping' }
   ];
 
   return (
@@ -353,12 +353,54 @@ export default function ShopProfile() {
                 <span className="material-symbols-outlined text-gray-600">arrow_back</span>
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Shop Profile</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Back to Dashboard</h1>
                 <p className="text-sm text-gray-600">Manage your business information</p>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        {/* Status Banner */}
+        <div className={`rounded-xl p-6 mb-8 ${
+          partner.status === 'active' ? 'bg-gradient-to-r from-green-500 to-green-600' :
+          partner.status === 'pending' ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' :
+          'bg-gradient-to-r from-red-500 to-red-600'
+        } text-white shadow-lg`}>
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+              <span className="material-symbols-outlined text-3xl">storefront</span>
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold">{partner.shop_name}</h2>
+              <p className="text-white/90">Status: <span className="font-semibold capitalize">{partner.status}</span></p>
+              <p className="text-white/90">Cashback Rate: <span className="font-bold">{partner.cashback_percent}%</span></p>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex overflow-x-auto">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-6 py-4 font-medium whitespace-nowrap border-b-2 transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-[#1a558b] text-[#1a558b] bg-blue-50'
+                      : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-lg">{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 px-6">
               {editMode ? (
                 <>
                   <button
@@ -395,46 +437,6 @@ export default function ShopProfile() {
                 </button>
               )}
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        {/* Status Banner */}
-        <div className={`rounded-xl p-6 mb-8 ${
-          partner.status === 'active' ? 'bg-gradient-to-r from-green-500 to-green-600' :
-          partner.status === 'pending' ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' :
-          'bg-gradient-to-r from-red-500 to-red-600'
-        } text-white shadow-lg`}>
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-              <span className="material-symbols-outlined text-3xl">storefront</span>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold">{partner.shop_name}</h2>
-              <p className="text-white/90">Status: <span className="font-semibold capitalize">{partner.status}</span></p>
-              <p className="text-white/90">Cashback Rate: <span className="font-bold">{partner.cashback_percent}%</span></p>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation Tabs */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
-          <div className="flex overflow-x-auto">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-4 font-medium whitespace-nowrap border-b-2 transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-[#1a558b] text-[#1a558b] bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <span className="material-symbols-outlined text-lg">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
           </div>
         </div>
         {/* Tab Content */}
@@ -692,7 +694,7 @@ export default function ShopProfile() {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                   <span className="material-symbols-outlined text-[#1a558b]">local_shipping</span>
-                  Supplier References ({suppliers.length}/3)
+                  Business References ({suppliers.length}/3)
                 </h3>
                 <button
                   onClick={handleAddSupplier}
@@ -700,22 +702,22 @@ export default function ShopProfile() {
                   className="px-4 py-2 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   <span className="material-symbols-outlined">add</span>
-                  Add Supplier
+                  Add Reference
                 </button>
               </div>
 
               {suppliers.length === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
                   <span className="material-symbols-outlined text-4xl text-gray-400 block mb-4">local_shipping</span>
-                  <p className="text-gray-600 font-semibold mb-2">No suppliers added yet</p>
-                  <p className="text-sm text-gray-500">Add suppliers you work with to help them join +1 Rewards</p>
+                  <p className="text-gray-600 font-semibold mb-2">No references added yet</p>
+                  <p className="text-sm text-gray-500">Add business references to help build credibility</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {suppliers.map((supplier, idx) => (
                     <div key={supplier.id} className="bg-gray-50 rounded-xl p-6 border border-gray-200">
                       <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-bold text-gray-900">Supplier {idx + 1}</h4>
+                        <h4 className="font-bold text-gray-900">Reference {idx + 1}</h4>
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleEditSupplier(supplier)}
