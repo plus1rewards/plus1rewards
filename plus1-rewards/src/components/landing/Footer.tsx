@@ -72,7 +72,13 @@ export default function Footer() {
 
         {/* Bottom */}
         <div className="border-t pt-8 flex flex-col md:flex-row items-center justify-between gap-6" style={{ borderColor: '#e5e7eb' }}>
-          <p className="text-xs text-gray-400 text-center md:text-left">&copy; {new Date().getFullYear()} +1 Rewards (Pty) Ltd. All rights reserved. &middot; Healthcare policies underwritten by Day1Health (Pty) Ltd — Authorised Financial Services Provider, FSP Licensed, Regulated by the FSCA. &middot; +1 Rewards is not a medical aid scheme.</p>
+          <p className="text-xs text-gray-400 text-center md:text-left select-text">&copy; {new Date().getFullYear()} +1 Rewards (Pty) Ltd. All rights reserved. &middot; Healthcare policies underwritten by Day1Health (Pty) Ltd — Authorised Financial Services Provider, FSP Licensed, Regulated by the FSCA. &middot; +1 Rewards is not a medical aid scheme.</p>
+          <a 
+            href="/agent/login"
+            className="text-xs text-blue-600 hover:text-blue-800 transition-colors font-semibold whitespace-nowrap"
+          >
+            Agent Login →
+          </a>
         </div>
       </div>
     </footer>
