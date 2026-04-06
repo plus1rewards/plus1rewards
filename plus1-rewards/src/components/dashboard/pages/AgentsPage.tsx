@@ -541,10 +541,10 @@ export default function AgentsPage() {
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <h4 className="font-bold text-sm text-blue-900 mb-2">Sales Agent Agreement Summary</h4>
                       <ul className="text-xs text-blue-800 space-y-1">
-                        <li>• Agent will earn 1% commission on all partner registrations</li>
-                        <li>• Commissions are calculated and paid monthly</li>
-                        <li>• Agent agrees to accurately register partners and members</li>
-                        <li>• Account requires admin approval before activation</li>
+                        <li>• Agent will earn 1% commission on every partner successfully registered.</li>
+                        <li>• Commissions are calculated and paid out on a monthly basis.</li>
+                        <li>• Agent is required to manage all partner and member functionality professionaly.</li>
+                        <li>• Account will be approved by an administrator before it becomes active.</li>
                         <li>• Agent has reviewed and digitally signed the full agreement</li>
                       </ul>
                     </div>

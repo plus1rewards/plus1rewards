@@ -110,50 +110,16 @@ export default function AgentDigitalSignature({
             </div>
 
             <div className="space-y-2">
-              <h4 className="font-bold">1. Commission Structure</h4>
-              <p>You agree to work as a sales agent for Plus1 Rewards and earn 1% commission on all partner registrations and transactions you facilitate.</p>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-bold">2. Payment Terms</h4>
+              <p className="font-semibold text-[#1a558b] mb-2">Agents are field-based sales representatives, member acquisition specialists, and brand ambassadors who:</p>
               <ul className="list-disc list-inside pl-2 space-y-1">
-                <li>Commissions are calculated and paid monthly</li>
-                <li>Payment is processed on the 28th of each month</li>
-                <li>Minimum commission threshold may apply</li>
-                <li>All payments are made via EFT to your designated account</li>
+                <li>Actively recruit and sign up members directly at partner shops</li>
+                <li>Maintain professional appearance and represent the Plus1 brand</li>
+                <li>Ensure proper branding and marketing materials are displayed and stocked</li>
+                <li>Provide ongoing support to partners</li>
+                <li>Earn commission on every transaction from their members</li>
+                <li>Track performance metrics and growth</li>
+                <li>Ensure member and partner satisfaction</li>
               </ul>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-bold">3. Agent Obligations</h4>
-              <ul className="list-disc list-inside pl-2 space-y-1">
-                <li>Accurately register partners and members on behalf of Plus1 Rewards</li>
-                <li>Verify identity and information before registration</li>
-                <li>Maintain accurate records of all registrations</li>
-                <li>Report any suspicious activity immediately</li>
-                <li>Comply with all Plus1 Rewards policies and procedures</li>
-                <li>Provide excellent customer service to all parties</li>
-              </ul>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-bold">4. Account Approval</h4>
-              <p>Your account requires admin approval before activation. You will be notified via email once approved.</p>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-bold">5. Confidentiality</h4>
-              <p>You agree to maintain confidentiality of all member and partner information and use it only for Plus1 Rewards business purposes.</p>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-bold">6. Termination</h4>
-              <p>Either party may terminate this agreement with 30 days written notice. Outstanding commissions remain payable.</p>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-bold">7. Data Protection</h4>
-              <p>You agree to protect member and partner data and comply with all data protection regulations.</p>
             </div>
           </div>
 

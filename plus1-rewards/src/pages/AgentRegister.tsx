@@ -477,11 +477,11 @@ export default function AgentRegister() {
                   Sales Agent Agreement Summary
                 </h4>
                 <ul className="text-xs text-gray-700 space-y-1">
-                  <li>• You will earn 1% commission on all partner registrations</li>
-                  <li>• Commissions are calculated and paid monthly</li>
-                  <li>• You agree to accurately register partners and members</li>
-                  <li>• Your account requires admin approval before activation</li>
-                  <li>• You will review and sign the full agreement before submission</li>
+                  <li>• You will earn 1% commission on every partner you successfully register.</li>
+                  <li>• Commissions are calculated and paid out on a monthly basis.</li>
+                  <li>• You are required to manage all partner and member functionality professionaly.</li>
+                  <li>• Your account will be approved by an administrator before it becomes active.</li>
+                  <li>• Please read and sign the full agreement before final submission.</li>
                 </ul>
               </div>
 

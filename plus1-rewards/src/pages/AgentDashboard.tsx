@@ -32,6 +32,7 @@ export function AgentDashboard() {
   const [loading, setLoading] = useState(true);
   const [monthlyCommission, setMonthlyCommission] = useState(0);
   const [totalCommission, setTotalCommission] = useState(0);
+  const [showAgreementPDF, setShowAgreementPDF] = useState(false);
 
   useEffect(() => {
     checkAuthAndLoadData();
@@ -380,6 +381,18 @@ export function AgentDashboard() {
                 <p className="text-xs text-gray-600">Get help & support</p>
               </div>
             </button>
+
+            <button
+              onClick={() => setShowAgreementPDF(true)}
+              className="flex items-center gap-3 p-4 border-2 border-dashed rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-all"
+              style={{ borderColor: '#e5e7eb' }}
+            >
+              <span className="material-symbols-outlined text-2xl" style={{ color: BLUE }}>description</span>
+              <div className="text-left">
+                <p className="font-bold text-gray-900">View Agreement</p>
+                <p className="text-xs text-gray-600">Full PDF document</p>
+              </div>
+            </button>
           </div>
         </div>
 
@@ -471,6 +484,57 @@ export function AgentDashboard() {
           <p className="text-sm text-gray-600">© 2026 +1 Rewards · Agent Portal</p>
         </div>
       </footer>
+
+      {/* PDF Viewer Modal */}
+      {showAgreementPDF && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50">
+              <h2 className="text-xl font-bold text-gray-900">Agent Agreement</h2>
+              <button
+                onClick={() => setShowAgreementPDF(false)}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <span className="material-symbols-outlined text-2xl">close</span>
+              </button>
+            </div>
+
+            {/* PDF Viewer */}
+            <div className="flex-1 overflow-auto">
+              <iframe
+                src="/plus1_rewards_agent_agreement.pdf"
+                className="w-full h-full"
+                style={{ minHeight: '600px' }}
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-gray-200 bg-gray-50 flex gap-3">
+              <button
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = '/plus1_rewards_agent_agreement.pdf';
+                  link.download = 'plus1_rewards_agent_agreement.pdf';
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+              >
+                <span className="material-symbols-outlined">download</span>
+                Download PDF
+              </button>
+              <button
+                onClick={() => setShowAgreementPDF(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

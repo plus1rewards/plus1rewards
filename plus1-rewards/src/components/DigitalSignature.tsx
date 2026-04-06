@@ -111,55 +111,21 @@ export default function DigitalSignature({
           <div className="bg-gray-50 rounded-xl p-4 space-y-3 text-sm max-h-64 overflow-y-auto">
             <h3 className="font-bold text-base text-[#1a558b]">Plus1 Rewards Partner Agreement</h3>
             
-            <div>
-              <p className="font-semibold">Partner: {partnerName}</p>
-              <p className="font-semibold">Cashback Rate: {cashbackPercent}%</p>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-bold">1. Cashback Structure</h4>
-              <p>You agree to provide {cashbackPercent}% cashback on qualifying purchases, distributed as follows:</p>
+            <div className="space-y-3 text-xs">
+              <p>Partners are shop/business owners who:</p>
               <ul className="list-disc list-inside pl-2 space-y-1">
-                <li>{systemFee}% - Plus1 Rewards system fee</li>
-                <li>{agentFee}% - Sales agent commission</li>
-                <li>{memberCashback}% - Member cashback benefit</li>
+                <li>Process member transactions and issue cashback daily</li>
+                <li>Manage store operations and maintain professional standards</li>
+                <li>Offer delivery and/or pickup services through Plus1-Go (optional)</li>
+                <li>Manage product catalogs and order fulfillment</li>
+                <li>Pay monthly invoices for cashback liability</li>
+                <li>Track sales, cashback, and financial performance</li>
+                <li>Maintain compliance and documentation</li>
+                <li>Provide excellent member and customer service</li>
+                <li>Work with linked agents for support and growth</li>
+                <li>Generate revenue through transaction volume and member engagement</li>
               </ul>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-bold">2. Payment Terms</h4>
-              <ul className="list-disc list-inside pl-2 space-y-1">
-                <li>Cashback liability is invoiced monthly on the 28th</li>
-                <li>Payment is due within 7 days of invoice date</li>
-                <li>Late payments may result in account suspension</li>
-                <li>All payments must be made via EFT to the designated account</li>
-              </ul>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-bold">3. Partner Obligations</h4>
-              <ul className="list-disc list-inside pl-2 space-y-1">
-                <li>Process all member transactions accurately and honestly</li>
-                <li>Verify member identity before processing transactions</li>
-                <li>Maintain accurate records of all transactions</li>
-                <li>Report any suspicious activity immediately</li>
-                <li>Comply with all Plus1 Rewards policies and procedures</li>
-              </ul>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-bold">4. Account Approval</h4>
-              <p>Your account requires admin approval before activation. You will be notified via email once approved.</p>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-bold">5. Termination</h4>
-              <p>Either party may terminate this agreement with 30 days written notice. Outstanding invoices remain payable.</p>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-bold">6. Data Protection</h4>
-              <p>You agree to protect member data and use it only for Plus1 Rewards transactions.</p>
+              <p className="font-semibold mt-3">This makes partners critical to the daily transaction processing, member experience, and revenue generation of the Plus1 Rewards system.</p>
             </div>
           </div>
 

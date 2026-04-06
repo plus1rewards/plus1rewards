@@ -66,6 +66,7 @@ export default function Dashboard() {
     pin: '',
     terms: false
   });
+  const [showAgreementPDF, setShowAgreementPDF] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -1274,6 +1275,14 @@ export default function Dashboard() {
               <span className="material-symbols-outlined text-lg">support_agent</span>
               Contact Admin
             </button>
+
+            <button
+              onClick={() => setShowAgreementPDF(true)}
+              className="col-span-2 bg-white hover:bg-gray-50 border-2 border-gray-200 text-gray-900 font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+            >
+              <span className="material-symbols-outlined text-lg">description</span>
+              View Partner Agreement
+            </button>
           </div>
         </div>
 
@@ -1305,6 +1314,134 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* PDF Viewer Modal */}
+      {showAgreementPDF && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            maxWidth: '56rem',
+            width: '100%',
+            maxHeight: '90vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '1.5rem',
+              borderBottom: '1px solid #e5e7eb',
+              backgroundColor: '#f9fafb'
+            }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', margin: 0 }}>Partner Agreement</h2>
+              <button
+                onClick={() => setShowAgreementPDF(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#9ca3af',
+                  fontSize: '1.5rem',
+                  padding: 0
+                }}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* PDF Viewer */}
+            <div style={{
+              flex: 1,
+              overflow: 'auto'
+            }}>
+              <iframe
+                src="/partner_agreement.pdf"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  minHeight: '600px',
+                  border: 'none'
+                }}
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '1rem',
+              borderTop: '1px solid #e5e7eb',
+              backgroundColor: '#f9fafb',
+              display: 'flex',
+              gap: '0.75rem'
+            }}>
+              <button
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = '/partner_agreement.pdf';
+                  link.download = 'partner_agreement.pdf';
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.75rem 1rem',
+                  backgroundColor: '#1a558b',
+                  color: 'white',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'opacity 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>download</span>
+                Download PDF
+              </button>
+              <button
+                onClick={() => setShowAgreementPDF(false)}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem 1rem',
+                  backgroundColor: '#e5e7eb',
+                  color: '#374151',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d1d5db'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#e5e7eb'}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
