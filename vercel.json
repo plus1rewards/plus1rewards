@@ -1,21 +1,9 @@
 {
   "version": 2,
-  "buildCommand": "npm run build:all",
-  "outputDirectory": "dist",
-  "installCommand": "npm install && npm install --prefix plus1-rewards && npm install --prefix plus1-go",
+  "buildCommand": "cd plus1-rewards && npm run build",
+  "outputDirectory": "plus1-rewards/dist",
+  "installCommand": "npm install --prefix plus1-rewards",
   "routes": [
-    {
-      "src": "/go/?",
-      "dest": "/go/index.html"
-    },
-    {
-      "src": "/go/assets/(.*)",
-      "dest": "/go/assets/$1"
-    },
-    {
-      "src": "/go/(.*)",
-      "dest": "/go/index.html"
-    },
     {
       "src": "/assets/(.*)",
       "dest": "/assets/$1"

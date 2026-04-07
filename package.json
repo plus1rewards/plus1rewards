@@ -2,15 +2,10 @@
   "name": "plus1-ecosystem",
   "version": "1.0.0",
   "private": true,
-  "description": "Plus1 Rewards and Plus1 Go unified deployment",
+  "description": "Plus1 Rewards deployment",
   "scripts": {
-    "dev": "concurrently \"npm run dev:rewards\" \"npm run dev:go\" --names \"rewards,go\" --prefix-colors \"cyan,magenta\"",
-    "build:rewards": "cd plus1-rewards && npm run build",
-    "build:go": "cd plus1-go && npm run build",
-    "build:all": "npm run build:rewards && npm run build:go && npm run combine",
-    "combine": "node scripts/combine-builds.js",
-    "dev:rewards": "cd plus1-rewards && npm run dev",
-    "dev:go": "cd plus1-go && npm run dev"
+    "dev": "cd plus1-rewards && npm run dev",
+    "build": "cd plus1-rewards && npm run build"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
