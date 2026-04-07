@@ -18,6 +18,7 @@ import AgentsPage from './components/dashboard/pages/AgentsPage'
 import TransactionsPage from './components/dashboard/pages/TransactionsPage'
 import ApprovalsPage from './components/dashboard/pages/ApprovalsPage'
 import CoverPlansPage from './components/dashboard/pages/CoverPlansPage'
+import NotificationsPage from './components/dashboard/pages/NotificationsPage'
 import InvoicesPage from './components/dashboard/pages/InvoicesPage'
 import CommissionsPage from './components/dashboard/pages/CommissionsPage'
 import DisputesPage from './components/dashboard/pages/DisputesPage'
@@ -133,6 +134,7 @@ export default function App() {
           <Route path="/admin/approvals" element={<ApprovalsPage />} />
           <Route path="/admin/members" element={<MembersPage />} />
           <Route path="/admin/cover-plans" element={<CoverPlansPage />} />
+          <Route path="/admin/notifications" element={<NotificationsPage />} />
           <Route path="/admin/partners" element={<PartnersPage />} />
           <Route path="/admin/invoices" element={<InvoicesPage />} />
           <Route path="/admin/agents" element={<AgentsPage />} />

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { Notification, useNotification } from '../Notification';
 
 interface Plan {
   id: string;
@@ -67,6 +68,33 @@ export default function PlanSelectionModal({
   const [expandedBenefits, setExpandedBenefits] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [planChangesCount, setPlanChangesCount] = useState(0);
+  const [canChangePlan, setCanChangePlan] = useState(true);
+  const { notification, showSuccess, hideNotification } = useNotification();
+
+  // Load plan changes count on mount
+  const loadPlanChangesCount = async () => {
+    try {
+      const { data: existingPlan } = await supabase
+        .from('member_cover_plans')
+        .select('plan_changes_count')
+        .eq('member_id', memberId)
+        .eq('creation_order', 1)
+        .single();
+
+      if (existingPlan) {
+        setPlanChangesCount(existingPlan.plan_changes_count || 0);
+        setCanChangePlan((existingPlan.plan_changes_count || 0) < 1);
+      }
+    } catch (err) {
+      console.error('Error loading plan changes count:', err);
+    }
+  };
+
+  // Load on component mount
+  React.useEffect(() => {
+    loadPlanChangesCount();
+  }, [memberId]);
 
   const handleSelectPlan = async () => {
     if (!selectedPlan) return;
@@ -96,22 +124,37 @@ export default function PlanSelectionModal({
       // Check if member already has a cover plan
       const { data: existingPlan } = await supabase
         .from('member_cover_plans')
-        .select('id')
+        .select('id, plan_changes_count')
         .eq('member_id', memberId)
         .eq('creation_order', 1)
         .single();
 
+      // Check if user has already changed their plan once
+      if (existingPlan && existingPlan.plan_changes_count >= 1) {
+        setError('You can only change your plan once. Please contact support if you need further assistance.');
+        setLoading(false);
+        return;
+      }
+
       if (existingPlan) {
-        // Update existing plan
+        // Get current plan data to preserve funded_amount and overflow_balance
+        const { data: currentPlanData } = await supabase
+          .from('member_cover_plans')
+          .select('funded_amount, overflow_balance')
+          .eq('id', existingPlan.id)
+          .single();
+
+        // Update existing plan while preserving user's earned money
         console.log('Updating existing member cover plan');
         const { error: updateError } = await supabase
           .from('member_cover_plans')
           .update({
             cover_plan_id: coverPlanData.id,
             target_amount: selectedPlan.price,
-            funded_amount: 0,
-            overflow_balance: 0,
-            status: 'in_progress'
+            funded_amount: currentPlanData?.funded_amount || 0,
+            overflow_balance: currentPlanData?.overflow_balance || 0,
+            status: 'in_progress',
+            plan_changes_count: (existingPlan.plan_changes_count || 0) + 1
           })
           .eq('id', existingPlan.id);
 
@@ -132,7 +175,8 @@ export default function PlanSelectionModal({
             target_amount: selectedPlan.price,
             funded_amount: 0,
             overflow_balance: 0,
-            status: 'in_progress'
+            status: 'in_progress',
+            plan_changes_count: 1
           });
 
         if (coverPlanError) {
@@ -142,11 +186,25 @@ export default function PlanSelectionModal({
         console.log('Member cover plan created successfully!');
       }
 
-      console.log('Plan selection successful, closing modal');
-      // Success - call the callback to close modal
+      console.log('Plan selection successful, showing notification');
+      
+      // Update local state to disable button
+      setCanChangePlan(false);
+      setPlanChangesCount(1);
+      
+      // Show success notification
+      showSuccess(
+        'Plan Changed Successfully!',
+        `You've switched to ${selectedPlan.name}. Your earned rewards have been preserved!`,
+        5000
+      );
+
+      setLoading(false);
+      
+      // Close modal after notification is shown (5 seconds)
       setTimeout(() => {
         onPlanSelected();
-      }, 500);
+      }, 5000);
     } catch (err) {
       console.error('Error selecting plan:', err);
       setError(err instanceof Error ? err.message : 'Failed to select plan');
@@ -164,7 +222,7 @@ export default function PlanSelectionModal({
           
           <div className="relative z-10">
             <h1 className="text-4xl font-black mb-2">Welcome to Plus1 Health</h1>
-            <p className="text-lg text-blue-100">Choose your perfect health plan in 30 seconds</p>
+            <p className="text-lg text-blue-100">Read and compare the 2 default plans then choose your perfect cover.</p>
           </div>
         </div>
 
@@ -350,6 +408,16 @@ export default function PlanSelectionModal({
           </div>
         </div>
       </div>
+
+      {/* Notification */}
+      {notification && (
+        <Notification
+          type={notification.type}
+          title={notification.title}
+          message={notification.message}
+          onClose={hideNotification}
+        />
+      )}
     </div>
   );
 }

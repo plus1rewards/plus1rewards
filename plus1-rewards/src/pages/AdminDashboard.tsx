@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabaseAdmin } from "../lib/supabase";
 import IncompleteProfileAlerts from "../components/admin/IncompleteProfileAlerts";
+import MemberPoliciesAdmin from "../components/admin/MemberPoliciesAdmin";
+import AdminNotificationsPage from "../components/admin/AdminNotificationsPage";
 
 interface Entity {
   id: string; name: string; email?: string; phone?: string; status: string; 
@@ -56,7 +58,7 @@ export function AdminDashboard() {
   const [recentTransactions, setRecentTransactions] = useState<TransactionData[]>([]);
   const [alerts, setAlerts] = useState<Array<{ id: string; type: 'error' | 'warning' | 'info'; message: string; action?: () => void }>>([]);
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState<'overview' | 'members' | 'shops' | 'agents' | 'providers' | 'policies' | 'transactions'>('overview');
+  const [activeView, setActiveView] = useState<'overview' | 'members' | 'shops' | 'agents' | 'providers' | 'policies' | 'member-policies' | 'notifications' | 'transactions'>('overview');
 
   useEffect(() => { 
     console.log('🎯 useEffect triggered - calling loadComprehensiveData');
@@ -467,10 +469,12 @@ export function AdminDashboard() {
             {[
               { key: 'overview', label: 'Overview', icon: '📊' },
               { key: 'members', label: 'Members', icon: '👤', count: stats.totalMembers },
+              { key: 'member-policies', label: 'Member Policies', icon: '🩺', count: stats.totalPolicies },
+              { key: 'notifications', label: 'Notifications', icon: '🔔' },
               { key: 'shops', label: 'Shops', icon: '🏪', count: stats.totalShops },
               { key: 'agents', label: 'Agents', icon: '📈', count: stats.totalAgents },
               { key: 'providers', label: 'Policy Providers', icon: '🏥', count: stats.totalPolicyProviders },
-              { key: 'policies', label: 'Policies', icon: '🩺', count: stats.totalPolicies },
+              { key: 'policies', label: 'Policies', icon: '📋', count: stats.totalPolicies },
               { key: 'transactions', label: 'Transactions', icon: '💳', count: stats.totalTransactions }
             ].map(tab => (
               <button
@@ -620,6 +624,19 @@ export function AdminDashboard() {
                 </table>
               </div>
             </div>
+          )}
+          {/* Member Policies Tab */}
+          {activeView === 'member-policies' && (
+            <div className="card">
+              <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', fontWeight: 700 }}>
+                🩺 Member Policy Management
+              </h2>
+              <MemberPoliciesAdmin />
+            </div>
+          )}
+          {/* Notifications Tab */}
+          {activeView === 'notifications' && (
+            <AdminNotificationsPage />
           )}
           {/* Shops Tab */}
           {activeView === 'shops' && (

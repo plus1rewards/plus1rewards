@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { getSession, clearSession } from '../lib/session';
 import MemberLayout from '../components/member/MemberLayout';
+import MemberNotifications from '../components/member/MemberNotifications';
 
 interface Member {
   id: string;
@@ -48,11 +49,13 @@ interface LinkedPerson {
 
 export default function MemberCoverPlans() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [member, setMember] = useState<Member | null>(null);
   const [coverPlans, setCoverPlans] = useState<MemberCoverPlan[]>([]);
   const [linkedPeopleByPlan, setLinkedPeopleByPlan] = useState<Record<string, LinkedPerson[]>>({});
   const [expandedPlans, setExpandedPlans] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'plans' | 'notifications'>((searchParams.get('tab') as any) || 'plans');
 
   useEffect(() => {
     loadData();
@@ -227,16 +230,49 @@ export default function MemberCoverPlans() {
         </button>
       </div>
 
-      {/* Summary Card */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-[#1a558b] text-2xl">health_and_safety</span>
-          <div>
-            <p className="text-gray-900 font-bold text-xl">{coverPlans.length}</p>
-            <p className="text-gray-600 text-sm">Total Cover Plans</p>
-          </div>
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('plans')}
+          className={`px-4 py-3 font-bold text-sm transition-all border-b-2 ${
+            activeTab === 'plans'
+              ? 'border-[#1a558b] text-[#1a558b]'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <span className="material-symbols-outlined">health_and_safety</span>
+            Cover Plans
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('notifications')}
+          className={`px-4 py-3 font-bold text-sm transition-all border-b-2 ${
+            activeTab === 'notifications'
+              ? 'border-[#1a558b] text-[#1a558b]'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <span className="material-symbols-outlined">notifications</span>
+            Notifications
+          </span>
+        </button>
       </div>
+
+      {/* Plans Tab */}
+      {activeTab === 'plans' && (
+        <>
+          {/* Summary Card */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-[#1a558b] text-2xl">health_and_safety</span>
+              <div>
+                <p className="text-gray-900 font-bold text-xl">{coverPlans.length}</p>
+                <p className="text-gray-600 text-sm">Total Cover Plans</p>
+              </div>
+            </div>
+          </div>
 
       {/* Cover Plans List */}
       {coverPlans.length === 0 ? (
@@ -378,6 +414,13 @@ export default function MemberCoverPlans() {
             );
           })}
         </div>
+      )}
+        </>
+      )}
+
+      {/* Notifications Tab */}
+      {activeTab === 'notifications' && member && (
+        <MemberNotifications memberId={member.id} />
       )}
     </MemberLayout>
   );

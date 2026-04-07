@@ -84,6 +84,13 @@ const DashboardNew: React.FC = () => {
   const [showProfileIncomplete, setShowProfileIncomplete] = useState(false);
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [showPlanSelection, setShowPlanSelection] = useState(false);
+  const [canChangePlan, setCanChangePlan] = useState(true);
+
+
+  // Debug: Log when showProfileIncomplete changes
+  useEffect(() => {
+    console.log('📢 showProfileIncomplete changed:', showProfileIncomplete, 'missingFields:', missingFields);
+  }, [showProfileIncomplete, missingFields]);
 
   const generateQRCode = async (qrCode: string, phone: string) => {
     const qrValue = encodeMemberQR(qrCode, phone);
@@ -289,25 +296,115 @@ const DashboardNew: React.FC = () => {
       }
 
       const isProfileIncomplete = missing.length > 0;
+      const isProfileComplete = !isProfileIncomplete;
 
-      if (isProfileIncomplete && progressPercent >= 90) {
-        setMissingFields(missing);
+      console.log('🔍 Profile check:', {
+        progressPercent,
+        isProfileIncomplete,
+        missing,
+        email: member.email,
+        sa_id: member.sa_id,
+        suburb: member.suburb,
+        shouldShow: isProfileIncomplete && progressPercent >= 90
+      });
+
+      // At 96%+: Suspend plan if profile incomplete
+      if (isProfileIncomplete && progressPercent >= 96) {
+        console.log('⚠️ At 96%+: Profile incomplete - suspending plan');
         
-        const lastPromptProgress = sessionStorage.getItem('last_profile_prompt_progress');
-        const currentProgressKey = `${mainCoverPlan.id}_${Math.floor(progressPercent)}`;
+        // Suspend the plan if not already suspended
+        if (mainCoverPlan.status !== 'suspended') {
+          const { error: suspendError } = await supabase
+            .from('member_cover_plans')
+            .update({ status: 'suspended' })
+            .eq('id', mainCoverPlan.id);
+
+          if (suspendError) {
+            console.error('Error suspending plan:', suspendError);
+          } else {
+            console.log('✅ Plan suspended due to incomplete profile at 96%+');
+          }
+        }
+
+        // Check if user has dismissed this modal at 96%
+        const dismissedKey96 = `profile_modal_dismissed_96_${mainCoverPlan.id}`;
+        const isDismissed96 = localStorage.getItem(dismissedKey96) === 'true';
+        
+        console.log('96% dismissal check:', { dismissedKey96, isDismissed96, storedValue: localStorage.getItem(dismissedKey96) });
+        
+        // Always show at 96%+ (mandatory, can't dismiss)
+        console.log('✅ Showing 96% modal (mandatory)');
+        // Check if user can still change plan
+        const planChangesCount = mainCoverPlan.plan_changes_count || 0;
+        setCanChangePlan(planChangesCount < 1);
+        
+        setMissingFields(missing);
+        setShowProfileIncomplete(true);
+        
+        const lastPromptProgress = sessionStorage.getItem('last_profile_prompt_progress_96');
+        const currentProgressKey = `${mainCoverPlan.id}_96`;
         
         if (lastPromptProgress !== currentProgressKey) {
-          setShowProfileIncomplete(true);
-          sessionStorage.setItem('last_profile_prompt_progress', currentProgressKey);
+          sessionStorage.setItem('last_profile_prompt_progress_96', currentProgressKey);
 
           try {
             await supabase.from('admin_notifications').insert({
-              type: 'profile_incomplete',
+              type: 'profile_incomplete_96_suspended',
               member_id: member.id,
               member_name: member.name,
               member_phone: member.phone,
-              message: `Member ${member.name} (${member.phone}) has reached ${progressPercent.toFixed(0)}% cover plan completion but has incomplete profile. Missing: ${missing.join(', ')}`,
-              priority: progressPercent >= 100 ? 'high' : 'medium',
+              message: `CRITICAL: Member ${member.name} (${member.phone}) has reached ${progressPercent.toFixed(0)}% cover plan completion with incomplete profile. Plan has been SUSPENDED. Missing: ${missing.join(', ')}`,
+              priority: 'high',
+              metadata: {
+                progress_percent: progressPercent,
+                missing_fields: missing,
+                cover_plan_id: mainCoverPlan.id,
+                action: 'plan_suspended'
+              }
+            });
+          } catch (error) {
+            console.error('Error creating admin notification:', error);
+          }
+        }
+      }
+      // At 95%: Show mandatory modal (but don't suspend yet)
+      else if (isProfileIncomplete && progressPercent >= 95 && progressPercent < 96) {
+        console.log('✅ Checking 95% modal dismissal');
+        
+        // Check if user has dismissed this modal at 95%
+        const dismissedKey95 = `profile_modal_dismissed_95_${mainCoverPlan.id}`;
+        const isDismissed95 = localStorage.getItem(dismissedKey95) === 'true';
+        
+        console.log('95% dismissal check:', { dismissedKey95, isDismissed95, storedValue: localStorage.getItem(dismissedKey95) });
+        
+        // Only show if not dismissed
+        if (!isDismissed95) {
+          console.log('✅ Showing 95% modal');
+          // Check if user can still change plan
+          const planChangesCount = mainCoverPlan.plan_changes_count || 0;
+          setCanChangePlan(planChangesCount < 1);
+          
+          setMissingFields(missing);
+          setShowProfileIncomplete(true);
+        } else {
+          console.log('⏭️ 95% modal dismissed, not showing');
+          setShowProfileIncomplete(false);
+        }
+        
+        const lastPromptProgress = sessionStorage.getItem('last_profile_prompt_progress_95');
+        const currentProgressKey = `${mainCoverPlan.id}_95`;
+        
+        if (lastPromptProgress !== currentProgressKey) {
+          sessionStorage.setItem('last_profile_prompt_progress_95', currentProgressKey);
+
+          try {
+            await supabase.from('admin_notifications').insert({
+              type: 'profile_incomplete_95',
+              member_id: member.id,
+              member_name: member.name,
+              member_phone: member.phone,
+              message: `URGENT: Member ${member.name} (${member.phone}) has reached ${progressPercent.toFixed(0)}% cover plan completion. Profile completion is now MANDATORY. Missing: ${missing.join(', ')}`,
+              priority: 'high',
               metadata: {
                 progress_percent: progressPercent,
                 missing_fields: missing,
@@ -319,10 +416,77 @@ const DashboardNew: React.FC = () => {
           }
         }
       }
-
-      if (isProfileIncomplete && progressPercent >= 100 && mainCoverPlan.status === 'in_progress') {
-        setShowProfileIncomplete(true);
+      // At 90-94%: Show with "Remind Me Later" option
+      else if (isProfileIncomplete && progressPercent >= 90 && progressPercent < 95) {
+        console.log('✅ At 90% - showing modal');
+        
+        // Check if user can still change plan
+        const planChangesCount = mainCoverPlan.plan_changes_count || 0;
+        setCanChangePlan(planChangesCount < 1);
+        
         setMissingFields(missing);
+        setShowProfileIncomplete(true);
+        
+        const lastPromptProgress = sessionStorage.getItem('last_profile_prompt_progress_90');
+        const currentProgressKey = `${mainCoverPlan.id}_90`;
+        
+        if (lastPromptProgress !== currentProgressKey) {
+          sessionStorage.setItem('last_profile_prompt_progress_90', currentProgressKey);
+
+          try {
+            await supabase.from('admin_notifications').insert({
+              type: 'profile_incomplete_90',
+              member_id: member.id,
+              member_name: member.name,
+              member_phone: member.phone,
+              message: `Member ${member.name} (${member.phone}) has reached ${progressPercent.toFixed(0)}% cover plan completion but has incomplete profile. Missing: ${missing.join(', ')}`,
+              priority: 'medium',
+              metadata: {
+                progress_percent: progressPercent,
+                missing_fields: missing,
+                cover_plan_id: mainCoverPlan.id
+              }
+            });
+          } catch (error) {
+            console.error('Error creating admin notification:', error);
+          }
+        }
+      }
+      // If profile is complete and plan was suspended, unsuspend it
+      else if (isProfileComplete && mainCoverPlan.status === 'suspended') {
+        console.log('✅ Profile complete - unsuspending plan');
+        const { error: unsuspendError } = await supabase
+          .from('member_cover_plans')
+          .update({ status: 'in_progress' })
+          .eq('id', mainCoverPlan.id);
+
+        if (unsuspendError) {
+          console.error('Error unsuspending plan:', unsuspendError);
+        } else {
+          console.log('✅ Plan unsuspended and set to in_progress');
+          
+          try {
+            await supabase.from('admin_notifications').insert({
+              type: 'profile_complete_unsuspended',
+              member_id: member.id,
+              member_name: member.name,
+              member_phone: member.phone,
+              message: `Member ${member.name} (${member.phone}) has completed their profile. Suspended plan has been unsuspended and set to in_progress.`,
+              priority: 'medium',
+              metadata: {
+                progress_percent: progressPercent,
+                cover_plan_id: mainCoverPlan.id,
+                action: 'plan_unsuspended'
+              }
+            });
+          } catch (error) {
+            console.error('Error creating admin notification:', error);
+          }
+        }
+        
+        // Close the modal
+        setShowProfileIncomplete(false);
+        loadDashboardData();
       }
     };
 
@@ -641,6 +805,15 @@ const DashboardNew: React.FC = () => {
                   View All<br />Plans
                 </span>
               </button>
+              <button 
+                onClick={() => navigate('/member/cover-plans?tab=notifications')}
+                className="!bg-purple-600 !text-white p-4 rounded-lg text-left hover:scale-[0.98] transition-all flex flex-col justify-between min-h-[120px]"
+              >
+                <span className="material-symbols-outlined text-2xl !text-white">notifications</span>
+                <span className="font-bold text-sm leading-tight !text-white">
+                  Notifications
+                </span>
+              </button>
             </div>
 
 
@@ -688,7 +861,7 @@ const DashboardNew: React.FC = () => {
           {/* Side Grid Column */}
           <div className="md:col-span-4 flex flex-col gap-6">
             {/* Active Policy Card */}
-            <div className="bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
+            <div className={`${mainCoverPlan?.status === 'suspended' ? 'bg-red-50 border-red-300' : 'bg-white border-gray-200'} border p-6 rounded-lg shadow-sm`}>
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.1em]">
@@ -698,21 +871,34 @@ const DashboardNew: React.FC = () => {
                     {mainCoverPlan?.cover_plans?.plan_name || 'No Plan'}
                   </h3>
                 </div>
-                <span className="material-symbols-outlined text-blue-600">verified</span>
+                <span className={`material-symbols-outlined ${mainCoverPlan?.status === 'suspended' ? 'text-red-600' : 'text-blue-600'}`}>
+                  {mainCoverPlan?.status === 'suspended' ? 'pause_circle' : 'verified'}
+                </span>
               </div>
               <div className="space-y-4">
+                {mainCoverPlan?.status === 'suspended' && (
+                  <div className="bg-red-100 border-2 border-red-400 rounded-lg p-3 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="material-symbols-outlined text-red-600 text-xl">error</span>
+                      <p className="text-sm font-black text-red-700">POLICY SUSPENDED</p>
+                    </div>
+                    <p className="text-xs text-red-700 font-semibold">
+                      Your policy is suspended due to incomplete profile information. Complete your profile immediately to reactivate.
+                    </p>
+                  </div>
+                )}
                 <div className="flex justify-between items-end">
-                  <span className={`text-xs font-bold ${mainCoverPlan?.status === 'active' ? 'text-green-600' : 'text-gray-600'}`}>
-                    Policy {mainCoverPlan?.status === 'active' ? 'Active' : 'In Progress'}
+                  <span className={`text-xs font-bold ${mainCoverPlan?.status === 'active' ? 'text-green-600' : mainCoverPlan?.status === 'suspended' ? 'text-red-600' : 'text-gray-600'}`}>
+                    Policy {mainCoverPlan?.status === 'active' ? 'Active' : mainCoverPlan?.status === 'suspended' ? 'SUSPENDED' : 'In Progress'}
                   </span>
                   <span className="text-xs font-bold text-slate-900">
-                    {mainCoverPlan?.status === 'active' ? '100' : progressPercent.toFixed(0)}% Utilization
+                    {mainCoverPlan?.status === 'active' ? '100' : progressPercent.toFixed(2)}% Utilization
                   </span>
                 </div>
                 {/* Precision Progress Bar */}
                 <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
                   <div 
-                    className={`h-full ${mainCoverPlan?.status === 'active' ? 'bg-green-500' : 'bg-blue-500'}`} 
+                    className={`h-full ${mainCoverPlan?.status === 'active' ? 'bg-green-500' : mainCoverPlan?.status === 'suspended' ? 'bg-red-500' : 'bg-blue-500'}`} 
                     style={{ width: `${mainCoverPlan?.status === 'active' ? 100 : progressPercent}%` }}
                   ></div>
                 </div>
@@ -1069,6 +1255,9 @@ const DashboardNew: React.FC = () => {
           memberName={member.name}
           percentComplete={progressPercent}
           missingFields={missingFields}
+          currentPlanName={mainCoverPlan?.cover_plans?.plan_name}
+          canChangePlan={canChangePlan}
+          planId={mainCoverPlan?.id}
           onClose={() => {
             if (progressPercent < 100) {
               setShowProfileIncomplete(false);
@@ -1076,6 +1265,10 @@ const DashboardNew: React.FC = () => {
           }}
           onForceClose={() => {
             setShowProfileIncomplete(false);
+          }}
+          onChangePlan={() => {
+            setShowProfileIncomplete(false);
+            setShowPlanSelection(true);
           }}
         />
       )}

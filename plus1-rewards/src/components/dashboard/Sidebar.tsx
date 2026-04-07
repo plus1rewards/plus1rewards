@@ -248,6 +248,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             )}
           </a>
           
+          <a className={getLinkClasses('/admin/notifications')} href="/admin/notifications">
+            <span className="material-symbols-outlined">notifications</span>
+            <span className={getTextClasses('/admin/notifications')}>Notifications</span>
+          </a>
+          
           <a className={getLinkClasses('/admin/partners')} href="/admin/partners">
             <span className="material-symbols-outlined">storefront</span>
             <span className={getTextClasses('/admin/partners')}>Partners</span>
@@ -418,6 +423,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 {pendingCounts.coverPlans}
               </span>
             )}
+          </a>
+          
+          <a className={getLinkClasses('/admin/notifications')} href="/admin/notifications" onClick={handleLinkClick}>
+            <span className="material-symbols-outlined">notifications</span>
+            <span className={getTextClasses('/admin/notifications')}>Notifications</span>
           </a>
           
           <a className={getLinkClasses('/admin/partners')} href="/admin/partners" onClick={handleLinkClick}>

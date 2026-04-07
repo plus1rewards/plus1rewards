@@ -682,6 +682,28 @@ export default function MembersPage() {
                       </div>
                     </div>
 
+                    {/* Policy Status Alert - Show if any plan is suspended */}
+                    {memberDetails.coverPlans.some((p: any) => p.status === 'suspended') && (
+                      <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 md:p-6">
+                        <div className="flex items-start gap-3">
+                          <span className="material-symbols-outlined text-red-600 text-3xl flex-shrink-0 mt-1">error</span>
+                          <div className="flex-1">
+                            <p className="text-red-900 font-black text-base md:text-lg">⚠️ POLICY SUSPENDED</p>
+                            <p className="text-red-800 text-sm md:text-base mt-1 font-semibold">
+                              This member's cover plan is currently suspended. Partners cannot send money to this member until the policy is reactivated.
+                            </p>
+                            <div className="mt-3 space-y-1">
+                              {memberDetails.coverPlans.filter((p: any) => p.status === 'suspended').map((plan: any) => (
+                                <p key={plan.id} className="text-red-700 text-xs md:text-sm">
+                                  • {plan.cover_plans?.plan_name || 'Cover Plan'} - Suspended {plan.suspended_at ? `on ${new Date(plan.suspended_at).toLocaleDateString()}` : ''}
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Cover Plans */}
                     {memberDetails.coverPlans.length > 0 ? (
                       <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6">
@@ -691,18 +713,23 @@ export default function MembersPage() {
                         </h3>
                         <div className="space-y-3 md:space-y-4">
                           {memberDetails.coverPlans.map((plan: any) => (
-                            <div key={plan.id} className="border border-gray-200 rounded-lg p-3 md:p-4 bg-gray-50">
+                            <div key={plan.id} className={`border rounded-lg p-3 md:p-4 ${
+                              plan.status === 'suspended' 
+                                ? 'border-red-300 bg-red-50' 
+                                : 'border-gray-200 bg-gray-50'
+                            }`}>
                               <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-2 mb-3">
                                 <div>
                                   <p className="font-bold text-gray-900 text-sm md:text-base">{plan.cover_plans?.plan_name || 'Cover Plan'}</p>
                                   <p className="text-xs text-gray-600">Priority: {plan.creation_order}</p>
                                 </div>
-                                <span className={`px-2 py-1 rounded text-xs font-bold self-start ${
+                                <span className={`px-3 py-1 rounded text-xs font-bold self-start ${
                                   plan.status === 'active' ? 'bg-green-500/20 text-green-600' :
                                   plan.status === 'in_progress' ? 'bg-blue-500/20 text-blue-600' :
+                                  plan.status === 'suspended' ? 'bg-red-500/20 text-red-600 font-black' :
                                   'bg-gray-500/20 text-gray-600'
                                 }`}>
-                                  {plan.status}
+                                  {plan.status === 'suspended' ? '🚫 ' + plan.status.toUpperCase() : plan.status.toUpperCase()}
                                 </span>
                               </div>
                               <div className="grid grid-cols-3 gap-4 mb-3">
@@ -723,11 +750,16 @@ export default function MembersPage() {
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2">
                                 <div 
-                                  className="bg-[#1a558b] h-2 rounded-full transition-all"
+                                  className={`h-2 rounded-full transition-all ${
+                                    plan.status === 'suspended' ? 'bg-red-500' : 'bg-[#1a558b]'
+                                  }`}
                                   style={{ width: `${Math.min(100, (parseFloat(plan.funded_amount || 0) / parseFloat(plan.target_amount || 1)) * 100)}%` }}
                                 ></div>
                               </div>
-                              {plan.active_from && (
+                              {plan.suspended_at && (
+                                <p className="text-xs text-red-600 font-semibold mt-2">Suspended: {new Date(plan.suspended_at).toLocaleDateString()}</p>
+                              )}
+                              {plan.active_from && !plan.suspended_at && (
                                 <p className="text-xs text-gray-600 mt-2">Active from: {new Date(plan.active_from).toLocaleDateString()}</p>
                               )}
                             </div>
