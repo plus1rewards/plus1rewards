@@ -25,7 +25,18 @@ export function PartnerHistory() {
         const parsedPartner = JSON.parse(partnerData)
         const { data: txData, error: txError } = await supabase
           .from('transactions')
-          .select('id, member_id, purchase_amount, member_amount, created_at, members!inner(first_name, last_name, cell_phone)')
+          .select(`
+            id,
+            member_id,
+            purchase_amount,
+            member_amount,
+            created_at,
+            members (
+              first_name,
+              last_name,
+              cell_phone
+            )
+          `)
           .eq('partner_id', parsedPartner.id)
           .order('created_at', { ascending: false })
         
@@ -34,23 +45,24 @@ export function PartnerHistory() {
           throw txError;
         }
         
-        console.log('Raw transaction data:', txData);
+        console.log('Raw transaction data:', JSON.stringify(txData, null, 2));
         
         const formatted = txData?.map(tx => {
           console.log('Processing transaction:', tx);
-          const member = tx.members;
+          // Supabase returns the joined data directly in the members property
+          const member = tx.members as any;
           const firstName = member?.first_name || '';
           const lastName = member?.last_name || '';
           const cellPhone = member?.cell_phone || 'N/A';
-          const memberName = firstName && lastName ? `${firstName} ${lastName}`.trim() : 'Unknown Member';
+          const memberName = (firstName && lastName) ? `${firstName} ${lastName}`.trim() : 'Unknown Member';
           
-          console.log('Member data:', { firstName, lastName, cellPhone, memberName });
+          console.log('Extracted member data:', { firstName, lastName, cellPhone, memberName });
           
           return {
             id: tx.id,
             member_id: tx.member_id,
-            purchase_amount: tx.purchase_amount,
-            rewards_issued: tx.member_amount || 0,
+            purchase_amount: parseFloat(tx.purchase_amount),
+            rewards_issued: parseFloat(tx.member_amount) || 0,
             policy_name: cellPhone,
             created_at: tx.created_at,
             member_name: memberName
