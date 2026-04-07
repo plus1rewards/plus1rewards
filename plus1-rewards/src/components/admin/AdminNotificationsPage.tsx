@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabaseAdmin } from '../../lib/supabase';
 
+const BLUE = '#1a558b';
+
 interface AdminNotification {
   id: string;
   type: string;
@@ -17,13 +19,6 @@ interface AdminNotification {
     cover_plan_id?: string;
     action?: string;
   };
-}
-
-interface CategoryGroup {
-  title: string;
-  icon: string;
-  color: string;
-  notifications: AdminNotification[];
 }
 
 export default function AdminNotificationsPage() {
@@ -94,370 +89,239 @@ export default function AdminNotificationsPage() {
     }
   };
 
-  const categorizeNotifications = (notifs: AdminNotification[]): CategoryGroup[] => {
-    const categories: Record<string, CategoryGroup> = {
-      suspended: {
-        title: 'Policy Suspensions',
-        icon: '🚫',
-        color: '#dc2626',
-        notifications: []
-      },
-      profile: {
-        title: 'Profile Alerts',
-        icon: '⚠️',
-        color: '#f59e0b',
-        notifications: []
-      },
-      unsuspended: {
-        title: 'Policy Reactivations',
-        icon: '✅',
-        color: '#10b981',
-        notifications: []
-      },
-      dependant: {
-        title: 'Dependant Requests',
-        icon: '👨‍👩‍👧',
-        color: '#3b82f6',
-        notifications: []
-      },
-      other: {
-        title: 'Other Notifications',
-        icon: '💡',
-        color: '#6366f1',
-        notifications: []
-      }
-    };
-
-    notifs.forEach(notif => {
-      if (notif.type.includes('suspended')) {
-        categories.suspended.notifications.push(notif);
-      } else if (notif.type.includes('profile')) {
-        categories.profile.notifications.push(notif);
-      } else if (notif.type.includes('unsuspended')) {
-        categories.unsuspended.notifications.push(notif);
-      } else if (notif.type.includes('dependant')) {
-        categories.dependant.notifications.push(notif);
-      } else {
-        categories.other.notifications.push(notif);
-      }
-    });
-
-    return Object.values(categories).filter(cat => cat.notifications.length > 0);
-  };
-
   const getFilteredNotifications = () => {
     if (filter === 'unread') return notifications.filter(n => !n.read);
     if (filter === 'high') return notifications.filter(n => n.priority === 'high');
     return notifications;
   };
 
-  const getPriorityBadge = (priority: string) => {
-    const styles: Record<string, { bg: string; text: string; border: string }> = {
-      high: { bg: '#fee2e2', text: '#991b1b', border: '#fecaca' },
-      medium: { bg: '#fef3c7', text: '#92400e', border: '#fcd34d' },
-      low: { bg: '#dbeafe', text: '#1e40af', border: '#93c5fd' }
-    };
-    return styles[priority] || styles.low;
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return { bg: 'bg-red-50', border: 'border-red-200', badge: 'bg-red-100 text-red-700', dot: 'bg-red-500' };
+      case 'medium':
+        return { bg: 'bg-yellow-50', border: 'border-yellow-200', badge: 'bg-yellow-100 text-yellow-700', dot: 'bg-yellow-500' };
+      default:
+        return { bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500' };
+    }
+  };
+
+  const getNotificationIcon = (type: string) => {
+    if (type.includes('suspended')) return '🚫';
+    if (type.includes('profile')) return '⚠️';
+    if (type.includes('unsuspended')) return '✅';
+    if (type.includes('dependant')) return '👨‍👩‍👧';
+    return '💡';
   };
 
   const filteredNotifications = getFilteredNotifications();
-  const categories = categorizeNotifications(filteredNotifications);
   const unreadCount = notifications.filter(n => !n.read).length;
   const highPriorityCount = notifications.filter(n => n.priority === 'high').length;
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
-        <div style={{ width: '50px', height: '50px', borderRadius: '50%', border: '4px solid #e5e7eb', borderTopColor: 'var(--blue)', margin: '0 auto 1rem', animation: 'spin 1s linear infinite' }} />
-        <p style={{ color: 'var(--gray-text)', fontSize: '1rem', fontWeight: 600 }}>Loading notifications...</p>
+      <div className="min-h-screen bg-[#f5f8fc] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-gray-200 rounded-full animate-spin mx-auto mb-4" style={{ borderTopColor: BLUE }}></div>
+          <p className="text-gray-600 font-semibold">Loading notifications...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ background: '#f5f8fc', borderRadius: '12px', overflow: 'hidden' }}>
+    <div className="min-h-screen bg-[#f5f8fc]">
       {/* Header */}
-      <div style={{ padding: '2rem', background: '#fff', borderBottom: '1px solid #e5e7eb' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800, color: '#111827' }}>🔔 Notifications Center</h1>
-            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.95rem', color: '#6b7280' }}>
-              {unreadCount} unread • {highPriorityCount} high priority • {notifications.length} total
-            </p>
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-black text-gray-900 flex items-center gap-3">
+                <span className="material-symbols-outlined text-4xl" style={{ color: BLUE }}>notifications</span>
+                Notifications Center
+              </h1>
+              <p className="text-sm text-gray-600 mt-2">
+                <span className="font-bold text-red-600">{unreadCount}</span> unread • 
+                <span className="font-bold text-orange-600 ml-2">{highPriorityCount}</span> high priority • 
+                <span className="font-bold text-gray-700 ml-2">{notifications.length}</span> total
+              </p>
+            </div>
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllAsRead}
+                className="flex items-center gap-2 px-6 py-3 bg-white border-2 text-gray-700 rounded-lg hover:bg-gray-50 transition-all text-sm font-bold"
+                style={{ borderColor: BLUE, color: BLUE }}
+              >
+                <span className="material-symbols-outlined">done_all</span>
+                Mark All as Read
+              </button>
+            )}
           </div>
-          {unreadCount > 0 && (
-            <button
-              onClick={markAllAsRead}
-              style={{
-                background: 'var(--blue)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '0.75rem 1.5rem',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
-              onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
-            >
-              ✓ Mark All as Read
-            </button>
-          )}
-        </div>
 
-        {/* Filter buttons */}
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {[
-            { key: 'all', label: 'All', icon: '📋', count: notifications.length },
-            { key: 'unread', label: 'Unread', icon: '🔔', count: unreadCount },
-            { key: 'high', label: 'High Priority', icon: '🚨', count: highPriorityCount }
-          ].map(btn => (
-            <button
-              key={btn.key}
-              onClick={() => setFilter(btn.key as any)}
-              style={{
-                background: filter === btn.key ? 'var(--blue)' : '#f3f4f6',
-                color: filter === btn.key ? '#fff' : '#374151',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '0.6rem 1.2rem',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                transition: 'all 0.2s'
-              }}
-            >
-              <span>{btn.icon}</span>
-              {btn.label}
-              <span style={{
-                background: filter === btn.key ? 'rgba(255,255,255,0.3)' : '#e5e7eb',
-                color: filter === btn.key ? '#fff' : '#374151',
-                borderRadius: '12px',
-                padding: '0.2rem 0.6rem',
-                fontSize: '0.8rem',
-                fontWeight: 700
-              }}>
-                {btn.count}
-              </span>
-            </button>
-          ))}
+          {/* Filter Tabs */}
+          <div className="flex gap-3 flex-wrap">
+            {[
+              { key: 'all', label: 'All Notifications', icon: 'inbox', count: notifications.length },
+              { key: 'unread', label: 'Unread', icon: 'mail', count: unreadCount },
+              { key: 'high', label: 'High Priority', icon: 'priority_high', count: highPriorityCount }
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setFilter(tab.key as any)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+                  filter === tab.key
+                    ? 'text-white shadow-lg'
+                    : 'bg-white border border-gray-200 text-gray-700 hover:border-gray-300'
+                }`}
+                style={filter === tab.key ? { backgroundColor: BLUE } : {}}
+              >
+                <span className="material-symbols-outlined text-lg">{tab.icon}</span>
+                {tab.label}
+                <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
+                  filter === tab.key ? 'bg-white/30' : 'bg-gray-100'
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Content */}
-      <div style={{ padding: '2rem' }}>
+      <main className="max-w-7xl mx-auto px-6 py-8">
         {filteredNotifications.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '4rem 2rem', background: '#fff', borderRadius: '12px' }}>
-            <p style={{ fontSize: '3rem', margin: '0 0 1rem 0' }}>📭</p>
-            <p style={{ color: '#374151', fontWeight: 700, fontSize: '1.1rem', margin: '0 0 0.5rem 0' }}>No notifications</p>
-            <p style={{ color: '#6b7280', fontSize: '0.95rem', margin: 0 }}>
+          <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center">
+            <span className="material-symbols-outlined text-6xl text-gray-300 block mb-4">mail_outline</span>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">No notifications</h3>
+            <p className="text-gray-600">
               {filter === 'unread' ? 'All notifications have been read' : 'You have no notifications'}
             </p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            {categories.map((category, catIndex) => (
-              <div key={catIndex}>
-                {/* Category Header */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', paddingBottom: '0.75rem', borderBottom: `2px solid ${category.color}40` }}>
-                  <span style={{ fontSize: '1.5rem' }}>{category.icon}</span>
-                  <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#111827' }}>
-                    {category.title}
-                  </h2>
-                  <span style={{
-                    marginLeft: 'auto',
-                    background: category.color + '20',
-                    color: category.color,
-                    padding: '0.3rem 0.8rem',
-                    borderRadius: '20px',
-                    fontSize: '0.85rem',
-                    fontWeight: 700
-                  }}>
-                    {category.notifications.length}
-                  </span>
-                </div>
+          <div className="space-y-4">
+            {filteredNotifications.map(notification => {
+              const colors = getPriorityColor(notification.priority);
+              const icon = getNotificationIcon(notification.type);
+              
+              return (
+                <div
+                  key={notification.id}
+                  className={`bg-white border-2 rounded-xl p-5 transition-all hover:shadow-lg ${colors.border} ${!notification.read ? 'ring-2 ring-offset-2' : ''}`}
+                  style={!notification.read ? { '--tw-ring-color': BLUE } as React.CSSProperties : {}}
+                >
+                  <div className="flex gap-4">
+                    {/* Left accent bar */}
+                    <div className={`w-1 rounded-full flex-shrink-0 ${colors.dot}`}></div>
 
-                {/* Notifications in category */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {category.notifications.map(notification => {
-                    const priorityStyle = getPriorityBadge(notification.priority);
-                    return (
-                      <div
-                        key={notification.id}
-                        style={{
-                          background: '#fff',
-                          border: `2px solid ${priorityStyle.border}`,
-                          borderRadius: '10px',
-                          padding: '1.25rem',
-                          display: 'flex',
-                          gap: '1rem',
-                          alignItems: 'flex-start',
-                          transition: 'all 0.2s',
-                          opacity: notification.read ? 0.7 : 1
-                        }}
-                        onMouseOver={(e) => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)')}
-                        onMouseOut={(e) => (e.currentTarget.style.boxShadow = 'none')}
-                      >
-                        {/* Left indicator */}
-                        <div style={{
-                          width: '4px',
-                          height: '100%',
-                          background: category.color,
-                          borderRadius: '2px',
-                          flexShrink: 0,
-                          minHeight: '80px'
-                        }} />
-
-                        {/* Content */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-                            <span style={{
-                              background: priorityStyle.bg,
-                              color: priorityStyle.text,
-                              padding: '0.35rem 0.85rem',
-                              borderRadius: '6px',
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              border: `1px solid ${priorityStyle.border}`
-                            }}>
-                              {notification.priority} Priority
-                            </span>
-                            {!notification.read && (
-                              <span style={{
-                                width: '10px',
-                                height: '10px',
-                                background: 'var(--blue)',
-                                borderRadius: '50%',
-                                animation: 'pulse 2s infinite'
-                              }} />
-                            )}
-                            <span style={{
-                              marginLeft: 'auto',
-                              fontSize: '0.8rem',
-                              color: '#9ca3af',
-                              fontWeight: 500
-                            }}>
-                              {new Date(notification.created_at).toLocaleDateString('en-ZA', {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
-
-                          <p style={{ margin: '0 0 0.75rem 0', fontWeight: 700, color: '#111827', fontSize: '1rem', lineHeight: '1.4' }}>
-                            {notification.message}
-                          </p>
-
-                          <div style={{ background: '#f9fafb', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '0.75rem' }}>
-                            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#6b7280' }}>
-                              <strong style={{ color: '#374151' }}>Member:</strong> {notification.member_name}
-                            </p>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280' }}>
-                              <strong style={{ color: '#374151' }}>Phone:</strong> {notification.member_phone}
-                            </p>
-                          </div>
-
-                          {/* Metadata */}
-                          {notification.metadata && (
-                            <div style={{ background: '#f0f9ff', padding: '0.75rem 1rem', borderRadius: '8px', borderLeft: `3px solid var(--blue)` }}>
-                              {notification.metadata.progress_percent !== undefined && (
-                                <p style={{ margin: '0 0 0.4rem 0', fontSize: '0.85rem', color: '#1e40af' }}>
-                                  <strong>Progress:</strong> {notification.metadata.progress_percent.toFixed(0)}%
-                                </p>
-                              )}
-                              {notification.metadata.missing_fields && notification.metadata.missing_fields.length > 0 && (
-                                <p style={{ margin: '0 0 0.4rem 0', fontSize: '0.85rem', color: '#1e40af' }}>
-                                  <strong>Missing Fields:</strong> {notification.metadata.missing_fields.join(', ')}
-                                </p>
-                              )}
-                              {notification.metadata.action && (
-                                <p style={{ margin: 0, fontSize: '0.85rem', color: '#dc2626', fontWeight: 700 }}>
-                                  <strong>Action Taken:</strong> {notification.metadata.action.replace(/_/g, ' ').toUpperCase()}
-                                </p>
+                    {/* Icon and content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{icon}</span>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`px-3 py-1 rounded-full text-xs font-bold ${colors.badge}`}>
+                                {notification.priority.toUpperCase()} PRIORITY
+                              </span>
+                              {!notification.read && (
+                                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
+                                  <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
+                                  NEW
+                                </span>
                               )}
                             </div>
-                          )}
+                          </div>
                         </div>
+                        <span className="text-xs text-gray-500 font-medium whitespace-nowrap">
+                          {new Date(notification.created_at).toLocaleDateString('en-ZA', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
 
-                        {/* Actions */}
-                        <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, flexDirection: 'column' }}>
-                          {!notification.read && (
-                            <button
-                              onClick={() => markAsRead(notification.id)}
-                              style={{
-                                background: 'transparent',
-                                border: '1px solid #d1d5db',
-                                color: '#374151',
-                                borderRadius: '6px',
-                                padding: '0.5rem 0.75rem',
-                                fontSize: '0.8rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                whiteSpace: 'nowrap'
-                              }}
-                              onMouseOver={(e) => {
-                                e.currentTarget.style.background = '#f3f4f6';
-                                e.currentTarget.style.borderColor = '#9ca3af';
-                              }}
-                              onMouseOut={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderColor = '#d1d5db';
-                              }}
-                            >
-                              ✓ Read
-                            </button>
-                          )}
-                          <button
-                            onClick={() => deleteNotification(notification.id)}
-                            style={{
-                              background: 'transparent',
-                              border: '1px solid #fecaca',
-                              color: '#dc2626',
-                              borderRadius: '6px',
-                              padding: '0.5rem 0.75rem',
-                              fontSize: '0.8rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              transition: 'all 0.2s',
-                              whiteSpace: 'nowrap'
-                            }}
-                            onMouseOver={(e) => {
-                              e.currentTarget.style.background = '#fee2e2';
-                              e.currentTarget.style.borderColor = '#f87171';
-                            }}
-                            onMouseOut={(e) => {
-                              e.currentTarget.style.background = 'transparent';
-                              e.currentTarget.style.borderColor = '#fecaca';
-                            }}
-                          >
-                              ✕ Delete
-                            </button>
+                      {/* Message */}
+                      <p className="text-gray-900 font-semibold mb-3 leading-relaxed">
+                        {notification.message}
+                      </p>
+
+                      {/* Member info */}
+                      <div className="bg-gray-50 rounded-lg p-3 mb-3 border border-gray-200">
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <p className="text-gray-600 text-xs font-bold uppercase tracking-wide mb-1">Member</p>
+                            <p className="text-gray-900 font-semibold">{notification.member_name}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600 text-xs font-bold uppercase tracking-wide mb-1">Phone</p>
+                            <p className="text-gray-900 font-semibold">{notification.member_phone}</p>
+                          </div>
                         </div>
                       </div>
-                    );
-                  })}
+
+                      {/* Metadata */}
+                      {notification.metadata && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                          <div className="space-y-1.5 text-sm">
+                            {notification.metadata.progress_percent !== undefined && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-blue-900 font-semibold">Progress</span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-24 h-2 bg-blue-200 rounded-full overflow-hidden">
+                                    <div 
+                                      className="h-full bg-blue-600 rounded-full transition-all"
+                                      style={{ width: `${notification.metadata.progress_percent}%` }}
+                                    ></div>
+                                  </div>
+                                  <span className="text-blue-700 font-bold text-xs">{notification.metadata.progress_percent.toFixed(0)}%</span>
+                                </div>
+                              </div>
+                            )}
+                            {notification.metadata.missing_fields && notification.metadata.missing_fields.length > 0 && (
+                              <p className="text-blue-900">
+                                <span className="font-semibold">Missing Fields:</span> {notification.metadata.missing_fields.join(', ')}
+                              </p>
+                            )}
+                            {notification.metadata.action && (
+                              <p className="text-red-700 font-semibold">
+                                <span className="material-symbols-outlined text-sm align-middle mr-1">info</span>
+                                Action: {notification.metadata.action.replace(/_/g, ' ').toUpperCase()}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 flex-shrink-0">
+                      {!notification.read && (
+                        <button
+                          onClick={() => markAsRead(notification.id)}
+                          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                          title="Mark as read"
+                        >
+                          <span className="material-symbols-outlined">done</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => deleteNotification(notification.id)}
+                        className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                        title="Delete"
+                      >
+                        <span className="material-symbols-outlined">delete</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
-      </div>
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-      `}</style>
+      </main>
     </div>
   );
 }

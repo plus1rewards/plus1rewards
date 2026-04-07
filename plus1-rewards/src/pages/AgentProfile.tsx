@@ -17,9 +17,10 @@ export function AgentProfile() {
   const [partnerCount, setPartnerCount] = useState(0);
   
   // Form states
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('');
+  const [cellPhone, setCellPhone] = useState('');
   
   // PIN change states
   const [currentPin, setCurrentPin] = useState('');
@@ -46,17 +47,23 @@ export function AgentProfile() {
       setUser(agentData); // Agent data is stored directly, no separate users table
 
       // Set form fields from agent data
-      setFullName(agentData.full_name || '');
+      setFirstName(agentData.first_name || '');
+      setLastName(agentData.last_name || '');
       setEmail(agentData.email || '');
-      setMobileNumber(agentData.mobile_number || '');
+      setCellPhone(agentData.cell_phone || '');
 
-      // Load commission data
-      const { data: commissionData } = await supabase
-        .from('agent_commissions')
-        .select('total_amount')
-        .eq('agent_id', agentData.id);
+      // Load commission data from transactions table
+      const { data: allTransactions, error: txError } = await supabase
+        .from('transactions')
+        .select('agent_amount')
+        .eq('agent_id', agentData.id)
+        .eq('status', 'completed');
 
-      const total = (commissionData || []).reduce((sum, c) => sum + (parseFloat(c.total_amount) || 0), 0);
+      if (txError) {
+        console.error('Error fetching transactions:', txError);
+      }
+
+      const total = (allTransactions || []).reduce((sum, t) => sum + (parseFloat(t.agent_amount) || 0), 0);
       setTotalCommission(total);
 
       // Load partner count
@@ -76,12 +83,12 @@ export function AgentProfile() {
   };
 
   const handleSaveProfile = async () => {
-    if (!fullName.trim() || !email.trim() || !mobileNumber.trim()) {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !cellPhone.trim()) {
       showError('Missing Information', 'Please fill in all fields');
       return;
     }
 
-    if (mobileNumber.length !== 10) {
+    if (cellPhone.length !== 10) {
       showError('Invalid Phone', 'Phone number must be 10 digits');
       return;
     }
@@ -90,9 +97,10 @@ export function AgentProfile() {
       const { error } = await supabase
         .from('agents')
         .update({
-          full_name: fullName,
+          first_name: firstName,
+          last_name: lastName,
           email: email,
-          mobile_number: mobileNumber
+          cell_phone: cellPhone
         })
         .eq('id', agent.id);
 
@@ -242,16 +250,30 @@ export function AgentProfile() {
 
           <div className="p-6 space-y-6">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Full Name</label>
+              <label className="block text-sm font-bold text-gray-700 mb-2">First Name</label>
               {editing ? (
                 <input
                   type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 />
               ) : (
-                <p className="text-gray-900 font-semibold">{user?.full_name || '-'}</p>
+                <p className="text-gray-900 font-semibold">{user?.first_name || '-'}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Last Name</label>
+              {editing ? (
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+              ) : (
+                <p className="text-gray-900 font-semibold">{user?.last_name || '-'}</p>
               )}
             </div>
 
@@ -274,20 +296,20 @@ export function AgentProfile() {
               {editing ? (
                 <input
                   type="tel"
-                  value={mobileNumber}
-                  onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  value={cellPhone}
+                  onChange={(e) => setCellPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   placeholder="0123456789"
                   maxLength={10}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 />
               ) : (
-                <p className="text-gray-900 font-semibold">{user?.mobile_number || '-'}</p>
+                <p className="text-gray-900 font-semibold">{user?.cell_phone || '-'}</p>
               )}
             </div>
 
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">ID Number</label>
-              <p className="text-gray-900 font-semibold">{agent?.id_number || '-'}</p>
+              <p className="text-gray-900 font-semibold">{agent?.sa_id || '-'}</p>
             </div>
 
             <div>
@@ -318,9 +340,10 @@ export function AgentProfile() {
                 <button
                   onClick={() => {
                     setEditing(false);
-                    setFullName(user?.full_name || '');
+                    setFirstName(user?.first_name || '');
+                    setLastName(user?.last_name || '');
                     setEmail(user?.email || '');
-                    setMobileNumber(user?.mobile_number || '');
+                    setCellPhone(user?.cell_phone || '');
                   }}
                   className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-bold text-sm hover:bg-gray-300 transition-all"
                 >

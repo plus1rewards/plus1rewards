@@ -76,9 +76,9 @@ export function AgentDashboard() {
       // Use agent data directly - no separate users table
       const combinedData = {
         ...currentAgent,
-        name: currentAgent.full_name?.split(' ')[0] || 'Agent',
-        surname: currentAgent.full_name?.split(' ').slice(1).join(' ') || '',
-        phone: currentAgent.mobile_number || '',
+        name: currentAgent.first_name || 'Agent',
+        surname: currentAgent.last_name || '',
+        phone: currentAgent.cell_phone || '',
         email: currentAgent.email || ''
       };
 
@@ -141,6 +141,7 @@ export function AgentDashboard() {
             .from('transactions')
             .select('agent_amount')
             .eq('partner_id', partner.id)
+            .eq('agent_id', agentId)
             .gte('created_at', currentMonthStart.toISOString())
             .lt('created_at', nextMonthStart.toISOString())
             .eq('status', 'completed');
@@ -166,8 +167,20 @@ export function AgentDashboard() {
 
         setPartnerShops(shopsWithCommission);
         
-        // Calculate totals
-        const monthlyTotal = shopsWithCommission.reduce((sum, shop) => sum + shop.monthly_commission, 0);
+        // Calculate totals - sum all agent transactions this month
+        const { data: monthlyTransactions, error: monthlyTxError } = await supabase
+          .from('transactions')
+          .select('agent_amount')
+          .eq('agent_id', agentId)
+          .gte('created_at', currentMonthStart.toISOString())
+          .lt('created_at', nextMonthStart.toISOString())
+          .eq('status', 'completed');
+
+        if (monthlyTxError) {
+          console.error('Error fetching monthly transactions:', monthlyTxError);
+        }
+
+        const monthlyTotal = (monthlyTransactions || []).reduce((sum, t) => sum + (parseFloat(t.agent_amount) || 0), 0);
         setMonthlyCommission(monthlyTotal);
 
         // Get total commission from ALL transactions (not just agent_commissions table)

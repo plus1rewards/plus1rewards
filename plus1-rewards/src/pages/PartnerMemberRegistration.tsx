@@ -6,8 +6,9 @@ import { X, Check, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function PartnerMemberRegistration() {
   const navigate = useNavigate();
-  const [activeField, setActiveField] = useState<'name' | 'phone' | 'dob' | 'pin' | 'confirmPin'>('name');
-  const [fullName, setFullName] = useState('');
+  const [activeField, setActiveField] = useState<'firstName' | 'lastName' | 'phone' | 'dob' | 'pin' | 'confirmPin'>('firstName');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [pinCode, setPinCode] = useState('');
@@ -57,9 +58,15 @@ export default function PartnerMemberRegistration() {
   };
 
   const handleSubmit = async () => {
-    if (!fullName.trim()) {
-      setError('Please enter your full name');
-      setActiveField('name');
+    if (!firstName.trim()) {
+      setError('Please enter your first name');
+      setActiveField('firstName');
+      return;
+    }
+
+    if (!lastName.trim()) {
+      setError('Please enter your last name');
+      setActiveField('lastName');
       return;
     }
 
@@ -153,7 +160,8 @@ export default function PartnerMemberRegistration() {
       const { data: memberData, error: memberError } = await supabase
         .from('members')
         .insert({
-          full_name: fullName.trim(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
           phone: phoneNumber,
           cell_phone: phoneNumber,
           date_of_birth: dateOfBirth,
@@ -205,7 +213,7 @@ export default function PartnerMemberRegistration() {
             <Check className="w-20 h-20 text-white" />
           </div>
           <h2 className="text-white text-6xl font-bold mb-4">Success!</h2>
-          <p className="text-green-300 text-2xl mb-2">{fullName}</p>
+          <p className="text-green-300 text-2xl mb-2">{`${firstName} ${lastName}`.trim()}</p>
           <p className="text-blue-200 text-xl mb-8">You're now registered!</p>
           <p className="text-white/60 text-lg">Returning to sales terminal...</p>
         </div>
@@ -263,19 +271,36 @@ export default function PartnerMemberRegistration() {
                 </div>
               </div>
 
-              {/* Full Name */}
+              {/* First Name */}
               <div 
                 className={`bg-black/30 rounded-xl p-4 mb-3 cursor-pointer transition-all ${
-                  activeField === 'name' ? 'ring-2 ring-purple-400' : 'hover:bg-black/40'
+                  activeField === 'firstName' ? 'ring-2 ring-purple-400' : 'hover:bg-black/40'
                 }`}
-                onClick={() => setActiveField('name')}
+                onClick={() => setActiveField('firstName')}
               >
-                <p className="text-purple-300 text-xs font-semibold mb-1.5">📝 Full Name</p>
+                <p className="text-purple-300 text-xs font-semibold mb-1.5">📝 First Name</p>
                 <input
                   type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="John Bloggs"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="John"
+                  className="w-full bg-transparent text-white text-xl font-semibold outline-none placeholder-white/30"
+                />
+              </div>
+
+              {/* Last Name */}
+              <div 
+                className={`bg-black/30 rounded-xl p-4 mb-3 cursor-pointer transition-all ${
+                  activeField === 'lastName' ? 'ring-2 ring-purple-400' : 'hover:bg-black/40'
+                }`}
+                onClick={() => setActiveField('lastName')}
+              >
+                <p className="text-purple-300 text-xs font-semibold mb-1.5">📝 Last Name</p>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Bloggs"
                   className="w-full bg-transparent text-white text-xl font-semibold outline-none placeholder-white/30"
                 />
               </div>
@@ -400,8 +425,10 @@ export default function PartnerMemberRegistration() {
             <div className="bg-blue-600 rounded-3xl p-8 flex flex-col">
               <div className="text-center mb-6">
                 <p className="text-white text-lg font-semibold">
-                  {activeField === 'name' 
-                    ? 'TYPE YOUR NAME' 
+                  {activeField === 'firstName' 
+                    ? 'TYPE YOUR FIRST NAME' 
+                    : activeField === 'lastName'
+                    ? 'TYPE YOUR LAST NAME'
                     : activeField === 'phone'
                     ? 'ENTER PHONE NUMBER'
                     : activeField === 'dob'
@@ -412,7 +439,7 @@ export default function PartnerMemberRegistration() {
                 </p>
               </div>
 
-              {activeField === 'name' || activeField === 'dob' ? (
+              {activeField === 'firstName' || activeField === 'lastName' || activeField === 'dob' ? (
                 <div className="flex-1 flex items-center justify-center">
                   <img 
                     src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&h=800&fit=crop" 
@@ -456,7 +483,7 @@ export default function PartnerMemberRegistration() {
                     </button>
                     <button
                       onClick={handleSubmit}
-                      disabled={loading || !fullName.trim() || phoneNumber.length !== 10 || !dateOfBirth || pinCode.length !== 6 || confirmPinCode.length !== 6 || !termsAccepted}
+                      disabled={loading || !firstName.trim() || !lastName.trim() || phoneNumber.length !== 10 || !dateOfBirth || pinCode.length !== 6 || confirmPinCode.length !== 6 || !termsAccepted}
                       className="bg-green-500 hover:bg-green-600 disabled:bg-gray-500 disabled:cursor-not-allowed text-white text-xl font-bold rounded-2xl h-16 transition-all flex items-center justify-center gap-2"
                     >
                       {loading ? (

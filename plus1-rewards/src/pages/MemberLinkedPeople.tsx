@@ -66,7 +66,7 @@ export default function MemberLinkedPeople() {
 
       setMember({
         id: memberData.id,
-        name: memberData.name || memberData.full_name,
+        name: memberData.name || `${memberData.first_name} ${memberData.last_name}`.trim(),
         phone: memberData.phone || memberData.cell_phone,
         email: memberData.email,
         qr_code: memberData.qr_code,
@@ -107,7 +107,8 @@ export default function MemberLinkedPeople() {
         .insert({
           linked_to_main_member_id: member.id,
           member_cover_plan_id: member.cover_plan_id,
-          full_name: formData.fullName,
+          first_name: formData.fullName.split(' ')[0],
+          last_name: formData.fullName.split(' ').slice(1).join(' ') || '',
           id_number: formData.idNumber,
           linked_type: formData.relationship,
           status: 'pending'
@@ -197,9 +198,9 @@ export default function MemberLinkedPeople() {
                     <span className="material-symbols-outlined text-[#1a558b] text-xl">person</span>
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">{person.full_name}</h3>
-                    <p className="text-sm text-gray-600">ID: {person.id_number}</p>
+                    <h3 className="text-lg font-bold text-gray-900">{`${person.first_name} ${person.last_name}`.trim()}</h3>
                     <p className="text-sm text-gray-600">Relationship: {person.linked_type}</p>
+                    <p className="text-sm text-gray-600">ID: {person.id_number}</p>
                   </div>
                 </div>
                 <span className={`px-3 py-1 rounded-full text-sm font-bold ${

@@ -125,7 +125,7 @@ export function PolicyProviderDashboard() {
       const memberIds = memberCoverPlans.map(mcp => mcp.member_id);
       const { data: members, error: membersError } = await supabase
         .from('members')
-        .select('id, full_name, phone')
+        .select('id, first_name, last_name, phone')
         .in('id', memberIds);
 
       console.log('Members query result:', { members, membersError });
@@ -159,7 +159,7 @@ export function PolicyProviderDashboard() {
         return {
           id: mcp.id,
           member_id: mcp.member_id,
-          member_name: member?.full_name || 'Unknown',
+          member_name: `${member?.first_name} ${member?.last_name}`.trim() || 'Unknown',
           member_phone: member?.phone || 'N/A',
           plan_name: coverPlan?.plan_name || 'Unknown Plan',
           target_amount: parseFloat(mcp.target_amount || 0),

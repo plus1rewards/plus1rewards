@@ -83,10 +83,10 @@ export default function TransactionHistory() {
         if (memberIds.length > 0) {
           const { data: members } = await supabase
             .from('members')
-            .select('id, full_name, phone')
+            .select('id, first_name, last_name, phone')
             .in('id', memberIds);
 
-          const memberMap = new Map(members?.map(m => [m.id, { name: m.full_name, phone: m.phone }]) || []);
+          const memberMap = new Map(members?.map(m => [m.id, { name: `${m.first_name} ${m.last_name}`.trim(), phone: m.phone }]) || []);
           
           setTransactions(txData.map(t => ({
             ...t,

@@ -5,6 +5,13 @@ import DashboardLayout from '../DashboardLayout';
 import StatCard from '../components/StatCard';
 import { supabaseAdmin } from '../../../lib/supabase';
 
+// Helper function to get full name from first_name and last_name
+const getFullName = (member: any): string => {
+  const firstName = member.first_name || '';
+  const lastName = member.last_name || '';
+  return `${firstName} ${lastName}`.trim() || 'No name';
+};
+
 export default function MembersPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -95,8 +102,8 @@ export default function MembersPage() {
       ['ID', 'Name', 'Phone', 'Email', 'QR Code', 'Status', 'Joined'].join(','),
       ...members.map(m => [
         m.id,
-        m.full_name || '',
-        m.cell_phone || m.phone || '',
+        getFullName(m),
+        m.cell_phone || '',
         m.email || '',
         m.qr_code || '',
         m.status || '',
@@ -118,7 +125,7 @@ export default function MembersPage() {
     const searchTerms = searchLower.split(/\s+/);
     
     const matchesSearch = searchLower === '' || searchTerms.every(term => 
-      m.full_name?.toLowerCase().includes(term) ||
+      getFullName(m).toLowerCase().includes(term) ||
       m.cell_phone?.includes(term) ||
       m.phone?.includes(term) ||
       m.email?.toLowerCase().includes(term) ||
@@ -472,11 +479,11 @@ export default function MembersPage() {
                             <div className="flex items-center space-x-3">
                               <div className="flex-shrink-0 h-10 w-10">
                                 <div className="h-10 w-10 rounded-full bg-[#1a558b] flex items-center justify-center">
-                                  <span className="text-white font-bold text-lg">{member.full_name?.charAt(0) || 'M'}</span>
+                                  <span className="text-white font-bold text-lg">{getFullName(member).charAt(0)}</span>
                                 </div>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-gray-900 truncate">{member.full_name || 'No name'}</p>
+                                <p className="text-sm font-semibold text-gray-900 truncate">{getFullName(member)}</p>
                                 <p className="text-xs text-gray-500 font-mono">{member.id.substring(0, 8)}...</p>
                               </div>
                             </div>
@@ -485,7 +492,7 @@ export default function MembersPage() {
                           {/* Phone */}
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">
-                              {member.cell_phone || member.phone || (
+                              {member.cell_phone || (
                                 <span className="text-gray-400 italic">No phone</span>
                               )}
                             </div>
@@ -601,10 +608,10 @@ export default function MembersPage() {
               <div className="border-b border-gray-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-3 flex-shrink-0" style={{ backgroundColor: '#ffffff' }}>
                 <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
                   <div className="size-12 md:size-16 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    <span className="text-[#1a558b] font-bold text-lg md:text-2xl">{selectedMember.full_name?.charAt(0) || 'M'}</span>
+                    <span className="text-[#1a558b] font-bold text-lg md:text-2xl">{getFullName(selectedMember).charAt(0)}</span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-lg md:text-2xl font-black text-gray-900 truncate">{selectedMember.full_name || 'Member'}</h2>
+                    <h2 className="text-lg md:text-2xl font-black text-gray-900 truncate">{getFullName(selectedMember)}</h2>
                     <p className="text-xs md:text-sm text-gray-600 truncate">Member ID: {selectedMember.id}</p>
                   </div>
                 </div>
@@ -653,11 +660,11 @@ export default function MembersPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                         <div>
                           <p className="text-xs text-gray-600 uppercase tracking-wider">Full Name</p>
-                          <p className="text-sm text-gray-900 font-semibold truncate">{memberDetails.member.full_name || 'No name'}</p>
+                          <p className="text-sm text-gray-900 font-semibold truncate">{getFullName(memberDetails.member)}</p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-600 uppercase tracking-wider">Phone</p>
-                          <p className="text-sm text-gray-900 font-semibold">{memberDetails.member.cell_phone || memberDetails.member.phone || 'Not provided'}</p>
+                          <p className="text-sm text-gray-900 font-semibold">{memberDetails.member.cell_phone || 'Not provided'}</p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-600 uppercase tracking-wider">Email</p>
@@ -892,9 +899,9 @@ export default function MembersPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {memberDetails.linkedPeople.map((person: any) => (
                             <div key={person.id} className="border border-gray-200 rounded-lg p-3">
-                              <p className="font-semibold text-gray-900">{person.full_name}</p>
+                              <p className="font-semibold text-gray-900">{getFullName(person)}</p>
                               <p className="text-xs text-gray-600">{person.linked_type}</p>
-                              <p className="text-xs text-gray-600">ID: {person.id_number}</p>
+                              <p className="text-xs text-gray-600">ID: {person.sa_id}</p>
                               <span className={`inline-block mt-2 px-2 py-1 rounded text-xs font-bold ${
                                 person.status === 'approved' ? 'bg-green-500/20 text-green-600' :
                                 person.status === 'rejected' ? 'bg-red-500/20 text-red-600' :

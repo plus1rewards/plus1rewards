@@ -26,7 +26,7 @@ export default function CommissionsPage() {
       // Get all agents
       const { data: agentsData, error: agentsError } = await supabaseAdmin
         .from('agents')
-        .select('id, full_name, mobile_number, email')
+        .select('id, first_name, last_name, cell_phone, email')
         .order('created_at', { ascending: false });
 
       if (agentsError) {
@@ -82,8 +82,8 @@ export default function CommissionsPage() {
         };
         return {
           ...commission,
-          agent_name: agent.full_name || 'Unknown',
-          agent_phone: agent.mobile_number || 'N/A',
+          agent_name: `${agent.first_name || ''} ${agent.last_name || ''}`.trim() || 'Unknown',
+          agent_phone: agent.cell_phone || 'N/A',
           agent_email: agent.email || 'N/A'
         };
       }) || [];
@@ -143,7 +143,7 @@ export default function CommissionsPage() {
         .from('transactions')
         .select(`
           *,
-          members(full_name, phone),
+          members(first_name, last_name, cell_phone),
           partners(shop_name)
         `)
         .eq('agent_id', commission.agent_id)
@@ -430,7 +430,7 @@ export default function CommissionsPage() {
                               <tr key={transaction.id} className="hover:bg-gray-50">
                                 <td className="px-4 py-3 text-sm text-gray-600">{new Date(transaction.created_at).toLocaleDateString()}</td>
                                 <td className="px-4 py-3 text-sm text-gray-600">{transaction.transaction_time || new Date(transaction.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                                <td className="px-4 py-3 text-sm text-gray-900">{transaction.members?.full_name || 'Unknown'}</td>
+                                <td className="px-4 py-3 text-sm text-gray-900">{`${transaction.members?.first_name || ''} ${transaction.members?.last_name || ''}`.trim() || 'Unknown'}</td>
                                 <td className="px-4 py-3 text-sm text-gray-900">{transaction.partners?.shop_name || 'Unknown'}</td>
                                 <td className="px-4 py-3 text-sm text-gray-900 font-bold">R{parseFloat(transaction.purchase_amount || 0).toFixed(2)}</td>
                                 <td className="px-4 py-3 text-sm text-[#1a558b] font-bold">R{parseFloat(transaction.agent_amount || 0).toFixed(2)}</td>

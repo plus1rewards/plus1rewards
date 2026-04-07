@@ -29,7 +29,7 @@ export default function TransactionsPage() {
         .from('transactions')
         .select(`
           *,
-          members(full_name, phone, email),
+          members(first_name, last_name, cell_phone, email),
           partners(shop_name, address, cashback_percent)
         `)
         .order('created_at', { ascending: false });
@@ -97,7 +97,8 @@ export default function TransactionsPage() {
     
     const matchesSearch = searchLower === '' || searchTerms.every(term => 
       t.id?.toLowerCase().includes(term) ||
-      t.members?.full_name?.toLowerCase().includes(term) ||
+      (t.members?.first_name || '')?.toLowerCase().includes(term) ||
+      (t.members?.last_name || '')?.toLowerCase().includes(term) ||
       t.partners?.shop_name?.toLowerCase().includes(term) ||
       t.purchase_amount?.toString().includes(term) ||
       t.status?.toLowerCase().includes(term)
@@ -244,8 +245,8 @@ export default function TransactionsPage() {
                       <tr key={tx.id} className="hover:bg-gray-50 transition-colors group">
                         <td className="px-6 py-4"><span className="text-xs font-mono font-bold text-[#1a558b] px-2 py-1 bg-[#1a558b]/10 rounded">{tx.id.substring(0, 8).toUpperCase()}</span></td>
                         <td className="px-6 py-4">
-                          <div className="text-sm font-semibold text-gray-900">{tx.members?.full_name || 'Unknown'}</div>
-                          <div className="text-xs text-gray-600">{tx.members?.phone || 'No phone'}</div>
+                          <div className="text-sm font-semibold text-gray-900">{tx.members ? `${tx.members.first_name || ''} ${tx.members.last_name || ''}`.trim() : 'Unknown'}</div>
+                          <div className="text-xs text-gray-600">{tx.members?.cell_phone || 'No phone'}</div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm font-semibold text-gray-900">{tx.partners?.shop_name || 'Unknown'}</div>
@@ -383,10 +384,14 @@ export default function TransactionsPage() {
                         Member Information
                       </h3>
                       <div className="space-y-2">
-                        <p className="text-sm font-bold text-gray-900">{selectedTransaction.members?.full_name || 'Unknown Member'}</p>
+                        <p className="text-sm font-bold text-gray-900">
+                          {selectedTransaction.members?.first_name && selectedTransaction.members?.last_name 
+                            ? `${selectedTransaction.members.first_name} ${selectedTransaction.members.last_name}`.trim()
+                            : 'Unknown Member'}
+                        </p>
                         <p className="text-xs text-gray-600 flex items-center gap-2">
                           <span className="material-symbols-outlined text-xs">phone</span>
-                          {selectedTransaction.members?.phone || 'N/A'}
+                          {selectedTransaction.members ? `${selectedTransaction.members.first_name || ''} ${selectedTransaction.members.last_name || ''}`.trim() : 'N/A'}
                         </p>
                         <p className="text-xs text-gray-600 flex items-center gap-2">
                           <span className="material-symbols-outlined text-xs">mail</span>

@@ -49,7 +49,7 @@ export function MemberFindPartners() {
       // Load member data
       const { data: memberData, error: memberError } = await supabase
         .from('members')
-        .select('id, full_name, phone, qr_code')
+        .select('id, first_name, last_name, phone, qr_code')
         .eq('id', session.user.id)
         .single();
       
@@ -60,7 +60,7 @@ export function MemberFindPartners() {
       if (memberData) {
         setMember({
           id: memberData.id,
-          name: memberData.full_name,
+          name: `${memberData.first_name} ${memberData.last_name}`.trim(),
           phone: memberData.phone,
           qr_code: memberData.qr_code
         });

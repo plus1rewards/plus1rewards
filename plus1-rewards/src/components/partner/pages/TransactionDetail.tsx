@@ -19,7 +19,8 @@ interface Transaction {
 
 interface Member {
   id: string;
-  full_name: string;
+  first_name: string;
+  last_name: string;
   phone: string;
 }
 
@@ -50,7 +51,7 @@ export default function TransactionDetail() {
       if (txData.member_id) {
         const { data: memberData } = await supabase
           .from('members')
-          .select('id, full_name, phone')
+          .select('id, first_name, last_name, phone')
           .eq('id', txData.member_id)
           .single();
 
@@ -136,7 +137,7 @@ export default function TransactionDetail() {
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-gray-600">Name</span>
-            <span className="font-bold text-gray-900">{member?.full_name || 'Unknown'}</span>
+            <span className="font-bold text-gray-900">{`${member?.first_name} ${member?.last_name}`.trim() || 'Unknown'}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Phone</span>

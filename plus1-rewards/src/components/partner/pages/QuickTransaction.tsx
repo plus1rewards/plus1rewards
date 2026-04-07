@@ -13,7 +13,8 @@ interface Partner {
 
 interface Member {
   id: string;
-  full_name: string;
+  first_name: string;
+  last_name: string;
   phone: string;
   status: string;
 }
@@ -81,7 +82,7 @@ export default function QuickTransaction() {
           purchase_amount,
           member_amount,
           created_at,
-          members (full_name, phone)
+          members (first_name, last_name, phone)
         `)
         .eq('partner_id', partnerId)
         .order('created_at', { ascending: false })
@@ -106,7 +107,7 @@ export default function QuickTransaction() {
     try {
       const { data, error } = await supabase
         .from('members')
-        .select('id, full_name, phone, status')
+        .select('id, first_name, last_name, phone, status')
         .eq('phone', phoneNumber)
         .single();
 
@@ -318,7 +319,7 @@ export default function QuickTransaction() {
                   <User className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">{member.full_name}</p>
+                  <p className="font-semibold text-gray-900">{`${member.first_name} ${member.last_name}`.trim()}</p>
                   <p className="text-sm text-gray-600">{member.phone}</p>
                 </div>
               </div>
@@ -380,7 +381,7 @@ export default function QuickTransaction() {
               {recentTransactions.map((tx) => (
                 <div key={tx.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                   <div>
-                    <p className="font-medium text-gray-900">{tx.members?.full_name}</p>
+                    <p className="font-medium text-gray-900">{`${tx.members?.first_name} ${tx.members?.last_name}`.trim()}</p>
                     <p className="text-sm text-gray-600">{tx.members?.phone}</p>
                     <p className="text-xs text-gray-500 mt-1">{formatDate(tx.created_at)}</p>
                   </div>

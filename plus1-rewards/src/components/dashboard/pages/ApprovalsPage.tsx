@@ -71,8 +71,9 @@ export default function ApprovalsPage() {
             agent_id,
             agents(
               id,
-              full_name,
-              mobile_number
+              first_name,
+              last_name,
+              cell_phone
             )
           )
         `)
@@ -508,7 +509,7 @@ export default function ApprovalsPage() {
                               </div>
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">Phone</p>
-                                <p className="text-sm text-gray-900">{partner.phone || 'Not provided'}</p>
+                                <p className="text-sm text-gray-900">{partner.cell_phone || 'Not provided'}</p>
                               </div>
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">Email</p>
@@ -595,11 +596,11 @@ export default function ApprovalsPage() {
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">ID Number</p>
-                                <p className="text-sm text-gray-900">{agent.id_number || 'Not provided'}</p>
+                                <p className="text-sm text-gray-900">{agent.sa_id || 'Not provided'}</p>
                               </div>
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">Phone</p>
-                                <p className="text-sm text-gray-900">{agent.mobile_number || 'Not provided'}</p>
+                                <p className="text-sm text-gray-900">{agent.cell_phone || 'Not provided'}</p>
                               </div>
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">Email</p>
@@ -715,7 +716,7 @@ export default function ApprovalsPage() {
                               </div>
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">ID Number</p>
-                                <p className="text-sm text-gray-900">{linkedPerson.id_number}</p>
+                                <p className="text-sm text-gray-900">{linkedPerson.sa_id}</p>
                               </div>
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">Requested Date</p>
@@ -944,8 +945,8 @@ export default function ApprovalsPage() {
                                 <span className="text-sm font-bold text-green-800">Agent Already Assigned</span>
                               </div>
                               <div className="text-sm text-green-700">
-                                <p><strong>Agent:</strong> {selectedItem.partner_agent_links[0].agents?.full_name || 'Unknown'}</p>
-                                <p><strong>Phone:</strong> {selectedItem.partner_agent_links[0].agents?.mobile_number || 'Not provided'}</p>
+                                <p><strong>Agent:</strong> {getOwnerName(selectedItem.partner_agent_links[0].agents)}</p>
+                                <p><strong>Phone:</strong> {selectedItem.partner_agent_links[0].agents?.cell_phone || 'Not provided'}</p>
                               </div>
                             </div>
                           ) : (
@@ -965,7 +966,7 @@ export default function ApprovalsPage() {
                                   <option value="">No agent assigned</option>
                                   {allAgents.map((agent) => (
                                     <option key={agent.id} value={agent.id}>
-                                      {agent.full_name || 'Unknown'} - {agent.mobile_number || 'No phone'}
+                                      {`${agent.first_name || ''} ${agent.last_name || ''}`.trim() || 'Unknown'} - {agent.cell_phone || 'No phone'}
                                     </option>
                                   ))}
                                 </select>
@@ -1026,15 +1027,15 @@ export default function ApprovalsPage() {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                           <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">Full Name</p>
-                            <p className="text-sm text-gray-900 font-semibold">{selectedItem.full_name || '-'}</p>
+                            <p className="text-sm text-gray-900 font-semibold">{`${selectedItem.first_name || ''} ${selectedItem.last_name || ''}`.trim() || '-'}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">ID Number</p>
-                            <p className="text-sm text-gray-900 font-semibold">{selectedItem.id_number || '-'}</p>
+                            <p className="text-sm text-gray-900 font-semibold">{selectedItem.sa_id || '-'}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">Mobile Number</p>
-                            <p className="text-sm text-gray-900 font-semibold">{selectedItem.mobile_number || '-'}</p>
+                            <p className="text-sm text-gray-900 font-semibold">{selectedItem.cell_phone || '-'}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">Email</p>

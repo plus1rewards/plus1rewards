@@ -110,12 +110,12 @@ export default function Dashboard() {
       if (agentLink) {
         const { data: agentData } = await supabase
           .from('agents')
-          .select('id, full_name, mobile_number')
+          .select('id, first_name, last_name, mobile_number')
           .eq('id', agentLink.agent_id)
           .single();
 
         if (agentData) {
-          setAssignedAgent(agentData.full_name || 'Unknown Agent');
+          setAssignedAgent(`${agentData.first_name} ${agentData.last_name}`.trim() || 'Unknown Agent');
         }
       }
 

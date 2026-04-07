@@ -8,7 +8,7 @@ interface IncompleteProfileMember {
   email?: string;
   sa_id?: string;
   city?: string;
-  suburb?: string;
+  address_line_1?: string;
   policy_progress: number;
   missing_fields: string[];
 }
@@ -29,7 +29,7 @@ export default function IncompleteProfileAlerts() {
       const { data: members } = await supabaseAdmin
         .from('members')
         .select(`
-          id, name, phone, email, sa_id, city, suburb, active_policy,
+          id, name, phone, email, sa_id, city, address_line_1, active_policy,
           wallets(rewards_total)
         `);
 
@@ -60,7 +60,7 @@ export default function IncompleteProfileAlerts() {
           if (!member.email || member.email.includes('@plus1rewards.local')) missingFields.push('Email');
           if (!member.sa_id) missingFields.push('SA ID');
           if (!member.city) missingFields.push('City');
-          if (!member.suburb) missingFields.push('Suburb');
+          if (!member.address_line_1) missingFields.push('Address Line 1');
 
           // If any fields are missing, add to alerts
           if (missingFields.length > 0) {
@@ -71,7 +71,7 @@ export default function IncompleteProfileAlerts() {
               email: member.email,
               sa_id: member.sa_id,
               city: member.city,
-              suburb: member.suburb,
+              address_line_1: member.address_line_1,
               policy_progress: Math.round(progress),
               missing_fields: missingFields
             });

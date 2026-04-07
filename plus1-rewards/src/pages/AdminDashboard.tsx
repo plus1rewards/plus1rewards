@@ -6,9 +6,10 @@ import MemberPoliciesAdmin from "../components/admin/MemberPoliciesAdmin";
 import AdminNotificationsPage from "../components/admin/AdminNotificationsPage";
 
 interface Entity {
-  id: string; name: string; email?: string; phone?: string; status: string; 
+  id: string; name?: string; email?: string; cell_phone?: string; status: string; 
   created_at: string; type: string; commission_rate?: number; total_commission?: number;
   company_name?: string; location?: string; qr_code?: string; active_policy?: string;
+  full_name?: string; provider_name?: string; first_name?: string; last_name?: string;
 }
 
 interface PolicyData {
@@ -19,7 +20,7 @@ interface PolicyData {
 interface TransactionData {
   id: string; partner_name: string; member_name: string; agent_name?: string;
   purchase_amount: number; member_reward: number; agent_commission: number;
-  platform_fee: number; status: string; created_at: string;
+  platform_fee: number; status: string; created_at: string; transaction_time?: string;
 }
 
 interface ComprehensiveStats {
@@ -38,6 +39,16 @@ interface ComprehensiveStats {
   // Operational stats
   overdueInvoices: number; pendingApprovals: number; systemHealth: number;
 }
+
+// Helper function to get full name from first_name and last_name
+const getFullName = (entity: any): string => {
+  if (entity.first_name || entity.last_name) {
+    const firstName = entity.first_name || '';
+    const lastName = entity.last_name || '';
+    return `${firstName} ${lastName}`.trim() || 'No name';
+  }
+  return entity.name || entity.full_name || 'No name';
+};
 
 export function AdminDashboard() {
   console.log('🚀 AdminDashboard component loaded!');
@@ -82,7 +93,7 @@ export function AdminDashboard() {
             member.email.includes('@plus1rewards.local') || 
             !member.sa_id;
           
-          console.log(`Member ${member.name}: incomplete=${hasIncompleteProfile}, has_policy=${!!member.active_policy}, email=${member.email}`);
+          console.log(`Member ${getFullName(member)}: incomplete=${hasIncompleteProfile}, has_policy=${!!member.active_policy}, email=${member.email}`);
           
           // Skip if profile is complete OR no active policy
           if (!hasIncompleteProfile || !member.active_policy) continue;
@@ -95,12 +106,12 @@ export function AdminDashboard() {
             .single();
           
           if (planError) {
-            console.log(`Error fetching policy plan for member ${member.name}:`, planError);
+            console.log(`Error fetching policy plan for member ${getFullName(member)}:`, planError);
             continue;
           }
           
           if (!policyPlan) {
-            console.log(`No policy plan found for member ${member.name}`);
+            console.log(`No policy plan found for member ${getFullName(member)}`);
             continue;
           }
           
@@ -111,29 +122,29 @@ export function AdminDashboard() {
             .eq('member_id', member.id);
           
           if (walletsError) {
-            console.log(`Error fetching wallets for member ${member.name}:`, walletsError);
+            console.log(`Error fetching wallets for member ${getFullName(member)}:`, walletsError);
             continue;
           }
           
           const totalRewards = (wallets || []).reduce((sum, w) => sum + (w.rewards_total || 0), 0);
           const percentComplete = (totalRewards / policyPlan.monthly_target) * 100;
           
-          console.log(`Member ${member.name}: ${percentComplete.toFixed(1)}% complete (R${totalRewards}/R${policyPlan.monthly_target})`);
+          console.log(`Member ${getFullName(member)}: ${percentComplete.toFixed(1)}% complete (R${totalRewards}/R${policyPlan.monthly_target})`);
           
           // Alert if 90% or more complete
           if (percentComplete >= 90) {
-            console.log(`⚠️ ALERT: Member ${member.name} needs profile verification!`);
+            console.log(`⚠️ ALERT: Member ${getFullName(member)} needs profile verification!`);
             membersNeedingAttention.push({
               id: member.id,
-              name: member.name,
-              phone: member.phone,
+              name: getFullName(member),
+              phone: member.cell_phone,
               percentComplete: percentComplete.toFixed(1),
               amountFunded: totalRewards,
               target: policyPlan.monthly_target
             });
           }
         } catch (memberError) {
-          console.error(`Error processing member ${member.name}:`, memberError);
+          console.error(`Error processing member ${getFullName(member)}:`, memberError);
         }
       }
       
@@ -154,28 +165,28 @@ export function AdminDashboard() {
         membersResult, shopsResult, agentsResult, providersResult,
         policiesResult, transactionsResult, invoicesResult
       ] = await Promise.all([
-        supabase.from("members").select("*").order('created_at', { ascending: false }).then(result => {
+        supabaseAdmin.from("members").select("*").order('created_at', { ascending: false }).then((result: any) => {
           if (result.error) {
             console.error('members query error:', result.error);
             return { data: [], error: null };
           }
           return result;
         }),
-        supabase.from("partners").select("*").order('created_at', { ascending: false }).then(result => {
+        supabaseAdmin.from("partners").select("*").order('created_at', { ascending: false }).then((result: any) => {
           if (result.error) {
             console.error('partners query error:', result.error);
             return { data: [], error: null };
           }
           return result;
         }),
-        supabase.from("agents").select("*").order('created_at', { ascending: false }).then(result => {
+        supabaseAdmin.from("agents").select("*").order('created_at', { ascending: false }).then((result: any) => {
           if (result.error) {
             console.error('agents query error:', result.error);
             return { data: [], error: null };
           }
           return result;
         }),
-        supabaseAdmin.from("insurers").select("*").order('created_at', { ascending: false }).then(result => {
+        supabaseAdmin.from("insurers").select("*").order('created_at', { ascending: false }).then((result: any) => {
           if (result.error) {
             console.warn('insurers query error:', result.error);
             return { data: [], error: null };
@@ -184,16 +195,16 @@ export function AdminDashboard() {
         }),
         supabaseAdmin.from("member_cover_plans").select(`
           *, cover_plans(plan_name, monthly_target_amount)
-        `).order('created_at', { ascending: false }).then(result => {
+        `).order('created_at', { ascending: false }).then((result: any) => {
           if (result.error) {
             console.warn('member_cover_plans query error:', result.error);
             return { data: [], error: null };
           }
           return result;
         }),
-        supabase.from("transactions").select(`
-          *, partners(shop_name), members(full_name), agents(full_name)
-        `).order('created_at', { ascending: false }).limit(50).then(result => {
+        supabaseAdmin.from("transactions").select(`
+          *, partners(shop_name), members(first_name, last_name), agents(first_name, last_name)
+        `).order('created_at', { ascending: false }).limit(50).then((result: any) => {
           // Handle case where transactions table has issues
           if (result.error) {
             console.warn('transactions query error:', result.error);
@@ -201,7 +212,7 @@ export function AdminDashboard() {
           }
           return result;
         }),
-        supabase.from("partner_invoices").select("*").then(result => {
+        supabaseAdmin.from("partner_invoices").select("*").then((result: any) => {
           // Handle case where monthly_invoices table doesn't exist
           if (result.error && result.error.code === 'PGRST116') {
             console.warn('monthly_invoices table does not exist yet');
@@ -221,64 +232,64 @@ export function AdminDashboard() {
 
       // Calculate comprehensive stats
       const currentMonth = new Date().toISOString().slice(0, 7);
-      const thisMonthTransactions = transactions.filter(t => t.created_at.startsWith(currentMonth));
+      const thisMonthTransactions = transactions.filter((t: any) => t.created_at.startsWith(currentMonth));
       
       const comprehensiveStats: ComprehensiveStats = {
         // Entity counts
         totalMembers: members.length,
-        activeMembers: members.filter(m => m.qr_code).length,
+        activeMembers: members.filter((m: any) => m.qr_code).length,
         totalShops: shops.length,
-        activeShops: shops.filter(s => s.status === 'active').length,
-        suspendedShops: shops.filter(s => s.status === 'suspended').length,
+        activeShops: shops.filter((s: any) => s.status === 'active').length,
+        suspendedShops: shops.filter((s: any) => s.status === 'suspended').length,
         totalAgents: agents.length,
         totalPolicyProviders: insurers.length,
         
         // Policy stats
         totalPolicies: coverPlans.length,
-        activePolicies: coverPlans.filter(p => p.status === 'active').length,
-        policiesInProgress: coverPlans.filter(p => p.status === 'in_progress').length,
-        totalPolicyValue: coverPlans.reduce((sum, p) => sum + (parseFloat(p.target_amount) || 0), 0),
-        totalFundedAmount: coverPlans.reduce((sum, p) => sum + (parseFloat(p.funded_amount) || 0), 0),
+        activePolicies: coverPlans.filter((p: any) => p.status === 'active').length,
+        policiesInProgress: coverPlans.filter((p: any) => p.status === 'in_progress').length,
+        totalPolicyValue: coverPlans.reduce((sum: number, p: any) => sum + (parseFloat(p.target_amount) || 0), 0),
+        totalFundedAmount: coverPlans.reduce((sum: number, p: any) => sum + (parseFloat(p.funded_amount) || 0), 0),
         
         // Financial stats
-        revenueThisMonth: thisMonthTransactions.reduce((sum, t) => sum + (t.platform_fee || 0), 0),
-        revenueAllTime: transactions.reduce((sum, t) => sum + (t.platform_fee || 0), 0),
+        revenueThisMonth: thisMonthTransactions.reduce((sum: number, t: any) => sum + (t.platform_fee || 0), 0),
+        revenueAllTime: transactions.reduce((sum: number, t: any) => sum + (t.platform_fee || 0), 0),
         totalTransactions: transactions.length,
-        totalRewardsIssued: transactions.reduce((sum, t) => sum + (t.member_reward || 0), 0),
-        totalAgentCommissions: transactions.reduce((sum, t) => sum + (t.agent_commission || 0), 0),
-        totalPlatformFees: transactions.reduce((sum, t) => sum + (t.platform_fee || 0), 0),
+        totalRewardsIssued: transactions.reduce((sum: number, t: any) => sum + (t.member_reward || 0), 0),
+        totalAgentCommissions: transactions.reduce((sum: number, t: any) => sum + (t.agent_commission || 0), 0),
+        totalPlatformFees: transactions.reduce((sum: number, t: any) => sum + (t.platform_fee || 0), 0),
         
         // Operational stats
-        overdueInvoices: invoices.filter(i => i.status === 'overdue').length,
-        pendingApprovals: providers.filter(p => p.status === 'pending').length + 
-                         shops.filter(s => s.status === 'pending').length,
-        systemHealth: Math.round(((shops.filter(s => s.status === 'active').length / Math.max(shops.length, 1)) * 100))
+        overdueInvoices: invoices.filter((i: any) => i.status === 'overdue').length,
+        pendingApprovals: (providersResult.data || []).filter((p: any) => p.status === 'pending').length + 
+                         (shopsResult.data || []).filter((s: any) => s.status === 'pending').length,
+        systemHealth: Math.round((((shopsResult.data || []).filter((s: any) => s.status === 'active').length / Math.max((shopsResult.data || []).length, 1)) * 100))
       };
 
       setStats(comprehensiveStats);
 
       // Set recent data for tables
-      setRecentMembers(members.slice(0, 10).map(m => ({ ...m, type: 'member' })));
-      setRecentShops(shops.slice(0, 10).map(s => ({ ...s, type: 'shop' })));
-      setRecentAgents(agents.slice(0, 10).map(a => ({ ...a, type: 'agent' })));
-      setRecentProviders(insurers.slice(0, 10).map(p => ({ ...p, type: 'insurer' })));
+      setRecentMembers((membersResult.data || []).slice(0, 10).map((m: any) => ({ ...m, type: 'member' })));
+      setRecentShops((shopsResult.data || []).slice(0, 10).map((s: any) => ({ ...s, type: 'shop' })));
+      setRecentAgents((agentsResult.data || []).slice(0, 10).map((a: any) => ({ ...a, type: 'agent' })));
+      setRecentProviders((providersResult.data || []).slice(0, 10).map((p: any) => ({ ...p, type: 'insurer' })));
       
-      setRecentPolicies(policies.slice(0, 10).map(p => ({
+      setRecentPolicies((policiesResult.data || []).slice(0, 10).map((p: any) => ({
         id: p.id,
-        member_name: p.members?.name || 'Unknown',
-        plan_name: p.policy_plans?.name || 'Unknown Plan',
-        provider_name: p.policy_providers?.name || 'Unknown Provider',
+        member_name: p.members?.first_name || 'Unknown',
+        plan_name: p.cover_plans?.plan_name || 'Unknown Plan',
+        provider_name: p.insurers?.provider_name || 'Unknown Provider',
         status: p.status,
         monthly_premium: p.monthly_premium || 0,
         amount_funded: p.amount_funded || 0,
         start_date: p.start_date
       })));
 
-      setRecentTransactions(transactions.slice(0, 20).map(t => ({
+      setRecentTransactions(transactions.slice(0, 20).map((t: any) => ({
         id: t.id,
-        partner_name: t.partners?.name || 'Unknown Partner',
-        member_name: t.members?.name || 'Unknown Member',
-        agent_name: t.agents?.name,
+        partner_name: t.partners?.shop_name || 'Unknown Partner',
+        member_name: t.members ? `${t.members.first_name || ''} ${t.members.last_name || ''}`.trim() || 'Unknown Member' : 'Unknown Member',
+        agent_name: t.agents ? `${t.agents.first_name || ''} ${t.agents.last_name || ''}`.trim() : undefined,
         purchase_amount: t.purchase_amount || 0,
         member_reward: t.member_reward || 0,
         agent_commission: t.agent_commission || 0,
@@ -580,7 +591,7 @@ export function AdminDashboard() {
                     {recentMembers.map(member => (
                       <tr key={member.id}>
                         <td>
-                          <div style={{ fontWeight: 600 }}>{member.name}</div>
+                          <div style={{ fontWeight: 600 }}>{getFullName(member)}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--gray-text)' }}>
                             ID: {member.id.slice(0, 8)}...
                           </div>
@@ -588,7 +599,7 @@ export function AdminDashboard() {
                         <td>
                           <div>{member.email || 'No email'}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--gray-text)' }}>
-                            {member.phone || 'No phone'}
+                            {member.cell_phone || 'No phone'}
                           </div>
                         </td>
                         <td>
@@ -673,7 +684,7 @@ export function AdminDashboard() {
                         <td>
                           <div>{shop.email || 'No email'}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--gray-text)' }}>
-                            {shop.phone}
+                            {shop.cell_phone}
                           </div>
                         </td>
                         <td style={{ fontWeight: 600, color: 'var(--green-dark)' }}>
@@ -764,7 +775,7 @@ export function AdminDashboard() {
                         <td>
                           <div>{agent.email || 'No email'}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--gray-text)' }}>
-                            {agent.phone}
+                            {agent.cell_phone}
                           </div>
                         </td>
                         <td>
@@ -880,7 +891,7 @@ export function AdminDashboard() {
                         <td>
                           <div>{provider.email}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--gray-text)' }}>
-                            {provider.phone || provider.mobile_number || 'No phone'}
+                            {provider.cell_phone || 'No phone'}
                           </div>
                         </td>
                         <td style={{ fontWeight: 600, color: 'var(--green-dark)' }}>

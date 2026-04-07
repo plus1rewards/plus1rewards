@@ -482,7 +482,7 @@ export default function InvoicesPage() {
                 </div>
                 <div className="bg-white border border-gray-200 rounded-lg p-4">
                   <p className="text-xs text-gray-600 uppercase font-bold mb-1">Contact Phone</p>
-                  <p className="text-sm text-gray-900">{selectedInvoice.partners?.phone || 'Not provided'}</p>
+                  <p className="text-sm text-gray-900">{selectedInvoice.partners?.cell_phone || 'Not provided'}</p>
                 </div>
                 <div className="bg-white border border-gray-200 rounded-lg p-4 md:col-span-2">
                   <p className="text-xs text-gray-600 uppercase font-bold mb-1">Email</p>

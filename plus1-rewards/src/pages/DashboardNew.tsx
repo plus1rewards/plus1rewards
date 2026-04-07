@@ -18,7 +18,7 @@ interface Member {
   status: string;
   sa_id?: string;
   date_of_birth?: string;
-  suburb?: string;
+  address_line_1?: string;
   city?: string;
   postal_code?: string;
 }
@@ -32,6 +32,7 @@ interface MemberCoverPlan {
   status: string;
   active_from: string | null;
   active_to: string | null;
+  plan_changes_count: number;
   cover_plans: {
     plan_name: string;
   };
@@ -75,7 +76,8 @@ const DashboardNew: React.FC = () => {
   const [loading, setLoading] = useState(true);
   
   // State for form inputs
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [email, setEmail] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
@@ -85,6 +87,7 @@ const DashboardNew: React.FC = () => {
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [showPlanSelection, setShowPlanSelection] = useState(false);
   const [canChangePlan, setCanChangePlan] = useState(true);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
 
   // Debug: Log when showProfileIncomplete changes
@@ -132,7 +135,7 @@ const DashboardNew: React.FC = () => {
       // Fetch member data
       const { data: memberData, error: memberError } = await supabase
         .from('members')
-        .select('id, full_name, cell_phone, email, qr_code, status, sa_id, suburb, city, postal_code')
+        .select('id, first_name, last_name, cell_phone, email, qr_code, status, sa_id, address_line_1, city, postal_code')
         .eq('id', sessionMemberData.id)
         .single();
 
@@ -144,18 +147,19 @@ const DashboardNew: React.FC = () => {
 
       setMember({
         id: memberData.id,
-        name: memberData.full_name,
+        name: `${memberData.first_name || ''} ${memberData.last_name || ''}`.trim(),
         phone: memberData.cell_phone,
         email: memberData.email,
         qr_code: memberData.qr_code,
         status: memberData.status,
         sa_id: memberData.sa_id,
-        suburb: memberData.suburb,
+        address_line_1: memberData.address_line_1,
         city: memberData.city,
         postal_code: memberData.postal_code
       });
       
-      setFullName(memberData.full_name);
+      setFirstName(memberData.first_name || '');
+      setLastName(memberData.last_name || '');
       setContactNumber(memberData.cell_phone);
       setEmail(memberData.email || '');
 
@@ -281,7 +285,7 @@ const DashboardNew: React.FC = () => {
 
   // Check profile completeness when plan reaches 90%+
   useEffect(() => {
-    if (!member || !mainCoverPlan) return;
+    if (!member || !mainCoverPlan || isEditingProfile) return;
 
     const checkProfileCompleteness = async () => {
       const missing: string[] = [];
@@ -291,8 +295,8 @@ const DashboardNew: React.FC = () => {
       if (!member.sa_id) {
         missing.push('SA ID Number');
       }
-      if (!member.suburb) {
-        missing.push('Suburb');
+      if (!member.address_line_1) {
+        missing.push('Address Line 1');
       }
 
       const isProfileIncomplete = missing.length > 0;
@@ -304,7 +308,7 @@ const DashboardNew: React.FC = () => {
         missing,
         email: member.email,
         sa_id: member.sa_id,
-        suburb: member.suburb,
+        address_line_1: member.address_line_1,
         shouldShow: isProfileIncomplete && progressPercent >= 90
       });
 
@@ -491,7 +495,7 @@ const DashboardNew: React.FC = () => {
     };
 
     checkProfileCompleteness();
-  }, [member, mainCoverPlan, progressPercent]);
+  }, [member, mainCoverPlan, progressPercent, isEditingProfile]);
 
   const handleUpgrade = async () => {
     if (!mainCoverPlan) return;
@@ -592,14 +596,17 @@ const DashboardNew: React.FC = () => {
     if (!member) return;
 
     try {
+      setIsEditingProfile(true);
+
       const { error } = await supabase
         .from('members')
         .update({
-          full_name: fullName,
+          first_name: firstName,
+          last_name: lastName,
           cell_phone: contactNumber,
           email: email,
           sa_id: member.sa_id,
-          suburb: member.suburb,
+          address_line_1: member.address_line_1,
           city: member.city,
           postal_code: member.postal_code
         })
@@ -607,17 +614,28 @@ const DashboardNew: React.FC = () => {
 
       if (error) throw error;
 
+      // Close the profile incomplete modal after successful save
+      setShowProfileIncomplete(false);
+      setIsEditingProfile(false);
+
       showSuccess('Profile Updated', 'Profile updated successfully!', 3000);
       loadDashboardData();
     } catch (error) {
       console.error('Error updating profile:', error);
+      setIsEditingProfile(false);
       showError('Update Failed', 'Failed to update profile. Please try again.', 3000);
     }
   };
 
+  const handleInputFocus = () => {
+    setIsEditingProfile(true);
+    setShowProfileIncomplete(false);
+  };
+
   const handleDiscardChanges = () => {
     if (member) {
-      setFullName(member.name);
+      setFirstName(member.name.split(' ')[0] || '');
+      setLastName(member.name.split(' ').slice(1).join(' ') || '');
       setContactNumber(member.phone);
       setEmail(member.email || '');
     }
@@ -805,15 +823,6 @@ const DashboardNew: React.FC = () => {
                   View All<br />Plans
                 </span>
               </button>
-              <button 
-                onClick={() => navigate('/member/cover-plans?tab=notifications')}
-                className="!bg-purple-600 !text-white p-4 rounded-lg text-left hover:scale-[0.98] transition-all flex flex-col justify-between min-h-[120px]"
-              >
-                <span className="material-symbols-outlined text-2xl !text-white">notifications</span>
-                <span className="font-bold text-sm leading-tight !text-white">
-                  Notifications
-                </span>
-              </button>
             </div>
 
 
@@ -952,14 +961,6 @@ const DashboardNew: React.FC = () => {
                 <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-center text-gray-900">Top Up</span>
               </button>
               <button 
-                onClick={() => navigate('/member/linked-people')}
-                className="bg-blue-50 p-4 rounded-lg flex flex-col items-center justify-center gap-2 hover:bg-blue-100 transition-colors group border border-blue-100">
-                <span className="material-symbols-outlined text-blue-600 group-hover:scale-110 transition-transform">
-                  group
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-center text-gray-900">Linked People</span>
-              </button>
-              <button 
                 onClick={() => navigate('/member/support')}
                 className="bg-blue-50 p-4 rounded-lg flex flex-col items-center justify-center gap-2 hover:bg-blue-100 transition-colors group border border-blue-100">
                 <span className="material-symbols-outlined text-blue-600 group-hover:scale-110 transition-transform">
@@ -976,12 +977,6 @@ const DashboardNew: React.FC = () => {
                   <h3 className="text-sm font-bold uppercase tracking-[0.1em] text-gray-500">
                     Linked People & Dependants
                   </h3>
-                  <button 
-                    onClick={() => navigate('/member/linked-people')}
-                    className="text-blue-600 text-xs font-bold hover:underline"
-                  >
-                    View All
-                  </button>
                 </div>
                 <div className="space-y-3">
                   {linkedPeople.map((person) => {
@@ -1061,13 +1056,26 @@ const DashboardNew: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-gray-600 uppercase tracking-[0.05em] block">
-                    Full Name
+                    First Name
                   </label>
                   <input
                     className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
                     type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    value={firstName}
+                    onFocus={handleInputFocus}
+                    onChange={(e) => setFirstName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-600 uppercase tracking-[0.05em] block">
+                    Last Name
+                  </label>
+                  <input
+                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                    type="text"
+                    value={lastName}
+                    onFocus={handleInputFocus}
+                    onChange={(e) => setLastName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1">
@@ -1078,6 +1086,7 @@ const DashboardNew: React.FC = () => {
                     className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
                     type="text"
                     value={contactNumber}
+                    onFocus={handleInputFocus}
                     onChange={(e) => setContactNumber(e.target.value)}
                   />
                 </div>
@@ -1089,6 +1098,7 @@ const DashboardNew: React.FC = () => {
                     className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
                     type="email"
                     value={email}
+                    onFocus={handleInputFocus}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
@@ -1101,19 +1111,21 @@ const DashboardNew: React.FC = () => {
                     type="text"
                     placeholder="Enter your SA ID number"
                     value={member?.sa_id || ''}
+                    onFocus={handleInputFocus}
                     onChange={(e) => setMember(prev => prev ? {...prev, sa_id: e.target.value} : null)}
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-gray-600 uppercase tracking-[0.05em] block">
-                    Suburb
+                    Address Line 1
                   </label>
                   <input
                     className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
                     type="text"
-                    placeholder="Enter your suburb"
-                    value={member?.suburb || ''}
-                    onChange={(e) => setMember(prev => prev ? {...prev, suburb: e.target.value} : null)}
+                    placeholder="Enter your address line 1"
+                    value={member?.address_line_1 || ''}
+                    onFocus={handleInputFocus}
+                    onChange={(e) => setMember(prev => prev ? {...prev, address_line_1: e.target.value} : null)}
                   />
                 </div>
                 <div className="space-y-1">
@@ -1125,6 +1137,7 @@ const DashboardNew: React.FC = () => {
                     type="text"
                     placeholder="Enter your city"
                     value={member?.city || ''}
+                    onFocus={handleInputFocus}
                     onChange={(e) => setMember(prev => prev ? {...prev, city: e.target.value} : null)}
                   />
                 </div>
@@ -1137,6 +1150,7 @@ const DashboardNew: React.FC = () => {
                     type="text"
                     placeholder="Enter your postal code"
                     value={member?.postal_code || ''}
+                    onFocus={handleInputFocus}
                     onChange={(e) => setMember(prev => prev ? {...prev, postal_code: e.target.value} : null)}
                   />
                 </div>

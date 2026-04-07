@@ -90,8 +90,8 @@ export default function ExportsPage() {
         const linkedCount = (mp.linked_people || []).length;
         
         return [
-          mp.members?.name || 'Unknown',
-          mp.members?.phone || '',
+          mp.members?.first_name && mp.members?.last_name ? `${mp.members.first_name} ${mp.members.last_name}` : 'Unknown',
+          mp.members?.cell_phone || '',
           mp.members?.email || '',
           mp.cover_plans?.plan_name || 'Unknown',
           `R${parseFloat(mp.cover_plans?.monthly_target_amount || 0).toFixed(2)}`,

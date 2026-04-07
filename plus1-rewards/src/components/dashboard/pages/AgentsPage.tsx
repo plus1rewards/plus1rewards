@@ -40,14 +40,56 @@ export default function AgentsPage() {
       const verified = agentsData?.filter(a => a.status === 'active').length || 0;
       const pending = agentsData?.filter(a => a.status === 'pending').length || 0;
       
-      // Get commission totals from agent_commissions table
-      const { data: commissionsData } = await supabaseAdmin
-        .from('agent_commissions')
-        .select('total_amount');
-      const commissions = commissionsData?.reduce((sum, c) => sum + (parseFloat(c.total_amount) || 0), 0) || 0;
+      // Get commission totals from transactions table
+      const { data: transactionsData } = await supabaseAdmin
+        .from('transactions')
+        .select('agent_amount')
+        .eq('status', 'completed');
+      const commissions = transactionsData?.reduce((sum, t) => sum + (parseFloat(t.agent_amount) || 0), 0) || 0;
+      
+      // Calculate per-agent commissions and signed partners
+      const agentsWithCommissions = await Promise.all((agentsData || []).map(async (agent) => {
+        try {
+          const { data: agentTransactions } = await supabaseAdmin
+            .from('transactions')
+            .select('agent_amount')
+            .eq('agent_id', agent.id)
+            .eq('status', 'completed');
+          
+          const agentCommission = agentTransactions?.reduce((sum, t) => sum + (parseFloat(t.agent_amount) || 0), 0) || 0;
+          
+          // Get count of active partner links
+          const { data: partnerLinks, error: linksError } = await supabaseAdmin
+            .from('partner_agent_links')
+            .select('id')
+            .eq('agent_id', agent.id)
+            .eq('status', 'active');
+          
+          if (linksError) {
+            console.error(`Error fetching partner links for agent ${agent.id}:`, linksError);
+          }
+          
+          const signedPartners = partnerLinks?.length || 0;
+          
+          console.log(`Agent ${agent.id}: ${signedPartners} signed partners, R${agentCommission.toFixed(2)} commission`);
+          
+          return {
+            ...agent,
+            commission: agentCommission,
+            signedPartners: signedPartners
+          };
+        } catch (error) {
+          console.error(`Error processing agent ${agent.id}:`, error);
+          return {
+            ...agent,
+            commission: 0,
+            signedPartners: 0
+          };
+        }
+      }));
       
       setStats({ totalAgents, verified, pending, sales: 0, commissions });
-      setAgents(agentsData || []);
+      setAgents(agentsWithCommissions);
     } catch (error) {
       console.error('Error fetching agents:', error);
       setAgents([]);
@@ -178,11 +220,12 @@ export default function AgentsPage() {
     const searchTerms = searchLower.split(/\s+/);
     
     const matchesSearch = searchLower === '' || searchTerms.every(term => 
-      a.full_name?.toLowerCase().includes(term) ||
+      a.first_name?.toLowerCase().includes(term) ||
+      a.last_name?.toLowerCase().includes(term) ||
       a.email?.toLowerCase().includes(term) ||
-      a.mobile_number?.includes(term) ||
+      a.cell_phone?.includes(term) ||
       a.id?.toLowerCase().includes(term) ||
-      a.id_number?.includes(term)
+      a.sa_id?.includes(term)
     );
 
     // Filters
@@ -311,7 +354,7 @@ export default function AgentsPage() {
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Agent ID</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Name</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Status</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600 font-center">Sales</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600 font-center">Partners Signed</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600 font-center">Commission</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600 text-center">Actions</th>
                   </tr>
@@ -327,8 +370,8 @@ export default function AgentsPage() {
                         <td className="px-6 py-4"><span className="text-xs font-mono font-bold text-[#1a558b] px-2 py-1 bg-[#1a558b]/10 rounded">{agent.id.substring(0, 8).toUpperCase()}</span></td>
                         <td className="px-6 py-4">
                           <div>
-                            <span className="text-sm font-semibold text-gray-900">{agent.full_name || 'No name'}</span>
-                            <div className="text-xs text-gray-600">{agent.mobile_number || 'No phone'}</div>
+                            <span className="text-sm font-semibold text-gray-900">{`${agent.first_name || ''} ${agent.last_name || ''}`.trim() || 'No name'}</span>
+                            <div className="text-xs text-gray-600">{agent.cell_phone || 'No phone'}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -350,8 +393,8 @@ export default function AgentsPage() {
                             {agent.status === 'pending' && agent.agreement_file ? 'Digitally Signed' : agent.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center"><span className="text-sm font-bold text-gray-900">0</span></td>
-                        <td className="px-6 py-4 text-center"><span className="text-sm font-bold text-gray-900">R0.00</span></td>
+                        <td className="px-6 py-4 text-center"><span className="text-sm font-bold text-gray-900">{agent.signedPartners ?? 0}</span></td>
+                        <td className="px-6 py-4 text-center"><span className="text-sm font-bold text-gray-900">R{(agent.commission || 0).toFixed(2)}</span></td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-center gap-2">
                             <button 
@@ -415,7 +458,7 @@ export default function AgentsPage() {
           {/* Modal Header */}
           <div className="border-b border-gray-200 px-8 py-6 flex items-center justify-between flex-shrink-0">
             <div>
-              <h2 className="text-2xl font-black text-gray-900">{selectedAgent.full_name || 'Agent Details'}</h2>
+              <h2 className="text-2xl font-black text-gray-900">{`${selectedAgent.first_name || ''} ${selectedAgent.last_name || ''}`.trim() || 'Agent Details'}</h2>
               <p className="text-sm text-gray-600 mt-1">Complete Agent Information</p>
             </div>
             <button
@@ -447,11 +490,11 @@ export default function AgentsPage() {
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Full Name</p>
-                      <p className="text-sm text-gray-900 font-semibold">{selectedAgent.full_name || 'N/A'}</p>
+                      <p className="text-sm text-gray-900 font-semibold">{`${selectedAgent.first_name || ''} ${selectedAgent.last_name || ''}`.trim() || 'N/A'}</p>
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Mobile Number</p>
-                      <p className="text-sm text-gray-900">{selectedAgent.mobile_number || 'N/A'}</p>
+                      <p className="text-sm text-gray-900">{selectedAgent.cell_phone || 'N/A'}</p>
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Email</p>
@@ -459,7 +502,7 @@ export default function AgentsPage() {
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">ID Number</p>
-                      <p className="text-sm text-gray-900">{selectedAgent.id_number || 'N/A'}</p>
+                      <p className="text-sm text-gray-900">{selectedAgent.sa_id || 'N/A'}</p>
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Status</p>
@@ -572,7 +615,7 @@ export default function AgentsPage() {
                           {agentDetails.partners.map((link: any) => (
                             <tr key={link.id} className="hover:bg-gray-50">
                               <td className="px-4 py-3 text-sm text-gray-900">{link.partners?.shop_name || 'Unknown'}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{link.partners?.phone || 'N/A'}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{link.partners?.cell_phone || 'N/A'}</td>
                               <td className="px-4 py-3">
                                 <span className={`px-2 py-1 rounded-full text-xs font-bold ${
                                   link.partners?.status === 'active' ? 'bg-green-500/20 text-green-700' : 'bg-gray-500/20 text-gray-700'

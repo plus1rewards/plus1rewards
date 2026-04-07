@@ -18,7 +18,8 @@ export default function MemberRegister() {
   const [error, setError] = useState('');
   const { notification, showSuccess, showError, hideNotification } = useNotification();
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     phone: '',
     dateOfBirth: '',
     pin: '',
@@ -108,7 +109,8 @@ export default function MemberRegister() {
       const { data: memberData, error: memberError } = await supabase
         .from('members')
         .insert({
-          full_name: formData.name,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
           cell_phone: phoneDigits,
           email: `${phoneDigits}@plus1rewards.local`,
           date_of_birth: formData.dateOfBirth,
@@ -180,18 +182,32 @@ export default function MemberRegister() {
         <AuthError message={error} />
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <AuthInput
-            label="Full Name"
-            icon="person"
-            id="name"
-            name="name"
-            type="text"
-            placeholder="Sarah Dlamini"
-            value={formData.name}
-            onChange={handleInputChange}
-            autoComplete="name"
-            required
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <AuthInput
+              label="First Name"
+              icon="person"
+              id="firstName"
+              name="firstName"
+              type="text"
+              placeholder="Sarah"
+              value={formData.firstName}
+              onChange={handleInputChange}
+              autoComplete="given-name"
+              required
+            />
+            <AuthInput
+              label="Last Name"
+              icon="person"
+              id="lastName"
+              name="lastName"
+              type="text"
+              placeholder="Dlamini"
+              value={formData.lastName}
+              onChange={handleInputChange}
+              autoComplete="family-name"
+              required
+            />
+          </div>
           <AuthInput
             label="Cell Phone Number (10 digits)"
             icon="phone"

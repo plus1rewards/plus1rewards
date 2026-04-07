@@ -40,7 +40,8 @@ export default function PartnerRegister() {
     address: '',
     postalCode: '',
     category: '',
-    responsiblePerson: '',
+    responsiblePersonFirstName: '',
+    responsiblePersonLastName: '',
     mobileNumber: '',
     email: '',
     cashbackPercent: 3,
@@ -75,8 +76,12 @@ export default function PartnerRegister() {
       setError('Please select a category');
       return false;
     }
-    if (!formData.responsiblePerson.trim()) {
-      setError('Responsible person name is required');
+    if (!formData.responsiblePersonFirstName.trim()) {
+      setError('Responsible person first name is required');
+      return false;
+    }
+    if (!formData.responsiblePersonLastName.trim()) {
+      setError('Responsible person last name is required');
       return false;
     }
     return true;
@@ -254,12 +259,12 @@ export default function PartnerRegister() {
           phone: cleanPhone,
           email: formData.email,
           cashback_percent: cashbackPercent,
-          responsible_person: formData.responsiblePerson,
+          first_name: formData.responsiblePersonFirstName,
+          last_name: formData.responsiblePersonLastName,
           status: 'pending',
           signature_url: uploadError ? null : signatureFileName,
           suppliers: [],
           pin_code: formData.pin,
-          full_name: formData.responsiblePerson,
           mobile_number: cleanPhone,
           role: 'partner',
           kyc_status: 'pending'
@@ -361,7 +366,7 @@ export default function PartnerRegister() {
                 onChange={handleInputChange}
                 required
               />
-              <p className="text-xs text-gray-500 -mt-2 mb-2">Format: Street Number, Street Name, Suburb, City, Province</p>
+              <p className="text-xs text-gray-500 -mt-2 mb-2">Format: Street Number, Street Name, Address Line 1, City, Province</p>
 
               <AuthInput
                 label="Postal Code"
@@ -406,17 +411,30 @@ export default function PartnerRegister() {
                 </select>
               </div>
 
-              <AuthInput
-                label="Responsible Person"
-                icon="person"
-                id="responsiblePerson"
-                name="responsiblePerson"
-                type="text"
-                placeholder="John Doe"
-                value={formData.responsiblePerson}
-                onChange={handleInputChange}
-                required
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <AuthInput
+                  label="First Name"
+                  icon="person"
+                  id="responsiblePersonFirstName"
+                  name="responsiblePersonFirstName"
+                  type="text"
+                  placeholder="John"
+                  value={formData.responsiblePersonFirstName}
+                  onChange={handleInputChange}
+                  required
+                />
+                <AuthInput
+                  label="Last Name"
+                  icon="person"
+                  id="responsiblePersonLastName"
+                  name="responsiblePersonLastName"
+                  type="text"
+                  placeholder="Doe"
+                  value={formData.responsiblePersonLastName}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
 
               <AuthButton type="button" onClick={handleNext} loading={isSubmitting} loadingText="Checking...">
                 Next Step →

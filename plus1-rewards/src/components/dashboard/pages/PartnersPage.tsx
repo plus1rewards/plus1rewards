@@ -5,6 +5,16 @@ import DashboardLayout from '../DashboardLayout';
 import StatCard from '../components/StatCard';
 import { supabaseAdmin } from '../../../lib/supabase';
 
+// Helper function to get owner name from first_name and last_name or responsible_person
+const getOwnerName = (partner: any): string => {
+  if (partner.first_name || partner.last_name) {
+    const firstName = partner.first_name || '';
+    const lastName = partner.last_name || '';
+    return `${firstName} ${lastName}`.trim() || 'Not provided';
+  }
+  return partner.responsible_person || 'Not provided';
+};
+
 export default function PartnersPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -120,21 +130,38 @@ export default function PartnersPage() {
   const fetchPartnerDetails = async (partnerId: string) => {
     setDetailsLoading(true);
     try {
-      const { data: partner } = await supabaseAdmin
+      const { data: partner, error: partnerError } = await supabaseAdmin
         .from('partners')
         .select(`
           *,
           partner_agent_links(
             agent_id,
             agents(
-              full_name,
-              mobile_number,
+              first_name,
+              last_name,
+              cell_phone,
               email
             )
           )
         `)
         .eq('id', partnerId)
         .single();
+
+      if (partnerError) {
+        console.error('Error fetching partner:', partnerError);
+        setPartnerDetails(null);
+        setDetailsLoading(false);
+        return;
+      }
+
+      if (!partner) {
+        console.error('No partner found with ID:', partnerId);
+        setPartnerDetails(null);
+        setDetailsLoading(false);
+        return;
+      }
+
+      console.log('Partner data fetched:', partner);
 
       // Generate public URL for signature if it exists
       let signaturePublicUrl = null;
@@ -161,10 +188,7 @@ export default function PartnersPage() {
       console.log('Fetching transactions for partner ID:', partnerId);
       const { data: transactions, error: transError } = await supabaseAdmin
         .from('transactions')
-        .select(`
-          *,
-          members(full_name, cell_phone, phone)
-        `)
+        .select('*')
         .eq('partner_id', partnerId)
         .order('created_at', { ascending: false })
         .limit(20);
@@ -173,6 +197,24 @@ export default function PartnersPage() {
       console.log('Number of transactions found:', transactions?.length || 0);
       if (transactions && transactions.length > 0) {
         console.log('First transaction:', transactions[0]);
+      }
+
+      // Fetch member details for transactions if we have transactions
+      let transactionsWithMembers = transactions || [];
+      if (transactions && transactions.length > 0) {
+        const memberIds = [...new Set(transactions.map(t => t.member_id).filter(Boolean))];
+        if (memberIds.length > 0) {
+          const { data: membersData } = await supabaseAdmin
+            .from('members')
+            .select('id, first_name, last_name, cell_phone')
+            .in('id', memberIds);
+          
+          const membersMap = new Map(membersData?.map(m => [m.id, m]) || []);
+          transactionsWithMembers = transactions.map(t => ({
+            ...t,
+            members: membersMap.get(t.member_id) || null
+          }));
+        }
       }
 
       const { data: invoices } = await supabaseAdmin
@@ -186,12 +228,13 @@ export default function PartnersPage() {
           ...partner,
           signature_public_url: signaturePublicUrl
         },
-        transactions: transactions || [],
+        transactions: transactionsWithMembers,
         invoices: invoices || [],
         assignedAgent: partner?.partner_agent_links?.[0]?.agents || null
       });
     } catch (error) {
       console.error('Error fetching partner details:', error);
+      setPartnerDetails(null);
     } finally {
       setDetailsLoading(false);
     }
@@ -215,12 +258,12 @@ export default function PartnersPage() {
     
     const matchesSearch = searchLower === '' || searchTerms.every(term => 
       s.shop_name?.toLowerCase().includes(term) ||
-      s.phone?.includes(term) ||
+      s.cell_phone?.includes(term) ||
       s.email?.toLowerCase().includes(term) ||
       s.id?.toLowerCase().includes(term) ||
       s.address?.toLowerCase().includes(term) ||
       s.category?.toLowerCase().includes(term) ||
-      s.responsible_person?.toLowerCase().includes(term)
+      getOwnerName(s).toLowerCase().includes(term)
     );
 
     // Filters
@@ -238,7 +281,7 @@ export default function PartnersPage() {
       ...partners.map(s => [
         s.id,
         s.shop_name,
-        s.phone || '',
+        s.cell_phone || '',
         s.email || '',
         s.cashback_percent || '',
         s.status,
@@ -421,7 +464,7 @@ export default function PartnersPage() {
                     <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5">Location Search</label>
                     <input 
                       type="text"
-                      placeholder="City, suburb or address..."
+                      placeholder="City, address line 1 or address..."
                       value={filters.location}
                       onChange={(e) => setFilters({...filters, location: e.target.value})}
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:ring-1 focus:ring-[#1a558b] outline-none"
@@ -475,7 +518,7 @@ export default function PartnersPage() {
                             </div>
                           </td>
                           <td className="px-4 py-4">
-                            <div className="text-xs text-gray-700">{partner.phone || 'No phone'}</div>
+                            <div className="text-xs text-gray-700">{partner.cell_phone || 'No phone'}</div>
                             <div className="text-[10px] text-gray-600">{partner.email || 'No email'}</div>
                           </td>
                           <td className="px-4 py-4">
@@ -485,7 +528,7 @@ export default function PartnersPage() {
                             <div className="text-xs text-gray-700">{partner.postal_code || '-'}</div>
                           </td>
                           <td className="px-4 py-4">
-                            <div className="text-xs text-gray-700">{partner.responsible_person || '-'}</div>
+                            <div className="text-xs text-gray-700">{getOwnerName(partner)}</div>
                           </td>
                           <td className="px-4 py-4">
                             <span className="text-sm font-bold text-[#1a558b]">{partner.cashback_percent || 0}%</span>
@@ -674,11 +717,11 @@ export default function PartnersPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div className="bg-white border border-gray-200 rounded-lg p-4">
                         <p className="text-xs text-gray-600 uppercase font-bold mb-1">Agent Name</p>
-                        <p className="text-sm text-gray-900 font-semibold">{partnerDetails.assignedAgent.full_name || 'Not provided'}</p>
+                        <p className="text-sm text-gray-900 font-semibold">{getOwnerName(partnerDetails.assignedAgent)}</p>
                       </div>
                       <div className="bg-white border border-gray-200 rounded-lg p-4">
                         <p className="text-xs text-gray-600 uppercase font-bold mb-1">Mobile Number</p>
-                        <p className="text-sm text-gray-900">{partnerDetails.assignedAgent.mobile_number || 'Not provided'}</p>
+                        <p className="text-sm text-gray-900">{partnerDetails.assignedAgent.cell_phone || 'Not provided'}</p>
                       </div>
                       <div className="bg-white border border-gray-200 rounded-lg p-4">
                         <p className="text-xs text-gray-600 uppercase font-bold mb-1">Email Address</p>
@@ -701,7 +744,7 @@ export default function PartnersPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Phone Number</p>
-                      <p className="text-sm text-gray-900">{partnerDetails.partner.phone || 'Not provided'}</p>
+                      <p className="text-sm text-gray-900">{partnerDetails.partner.cell_phone || 'Not provided'}</p>
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Email Address</p>
@@ -727,11 +770,11 @@ export default function PartnersPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Owner Name</p>
-                      <p className="text-sm text-gray-900">{partnerDetails.partner.responsible_person || 'Not provided'}</p>
+                      <p className="text-sm text-gray-900">{getOwnerName(partnerDetails.partner)}</p>
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Owner Phone</p>
-                      <p className="text-sm text-gray-900">{partnerDetails.partner.phone || 'Not provided'}</p>
+                      <p className="text-sm text-gray-900">{partnerDetails.partner.cell_phone || 'Not provided'}</p>
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-4 md:col-span-2">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Owner Email</p>
@@ -866,7 +909,7 @@ export default function PartnersPage() {
                             </div>
                             <div>
                               <p className="text-[10px] text-gray-500 uppercase font-bold">Phone</p>
-                              <p className="text-sm text-gray-900">{supplier.phone || 'Not provided'}</p>
+                              <p className="text-sm text-gray-900">{supplier.cell_phone || 'Not provided'}</p>
                             </div>
                             <div>
                               <p className="text-[10px] text-gray-500 uppercase font-bold">Email</p>
@@ -912,8 +955,8 @@ export default function PartnersPage() {
                                 <td className="px-4 py-3 text-sm text-gray-600">{new Date(transaction.created_at).toLocaleDateString()}</td>
                                 <td className="px-4 py-3 text-sm text-gray-600">{transaction.transaction_time || new Date(transaction.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                                 <td className="px-4 py-3">
-                                  <div className="text-sm text-gray-900 font-semibold">{transaction.members?.full_name || 'Unknown'}</div>
-                                  <div className="text-xs text-gray-500">{transaction.members?.cell_phone || transaction.members?.phone || 'No phone'}</div>
+                                  <div className="text-sm text-gray-900 font-semibold">{transaction.members ? `${transaction.members.first_name || ''} ${transaction.members.last_name || ''}`.trim() : 'Unknown'}</div>
+                                  <div className="text-xs text-gray-500">{transaction.members?.cell_phone || 'No phone'}</div>
                                 </td>
                                 <td className="px-4 py-3 text-sm text-gray-900 font-bold">R{parseFloat(transaction.purchase_amount || 0).toFixed(2)}</td>
                                 <td className="px-4 py-3 text-sm text-[#1a558b] font-bold">R{parseFloat(transaction.member_amount || transaction.cashback_amount || 0).toFixed(2)}</td>
@@ -1064,7 +1107,11 @@ export default function PartnersPage() {
                   )}
                 </section>
               </div>
-            ) : null}
+            ) : (
+              <div className="px-8 py-12 text-center bg-gray-50">
+                <p className="text-gray-600">Failed to load partner details. Please try again.</p>
+              </div>
+            )}
             </div>
           </div>
         </div>

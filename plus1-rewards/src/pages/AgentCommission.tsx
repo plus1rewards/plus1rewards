@@ -76,11 +76,11 @@ export function AgentCommission() {
 
       const partnerIds = links.map(l => l.partner_id);
 
-      // Get ALL transactions for this agent's partners (for total earned)
+      // Get ALL transactions for this agent (for total earned)
       const { data: allTransactions } = await supabaseAdmin
         .from('transactions')
         .select('agent_amount, created_at')
-        .in('partner_id', partnerIds)
+        .eq('agent_id', agentId)
         .eq('status', 'completed');
 
       // Calculate total earned from all transactions
@@ -109,7 +109,7 @@ export function AgentCommission() {
       const { data: transactions } = await supabaseAdmin
         .from('transactions')
         .select('partner_id, agent_amount, partners(shop_name)')
-        .in('partner_id', partnerIds)
+        .eq('agent_id', agentId)
         .gte('created_at', `${currentMonth}-01T00:00:00`)
         .lt('created_at', `${nextMonth}-01T00:00:00`)
         .eq('status', 'completed');
@@ -131,22 +131,44 @@ export function AgentCommission() {
 
       setCurrentMonthBreakdown(Object.values(breakdown));
 
-      // Load detailed transaction history
-      const { data: allTransactionsDetail } = await supabaseAdmin
+      // Load detailed transaction history - use same pattern as TransactionsPage
+      const { data: allTransactionsDetail, error: txDetailError } = await supabaseAdmin
         .from('transactions')
-        .select('id, purchase_amount, agent_amount, created_at, partners(shop_name), members(full_name)')
-        .in('partner_id', partnerIds)
+        .select(`
+          id,
+          purchase_amount,
+          agent_amount,
+          created_at,
+          members(first_name, last_name),
+          partners(shop_name)
+        `)
+        .eq('agent_id', agentId)
         .eq('status', 'completed')
         .order('created_at', { ascending: false });
 
-      const transactionDetails: TransactionDetail[] = (allTransactionsDetail || []).map(t => ({
-        id: t.id,
-        partner_name: (t.partners as any)?.shop_name || 'Unknown Partner',
-        member_name: (t.members as any)?.full_name || 'Unknown Member',
-        purchase_amount: parseFloat(t.purchase_amount || '0'),
-        agent_amount: parseFloat(t.agent_amount || '0'),
-        created_at: t.created_at
-      }));
+      if (txDetailError) {
+        console.error('Error fetching transaction details:', txDetailError);
+      }
+
+      console.log('Transactions with nested select:', allTransactionsDetail);
+
+      const transactionDetails: TransactionDetail[] = (allTransactionsDetail || []).map(t => {
+        const memberData = t.members as any;
+        const firstName = memberData?.first_name || '';
+        const lastName = memberData?.last_name || '';
+        const memberName = `${firstName} ${lastName}`.trim() || 'Unknown Member';
+        
+        console.log('Transaction member data:', { memberData, memberName });
+        
+        return {
+          id: t.id,
+          partner_name: (t.partners as any)?.shop_name || 'Unknown Partner',
+          member_name: memberName,
+          purchase_amount: parseFloat(t.purchase_amount || '0'),
+          agent_amount: parseFloat(t.agent_amount || '0'),
+          created_at: t.created_at
+        };
+      });
 
       setTransactionHistory(transactionDetails);
     } catch (error) {

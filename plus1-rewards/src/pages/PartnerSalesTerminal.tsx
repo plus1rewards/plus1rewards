@@ -1,8 +1,9 @@
 // plus1-rewards/src/pages/PartnerSalesTerminal.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
-import { X, Check, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Check, AlertCircle, User, DollarSign, Sparkles, ShoppingBag } from 'lucide-react';
 
 interface Partner {
   id: string;
@@ -13,10 +14,13 @@ interface Partner {
 
 interface Member {
   id: string;
-  full_name: string;
-  phone: string;
+  first_name: string;
+  last_name: string;
+  cell_phone: string;
   status: string;
 }
+
+const BLUE = '#1a558b';
 
 export default function PartnerSalesTerminal() {
   const navigate = useNavigate();
@@ -69,7 +73,6 @@ export default function PartnerSalesTerminal() {
         setPhoneNumber(phoneNumber + num);
       }
     } else if (activeField === 'amount') {
-      // Handle decimal input for amount
       if (purchaseAmount.includes('.')) {
         const parts = purchaseAmount.split('.');
         if (parts[1].length < 2) {
@@ -105,14 +108,12 @@ export default function PartnerSalesTerminal() {
   };
 
   const handleSubmit = async () => {
-    // Validate phone number
     if (phoneNumber.length !== 10) {
       setError('Please enter a valid 10-digit cell phone number');
       setActiveField('phone');
       return;
     }
 
-    // Validate amount
     const amount = parseFloat(purchaseAmount);
     if (isNaN(amount) || amount <= 0) {
       setError('Please enter a valid transaction amount');
@@ -124,10 +125,9 @@ export default function PartnerSalesTerminal() {
     setError('');
 
     try {
-      // Look up member
       const { data, error: memberError } = await supabase
         .from('members')
-        .select('id, full_name, phone, status')
+        .select('id, first_name, last_name, cell_phone, status')
         .eq('cell_phone', phoneNumber)
         .single();
 
@@ -159,14 +159,12 @@ export default function PartnerSalesTerminal() {
   const handleConfirmTransaction = async () => {
     if (!member || !purchaseAmount || !partner) return;
 
-    // Check if partner is suspended
     if (partner.status === 'suspended') {
       setError('Your account has been suspended. You cannot process transactions. Please contact admin.');
       setLoading(false);
       return;
     }
 
-    // Check if partner is not active
     if (partner.status !== 'active') {
       setError('Your account is not active. Only active partners can process transactions.');
       setLoading(false);
@@ -204,7 +202,6 @@ export default function PartnerSalesTerminal() {
 
       if (txError) throw txError;
 
-      // Fund cover plans - first get in_progress plans
       const { data: inProgressPlans } = await supabase
         .from('member_cover_plans')
         .select('id, funded_amount, target_amount, status, overflow_balance')
@@ -214,7 +211,6 @@ export default function PartnerSalesTerminal() {
 
       let remainingAmount = memberAmount;
 
-      // First, fund any in_progress plans
       if (inProgressPlans && inProgressPlans.length > 0) {
         for (const plan of inProgressPlans) {
           if (remainingAmount <= 0) break;
@@ -251,7 +247,6 @@ export default function PartnerSalesTerminal() {
         }
       }
 
-      // If there's still remaining cashback, add it to overflow of the first active plan
       if (remainingAmount > 0) {
         const { data: activePlans } = await supabase
           .from('member_cover_plans')
@@ -327,248 +322,430 @@ export default function PartnerSalesTerminal() {
 
   if (!partner) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-center">
-          <div className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-          <p>Loading...</p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading terminal...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
       {/* Header */}
-      <div className="bg-black/30 backdrop-blur-sm border-b border-white/10 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div>
+      <motion.header 
+        className="bg-white border-b border-gray-200 shadow-sm"
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <motion.button
+                onClick={() => navigate('/partner/dashboard')}
+                className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+                whileHover={{ x: -5 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <ArrowLeft className="w-5 h-5" />
+                <span className="font-medium">Back to Dashboard</span>
+              </motion.button>
+            </div>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white text-xl font-bold">+1</span>
+              <div className="text-right">
+                <h1 className="text-xl font-bold text-gray-900">{partner.shop_name}</h1>
+                <p className="text-sm text-blue-600 font-semibold">{partner.cashback_percent}% Cashback Rate</p>
               </div>
-              <div>
-                <h1 className="text-white text-xl font-bold">{partner.shop_name}</h1>
-                <p className="text-blue-300 text-sm">{partner.cashback_percent}% Cashback</p>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: BLUE }}>
+                <ShoppingBag className="w-6 h-6 text-white" />
               </div>
             </div>
           </div>
-          <button
-            onClick={() => navigate('/partner/dashboard')}
-            className="text-white/70 hover:text-white transition-colors"
-          >
-            <X className="w-8 h-8" />
-          </button>
         </div>
-      </div>
+      </motion.header>
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-6xl">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Left Side - Display */}
-            <div className="bg-white/10 backdrop-blur-md rounded-3xl p-12 border border-white/20 flex flex-col justify-center">
-              {step === 'input' && (
-                <div className="text-center">
-                  <div className="mb-8">
-                    <h2 className="text-white text-5xl font-bold mb-3">Welcome! 👋</h2>
-                    <p className="text-blue-200 text-xl">Earn cashback for your medi plan here!</p>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <AnimatePresence mode="wait">
+          {step === 'input' && (
+            <motion.div
+              key="input"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="grid lg:grid-cols-2 gap-8"
+            >
+              {/* Left Side - Input Display */}
+              <div className="space-y-6">
+                <motion.div 
+                  className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                      <Sparkles className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">Sales Terminal</h2>
+                      <p className="text-sm text-gray-600">Process member transactions</p>
+                    </div>
                   </div>
 
-                  {/* Phone Number Field */}
+                  {/* Phone Number Input */}
                   <div 
-                    className={`bg-black/30 rounded-2xl p-6 mb-6 cursor-pointer transition-all ${
-                      activeField === 'phone' ? 'ring-4 ring-blue-400' : 'hover:bg-black/40'
+                    className={`mb-6 p-6 rounded-xl border-2 cursor-pointer transition-all ${
+                      activeField === 'phone' 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 bg-gray-50 hover:border-gray-300'
                     }`}
                     onClick={() => setActiveField('phone')}
                   >
-                    <p className="text-blue-300 text-sm font-semibold mb-2">Your Cell Phone Number</p>
-                    <div className="text-white text-4xl font-mono tracking-wider min-h-[50px] flex items-center justify-center">
-                      {phoneNumber || '___-___-____'}
+                    <div className="flex items-center gap-2 mb-2">
+                      <User className="w-4 h-4 text-blue-600" />
+                      <label className="text-sm font-semibold text-gray-700">Member Cell Phone</label>
                     </div>
+                    <div className="text-3xl font-mono font-bold text-gray-900 tracking-wider">
+                      {phoneNumber || '0XX XXX XXXX'}
+                    </div>
+                    {phoneNumber.length === 10 && (
+                      <motion.div 
+                        className="mt-2 flex items-center gap-1 text-green-600 text-sm"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>Valid number</span>
+                      </motion.div>
+                    )}
                   </div>
 
-                  {/* Transaction Amount Field */}
+                  {/* Amount Input */}
                   <div 
-                    className={`bg-black/30 rounded-2xl p-6 mb-6 cursor-pointer transition-all ${
-                      activeField === 'amount' ? 'ring-4 ring-green-400' : 'hover:bg-black/40'
+                    className={`p-6 rounded-xl border-2 cursor-pointer transition-all ${
+                      activeField === 'amount' 
+                        ? 'border-green-500 bg-green-50' 
+                        : 'border-gray-200 bg-gray-50 hover:border-gray-300'
                     }`}
                     onClick={() => setActiveField('amount')}
                   >
-                    <p className="text-green-300 text-sm font-semibold mb-2">Enter Transaction Amount</p>
-                    <div className="text-white text-5xl font-bold min-h-[60px] flex items-center justify-center">
+                    <div className="flex items-center gap-2 mb-2">
+                      <DollarSign className="w-4 h-4 text-green-600" />
+                      <label className="text-sm font-semibold text-gray-700">Purchase Amount</label>
+                    </div>
+                    <div className="text-4xl font-bold text-gray-900">
                       R{purchaseAmount || '0.00'}
                     </div>
                     {purchaseAmount && partner && (
-                      <p className="text-green-300 text-lg mt-3">
-                        You'll earn: {formatCurrency(calculateCashback())} cashback! 🎉
-                      </p>
+                      <motion.div 
+                        className="mt-3 p-3 bg-green-100 rounded-lg"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                      >
+                        <p className="text-sm text-green-800 font-semibold">
+                          💰 Member earns: {formatCurrency(calculateCashback())} cashback
+                        </p>
+                      </motion.div>
                     )}
                   </div>
 
                   {error && (
-                    <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 mb-4 flex items-start gap-3">
-                      <AlertCircle className="w-5 h-5 text-red-300 flex-shrink-0 mt-0.5" />
-                      <p className="text-red-200 text-sm text-left">{error}</p>
-                    </div>
+                    <motion.div 
+                      className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                    >
+                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-red-800 font-medium">{error}</p>
+                    </motion.div>
                   )}
+                </motion.div>
 
-                  <p className="text-white/60 text-sm mt-4">
-                    Thank you for supporting us!
-                  </p>
-
-                  {/* Registration Link */}
-                  <div className="mt-6 pt-6 border-t border-white/20">
-                    <p className="text-white/80 text-center text-sm">
-                      Not Registered?{' '}
-                      <button
-                        onClick={() => navigate('/partner/member-registration')}
-                        className="text-yellow-300 font-bold hover:text-yellow-200 underline transition-colors"
-                      >
-                        Register here!
-                      </button>
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {step === 'confirm' && member && (
-                <div className="text-center">
-                  <h2 className="text-white text-4xl font-bold mb-8">Confirm Transaction</h2>
-                  <div className="space-y-4 mb-8">
-                    <div className="bg-black/30 rounded-xl p-6">
-                      <p className="text-blue-200 text-sm mb-1">Member</p>
-                      <p className="text-white text-2xl font-bold">{member.full_name}</p>
-                    </div>
-                    <div className="bg-black/30 rounded-xl p-6">
-                      <p className="text-blue-200 text-sm mb-1">Purchase Amount</p>
-                      <p className="text-white text-4xl font-bold">R{purchaseAmount}</p>
-                    </div>
-                    <div className="bg-green-500/20 border border-green-500/50 rounded-xl p-6">
-                      <p className="text-green-200 text-sm mb-1">Cashback Earned</p>
-                      <p className="text-green-300 text-3xl font-bold">{formatCurrency(calculateCashback())}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {step === 'success' && member && (
-                <div className="text-center">
-                  <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Check className="w-16 h-16 text-white" />
-                  </div>
-                  <h2 className="text-white text-5xl font-bold mb-4">Success!</h2>
-                  <p className="text-green-300 text-2xl mb-2">{member.full_name}</p>
-                  <p className="text-blue-200 text-xl mb-8">earned {formatCurrency(calculateCashback())} cashback</p>
-                  <p className="text-white/60 text-sm">Starting new transaction...</p>
-                </div>
-              )}
-            </div>
-
-            {/* Right Side - Keypad */}
-            <div className="bg-blue-600 rounded-3xl p-8 flex flex-col">
-              <div className="text-center mb-6">
-                <p className="text-white text-lg font-semibold">
-                  {step === 'input' 
-                    ? activeField === 'phone' 
-                      ? 'ENTER CELL PHONE NUMBER' 
-                      : 'ENTER TRANSACTION AMOUNT'
-                    : 'CONFIRM TRANSACTION'}
-                </p>
+                {/* Info Card */}
+                <motion.div 
+                  className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl shadow-lg p-6 text-white"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <h3 className="text-lg font-bold mb-2">Member Not Registered?</h3>
+                  <p className="text-blue-100 text-sm mb-4">Help them sign up in seconds!</p>
+                  <motion.button
+                    onClick={() => navigate('/partner/member-registration')}
+                    className="w-full bg-white text-blue-600 font-bold py-3 px-4 rounded-xl hover:bg-blue-50 transition-colors"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Register New Member →
+                  </motion.button>
+                </motion.div>
               </div>
 
-              {step === 'input' && (
-                <div className="flex-1 flex flex-col">
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                      <button
-                        key={num}
-                        onClick={() => handleNumberClick(num.toString())}
-                        className="bg-white/20 hover:bg-white/30 active:bg-white/40 text-white text-4xl font-bold rounded-2xl h-20 transition-all"
-                      >
-                        {num}
-                      </button>
-                    ))}
-                    {activeField === 'amount' && (
-                      <button
-                        onClick={handleDecimal}
-                        className="bg-white/20 hover:bg-white/30 active:bg-white/40 text-white text-4xl font-bold rounded-2xl h-20 transition-all"
-                      >
-                        .
-                      </button>
-                    )}
-                    {activeField === 'phone' && <div></div>}
-                    <button
-                      onClick={() => handleNumberClick('0')}
-                      className="bg-white/20 hover:bg-white/30 active:bg-white/40 text-white text-4xl font-bold rounded-2xl h-20 transition-all"
-                    >
-                      0
-                    </button>
-                    <button
-                      onClick={handleBackspace}
-                      className="bg-white/20 hover:bg-white/30 active:bg-white/40 text-white text-2xl font-bold rounded-2xl h-20 transition-all"
-                    >
-                      ⌫
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      onClick={handleClear}
-                      className="bg-red-500/80 hover:bg-red-500 text-white text-xl font-bold rounded-2xl h-16 transition-all"
-                    >
-                      Clear
-                    </button>
-                    <button
-                      onClick={handleSubmit}
-                      disabled={loading || phoneNumber.length !== 10 || !purchaseAmount}
-                      className="bg-green-500 hover:bg-green-600 disabled:bg-gray-500 disabled:cursor-not-allowed text-white text-xl font-bold rounded-2xl h-16 transition-all flex items-center justify-center gap-2"
-                    >
-                      {loading ? (
-                        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      ) : (
-                        <>
-                          Continue
-                          <Check className="w-5 h-5" />
-                        </>
-                      )}
-                    </button>
-                  </div>
+              {/* Right Side - Keypad */}
+              <motion.div 
+                className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <div className="mb-6 text-center">
+                  <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                    {activeField === 'phone' ? 'Enter Phone Number' : 'Enter Amount'}
+                  </p>
                 </div>
-              )}
 
-              {step === 'confirm' && (
-                <div className="flex-1 flex flex-col gap-4">
-                  <button
-                    onClick={handleBack}
-                    className="bg-white/20 hover:bg-white/30 text-white text-xl font-bold rounded-2xl h-20 transition-all"
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                    <motion.button
+                      key={num}
+                      onClick={() => handleNumberClick(num.toString())}
+                      className="h-16 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-900 text-2xl font-bold rounded-xl transition-colors"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      {num}
+                    </motion.button>
+                  ))}
+                  {activeField === 'amount' ? (
+                    <motion.button
+                      onClick={handleDecimal}
+                      className="h-16 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-900 text-2xl font-bold rounded-xl transition-colors"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      .
+                    </motion.button>
+                  ) : (
+                    <div></div>
+                  )}
+                  <motion.button
+                    onClick={() => handleNumberClick('0')}
+                    className="h-16 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-900 text-2xl font-bold rounded-xl transition-colors"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
-                    ← Back
-                  </button>
-                  <button
-                    onClick={handleConfirmTransaction}
-                    disabled={loading}
-                    className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-500 disabled:cursor-not-allowed text-white text-3xl font-bold rounded-2xl transition-all flex items-center justify-center gap-3"
+                    0
+                  </motion.button>
+                  <motion.button
+                    onClick={handleBackspace}
+                    className="h-16 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-900 text-xl font-bold rounded-xl transition-colors"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    ⌫
+                  </motion.button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <motion.button
+                    onClick={handleClear}
+                    className="h-14 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Clear
+                  </motion.button>
+                  <motion.button
+                    onClick={handleSubmit}
+                    disabled={loading || phoneNumber.length !== 10 || !purchaseAmount}
+                    className="h-14 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                    whileHover={{ scale: loading ? 1 : 1.02 }}
+                    whileTap={{ scale: loading ? 1 : 0.98 }}
                   >
                     {loading ? (
-                      <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                     ) : (
                       <>
-                        <Check className="w-8 h-8" />
-                        Confirm Sale
+                        Continue
+                        <Check className="w-5 h-5" />
                       </>
                     )}
-                  </button>
-                  <button
-                    onClick={handleNewTransaction}
-                    className="bg-red-500/80 hover:bg-red-500 text-white text-xl font-bold rounded-2xl h-16 transition-all"
-                  >
-                    Cancel
-                  </button>
+                  </motion.button>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {step === 'confirm' && member && (
+            <motion.div
+              key="confirm"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+              className="max-w-3xl mx-auto"
+            >
+              <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
+                  <h2 className="text-3xl font-bold text-white text-center">Review Transaction</h2>
+                  <p className="text-blue-100 text-center mt-1">Please confirm the details below</p>
+                </div>
+
+                {/* Content */}
+                <div className="p-8">
+                  <div className="space-y-5 mb-8">
+                    {/* Member Info */}
+                    <motion.div 
+                      className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-2xl p-6 relative overflow-hidden"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 }}
+                    >
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-200 rounded-full -mr-16 -mt-16 opacity-30"></div>
+                      <div className="relative">
+                        <div className="flex items-center gap-2 mb-3">
+                          <User className="w-5 h-5 text-blue-600" />
+                          <p className="text-sm text-blue-700 font-bold uppercase tracking-wide">Member Details</p>
+                        </div>
+                        <p className="text-3xl font-black text-gray-900 mb-1">{`${member.first_name} ${member.last_name}`.trim()}</p>
+                        <p className="text-lg text-gray-700 font-mono">{member.cell_phone}</p>
+                      </div>
+                    </motion.div>
+                    
+                    {/* Purchase Amount */}
+                    <motion.div 
+                      className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-300 rounded-2xl p-6 relative overflow-hidden"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-gray-300 rounded-full -mr-16 -mt-16 opacity-20"></div>
+                      <div className="relative">
+                        <div className="flex items-center gap-2 mb-3">
+                          <ShoppingBag className="w-5 h-5 text-gray-600" />
+                          <p className="text-sm text-gray-700 font-bold uppercase tracking-wide">Purchase Amount</p>
+                        </div>
+                        <p className="text-5xl font-black text-gray-900">R{purchaseAmount}</p>
+                      </div>
+                    </motion.div>
+                    
+                    {/* Cashback */}
+                    <motion.div 
+                      className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-2xl p-6 relative overflow-hidden"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-green-300 rounded-full -mr-16 -mt-16 opacity-30"></div>
+                      <div className="relative">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Sparkles className="w-5 h-5 text-green-600" />
+                          <p className="text-sm text-green-700 font-bold uppercase tracking-wide">Cashback Earned</p>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                          <p className="text-5xl font-black text-green-600">{formatCurrency(calculateCashback())}</p>
+                          <span className="text-2xl text-green-600">🎉</span>
+                        </div>
+                        <p className="text-sm text-green-700 mt-2 font-medium">Goes toward medical cover</p>
+                      </div>
+                    </motion.div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <motion.button
+                      onClick={handleBack}
+                      className="h-16 bg-gray-100 hover:bg-gray-200 border-2 border-gray-300 text-gray-700 font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                      whileHover={{ scale: 1.02, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                      Back
+                    </motion.button>
+                    <motion.button
+                      onClick={handleConfirmTransaction}
+                      disabled={loading}
+                      className="h-16 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg"
+                      whileHover={{ scale: loading ? 1 : 1.02, boxShadow: loading ? undefined : '0 8px 20px rgba(34, 197, 94, 0.4)' }}
+                      whileTap={{ scale: loading ? 1 : 0.98 }}
+                    >
+                      {loading ? (
+                        <>
+                          <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          <span>Processing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-6 h-6" />
+                          Confirm Sale
+                        </>
+                      )}
+                    </motion.button>
+                  </div>
+
+                  {/* Security Note */}
+                  <motion.p 
+                    className="text-center text-sm text-gray-500 mt-6"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    🔒 Transaction will be recorded securely
+                  </motion.p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 'success' && member && (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.5 }}
+              className="max-w-2xl mx-auto"
+            >
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-12 text-center">
+                <motion.div
+                  className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                >
+                  <Check className="w-16 h-16 text-white" />
+                </motion.div>
+                <motion.h2 
+                  className="text-4xl font-bold text-gray-900 mb-4"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  Transaction Complete! 🎉
+                </motion.h2>
+                <motion.p 
+                  className="text-xl text-gray-600 mb-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  {`${member.first_name} ${member.last_name}`.trim()}
+                </motion.p>
+                <motion.p 
+                  className="text-2xl font-bold text-green-600 mb-8"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  earned {formatCurrency(calculateCashback())} cashback
+                </motion.p>
+                <motion.p 
+                  className="text-sm text-gray-500"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                >
+                  Starting new transaction...
+                </motion.p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

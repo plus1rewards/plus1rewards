@@ -36,7 +36,7 @@ export default function AgentLogin() {
       const { data: agentData, error: agentError } = await supabase
         .from('agents')
         .select('*')
-        .eq('mobile_number', cleanMobileNumber)
+        .eq('cell_phone', cleanMobileNumber)
         .eq('pin_code', pin)
         .single();
 

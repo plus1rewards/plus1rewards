@@ -49,7 +49,7 @@ const SponsorSomeone: React.FC = () => {
       const memberData = session.member;
       setSponsor({
         id: memberData.id,
-        name: memberData.name || memberData.full_name,
+        name: `${memberData.first_name} ${memberData.last_name}`.trim() || `${memberData.first_name} ${memberData.last_name}`.trim(),
         phone: memberData.phone || memberData.cell_phone
       });
 

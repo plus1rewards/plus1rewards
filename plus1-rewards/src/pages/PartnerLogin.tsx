@@ -50,7 +50,7 @@ export default function PartnerLogin() {
 
       if (isMobile) {
         // Use normalized phone number for database query
-        partnerQuery = partnerQuery.eq('mobile_number', normalizedPhone);
+        partnerQuery = partnerQuery.eq('cell_phone', normalizedPhone);
       } else {
         partnerQuery = partnerQuery.eq('email', identifier);
       }
@@ -102,8 +102,9 @@ export default function PartnerLogin() {
         user: {
           id: partnerData.id,
           role: partnerData.role || 'partner',
-          full_name: partnerData.full_name,
-          mobile_number: partnerData.mobile_number,
+          first_name: partnerData.first_name,
+          last_name: partnerData.last_name,
+          cell_phone: partnerData.cell_phone,
           status: partnerData.status
         },
         partner: partnerData,

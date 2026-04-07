@@ -47,7 +47,7 @@ export default function ProfileCompletionModal({ isOpen, onClose }: ProfileCompl
             </div>
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-xl" style={{ color: BLUE }}>check_circle</span>
-              <span style={{ color: '#374151' }}>City & Suburb</span>
+              <span style={{ color: '#374151' }}>City & Address Line 1</span>
             </div>
           </div>
         </div>

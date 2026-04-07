@@ -22,7 +22,7 @@ export default function DisputesPage() {
         .from('disputes')
         .select(`
           *,
-          members(full_name, phone),
+          members(first_name, last_name, cell_phone),
           partners(shop_name),
           transactions(purchase_amount)
         `)
@@ -117,7 +117,7 @@ export default function DisputesPage() {
   };
 
   const handleViewDetails = (dispute: any) => {
-    const memberInfo = dispute.dispute_type === 'call_request' ? 'N/A (Agent Request)' : (dispute.members?.full_name || 'Unknown');
+    const memberInfo = dispute.dispute_type === 'call_request' ? 'N/A (Agent Request)' : (`${dispute.members?.first_name} ${dispute.members?.last_name}`.trim() || 'Unknown');
     const partnerInfo = dispute.dispute_type === 'call_request' ? 'N/A (Agent Request)' : (dispute.partners?.shop_name || 'Unknown');
     const disputeTypeDisplay = dispute.dispute_type === 'call_request' ? 'Call Requested' : dispute.dispute_type;
     
@@ -207,9 +207,9 @@ export default function DisputesPage() {
                             <p className="text-xs text-gray-600 uppercase font-bold">Member</p>
                             <p className="text-sm text-gray-900">
                               {dispute.dispute_type === 'call_request' ? 'N/A (Agent Request)' : 
-                               dispute.members?.full_name || 'Unknown'}
+                               `${dispute.members?.first_name} ${dispute.members?.last_name}`.trim() || 'Unknown'}
                             </p>
-                            <p className="text-xs text-gray-500">{dispute.members?.phone || '-'}</p>
+                            <div className="text-xs text-gray-600">{dispute.members?.cell_phone || '-'}</div>
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 uppercase font-bold">Partner</p>
@@ -295,12 +295,6 @@ export default function DisputesPage() {
                             </button>
                           </>
                         )}
-                        <button 
-                          onClick={() => handleViewDetails(dispute)}
-                          className="px-4 py-2 bg-[#1a558b] hover:bg-[#1a558b]/90 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
-                          <span className="material-symbols-outlined text-lg">visibility</span>
-                          View Details
-                        </button>
                       </div>
                     </div>
                   </div>

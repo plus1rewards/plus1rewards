@@ -13,7 +13,8 @@ interface Partner {
 
 interface Member {
   id: string;
-  full_name: string;
+  first_name: string;
+  last_name: string;
   phone: string;
   status: string;
 }
@@ -95,7 +96,7 @@ export default function PartnerSales() {
           purchase_amount,
           member_amount,
           created_at,
-          members (full_name, phone)
+          members (first_name, last_name, phone)
         `)
         .eq('partner_id', partnerId)
         .order('created_at', { ascending: false })
@@ -142,7 +143,7 @@ export default function PartnerSales() {
     try {
       const { data, error } = await supabase
         .from('members')
-        .select('id, full_name, phone, status')
+        .select('id, first_name, last_name, phone, status')
         .eq('phone', phoneNumber)
         .single();
 
@@ -177,7 +178,7 @@ export default function PartnerSales() {
     try {
       const { data, error } = await supabase
         .from('members')
-        .select('id, full_name, phone, status')
+        .select('id, first_name, last_name, phone, status')
         .eq('qr_code', qrCode)
         .single();
 
@@ -293,7 +294,7 @@ export default function PartnerSales() {
         }
       }
 
-      setSuccess(`Sale completed! ${member.full_name} earned R${memberAmount.toFixed(2)} cashback`);
+      setSuccess(`Sale completed! ${`${member.first_name} ${member.last_name}`.trim()} earned R${memberAmount.toFixed(2)} cashback`);
       setPhoneNumber('');
       setQrCode('');
       setPurchaseAmount('');
@@ -503,7 +504,7 @@ export default function PartnerSales() {
                       <User className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <p className="font-bold text-gray-900">{member.full_name}</p>
+                      <p className="font-bold text-gray-900">{`${member.first_name} ${member.last_name}`.trim()}</p>
                       <p className="text-sm text-gray-600">{member.phone}</p>
                     </div>
                   </div>
@@ -563,7 +564,7 @@ export default function PartnerSales() {
                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
                   {recentTransactions.map((tx) => (
                     <div key={tx.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                      <p className="font-semibold text-gray-900 text-sm">{tx.members?.full_name}</p>
+                      <p className="font-semibold text-gray-900 text-sm">{`${tx.members?.first_name} ${tx.members?.last_name}`.trim()}</p>
                       <p className="text-xs text-gray-600">{tx.members?.phone}</p>
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-sm font-bold text-gray-900">{formatCurrency(tx.purchase_amount)}</span>

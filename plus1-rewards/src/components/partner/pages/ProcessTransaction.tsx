@@ -12,7 +12,8 @@ interface Partner {
 
 interface Member {
   id: string;
-  full_name: string;
+  first_name: string;
+  last_name: string;
   phone: string;
 }
 
@@ -75,7 +76,7 @@ export default function ProcessTransaction() {
     try {
       const { data, error } = await supabase
         .from('members')
-        .select('id, full_name, phone')
+        .select('id, first_name, last_name, phone')
         .eq('phone', phoneNumber)
         .single();
 
@@ -322,7 +323,7 @@ export default function ProcessTransaction() {
             Member Found
           </h2>
           <div className="bg-green-50 rounded-xl p-4 mb-6 border border-green-200">
-            <p className="font-bold text-gray-900">{member.full_name}</p>
+            <p className="font-bold text-gray-900">{`${member.first_name} ${member.last_name}`.trim()}</p>
             <p className="text-sm text-gray-600">{member.phone}</p>
           </div>
 

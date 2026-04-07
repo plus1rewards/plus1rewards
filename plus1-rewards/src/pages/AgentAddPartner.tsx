@@ -471,7 +471,7 @@ export function AgentAddShop() {
                   onChange={e => update('address', e.target.value)} 
                   required 
                 />
-                <p className="text-xs text-gray-500 mt-1">Format: Street Number, Street Name, Suburb, City, Province</p>
+                <p className="text-xs text-gray-500 mt-1">Format: Street Number, Street Name, Address Line 1, City, Province</p>
               </div>
 
               <div>

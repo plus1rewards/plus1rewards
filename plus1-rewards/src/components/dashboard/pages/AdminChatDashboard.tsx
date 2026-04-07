@@ -25,7 +25,8 @@ interface ChatConversation {
 
 interface MemberInfo {
   id: string;
-  full_name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   cell_phone: string;
 }
@@ -104,7 +105,7 @@ export default function AdminChatDashboard() {
     try {
       const { data: member } = await supabase
         .from('members')
-        .select('id, full_name, email, cell_phone')
+        .select('id, first_name, last_name, email, cell_phone')
         .eq('id', memberId)
         .single();
 

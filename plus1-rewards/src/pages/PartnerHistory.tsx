@@ -25,17 +25,37 @@ export function PartnerHistory() {
         const parsedPartner = JSON.parse(partnerData)
         const { data: txData, error: txError } = await supabase
           .from('transactions')
-          .select('id, member_id, purchase_amount, member_reward, policy_filled, created_at, members(name)')
+          .select('id, member_id, purchase_amount, member_amount, created_at, members!inner(first_name, last_name, cell_phone)')
           .eq('partner_id', parsedPartner.id)
           .order('created_at', { ascending: false })
-        if (txError) throw txError
-        const formatted = txData?.map(tx => ({
-          id: tx.id, member_id: tx.member_id, purchase_amount: tx.purchase_amount,
-          rewards_issued: tx.member_reward || 0,
-          policy_name: (tx as any).policy_filled || 'Day-to-Day',
-          created_at: tx.created_at,
-          member_name: (Array.isArray(tx.members) ? (tx.members[0] as any)?.name : (tx.members as any)?.name) || 'Unknown'
-        })) || []
+        
+        if (txError) {
+          console.error('Transaction fetch error:', txError);
+          throw txError;
+        }
+        
+        console.log('Raw transaction data:', txData);
+        
+        const formatted = txData?.map(tx => {
+          console.log('Processing transaction:', tx);
+          const member = tx.members;
+          const firstName = member?.first_name || '';
+          const lastName = member?.last_name || '';
+          const cellPhone = member?.cell_phone || 'N/A';
+          const memberName = firstName && lastName ? `${firstName} ${lastName}`.trim() : 'Unknown Member';
+          
+          console.log('Member data:', { firstName, lastName, cellPhone, memberName });
+          
+          return {
+            id: tx.id,
+            member_id: tx.member_id,
+            purchase_amount: tx.purchase_amount,
+            rewards_issued: tx.member_amount || 0,
+            policy_name: cellPhone,
+            created_at: tx.created_at,
+            member_name: memberName
+          };
+        }) || []
         setTransactions(formatted)
         setTotalRewards(formatted.reduce((sum, t) => sum + t.rewards_issued, 0))
       } catch (err) { setError(err instanceof Error ? err.message : 'Failed to load history') }
@@ -140,13 +160,29 @@ export function PartnerHistory() {
                     padding: '1rem 1.5rem', borderBottom: i < filtered.length - 1 ? '1px solid var(--gray-border)' : 'none',
                     background: i % 2 === 0 ? '#fff' : '#fafbff'
                   }}>
-                    <div>
-                      <p style={{ fontWeight: 700, color: '#111827', margin: '0 0 2px' }}>{tx.member_name}</p>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--gray-light)', margin: 0 }}>{new Date(tx.created_at).toLocaleDateString()} · {tx.policy_name}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ 
+                        width: '40px', 
+                        height: '40px', 
+                        borderRadius: '10px', 
+                        background: 'linear-gradient(135deg, #1a558b 0%, #2563eb 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <span style={{ fontSize: '1.25rem' }}>🛒</span>
+                      </div>
+                      <div>
+                        <p style={{ fontWeight: 700, color: '#111827', margin: '0 0 2px', fontSize: '0.9375rem' }}>{tx.member_name}</p>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--gray-light)', margin: 0 }}>
+                          {new Date(tx.created_at).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' })}, {new Date(tx.created_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })} • {tx.policy_name}
+                        </p>
+                      </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontWeight: 800, color: 'var(--green-dark)', margin: '0 0 2px' }}>+R{tx.rewards_issued.toFixed(2)}</p>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--gray-light)', margin: 0 }}>R{tx.purchase_amount.toFixed(2)} purchase</p>
+                      <p style={{ fontWeight: 700, color: '#111827', margin: '0 0 2px', fontSize: '1rem' }}>R{tx.purchase_amount.toFixed(2)}</p>
+                      <p style={{ fontSize: '0.75rem', color: '#16a34a', margin: 0, fontWeight: 600 }}>+R{tx.rewards_issued.toFixed(2)} rewards</p>
                     </div>
                   </div>
                 ))}

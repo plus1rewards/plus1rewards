@@ -70,8 +70,8 @@ export default function CoverPlansPage() {
           return {
             id: mcp.id,
             member_id: mcp.member_id,
-            member_name: member?.full_name || 'Unknown',
-            member_phone: member?.cell_phone || member?.phone || 'N/A',
+            member_name: member?.first_name && member?.last_name ? `${member.first_name} ${member.last_name}` : 'Unknown',
+            member_phone: member?.cell_phone || 'N/A',
             cover_plan_name: coverPlan?.plan_name || 'Unknown Plan',
             creation_order: mcp.creation_order,
             target_amount: parseFloat(mcp.target_amount),

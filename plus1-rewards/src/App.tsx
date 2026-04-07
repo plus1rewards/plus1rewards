@@ -32,7 +32,6 @@ import { default as MemberDashboard } from './pages/DashboardNew'
 import MemberCoverPlans from './pages/MemberCoverPlans'
 import MemberTransactions from './pages/MemberTransactions'
 import MemberTopUp from './pages/MemberTopUp'
-import MemberLinkedPeople from './pages/MemberLinkedPeople'
 import MemberSupport from './pages/MemberSupport'
 import AddDependant from './pages/AddDependant'
 import SponsorSomeone from './pages/SponsorSomeone'
@@ -151,7 +150,6 @@ export default function App() {
           <Route path="/member/cover-plans" element={<MemberCoverPlans />} />
           <Route path="/member/transactions" element={<MemberTransactions />} />
           <Route path="/member/top-up" element={<MemberTopUp />} />
-          <Route path="/member/linked-people" element={<MemberLinkedPeople />} />
           <Route path="/member/support" element={<MemberSupport />} />
           <Route path="/member/add-dependant" element={<AddDependant />} />
           <Route path="/member/sponsor" element={<SponsorSomeone />} />

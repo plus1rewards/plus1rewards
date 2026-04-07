@@ -32,7 +32,7 @@ export default function ProfileIncompleteModal({
     
     // Scroll to the edit profile section on the dashboard
     setTimeout(() => {
-      const element = document.getElementById('edit-profile');
+      const element = document.getElementById('edit-profile-section');
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         // Highlight the section briefly
