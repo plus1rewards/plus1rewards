@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { 
   Search, 
   Phone, 
@@ -83,6 +83,7 @@ function MapController({ center, zoom }: { center: [number, number], zoom: numbe
 
 export default function App() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const highlightPartnerId = searchParams.get('highlight');
   
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,6 +98,7 @@ export default function App() {
   const [zoom, setZoom] = useState(13);
   const [mapLayer, setMapLayer] = useState<"standard" | "satellite" | "dark">("standard");
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [showMobilePartners, setShowMobilePartners] = useState(false);
 
   // Fetch partners from database
   useEffect(() => {
@@ -316,10 +318,65 @@ export default function App() {
         </div>
       ) : (
         <>
+      {/* Mobile Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+        <div className="p-4">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-display font-bold tracking-tighter text-primary">
+                THE ARCHIVE
+              </h1>
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                <span className="text-xs font-black text-primary uppercase tracking-widest">
+                  {filteredPartners.length} FOUND
+                </span>
+              </div>
+            </div>
+            
+            <div className="relative">
+              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400">
+                <Search size={16} strokeWidth={2.5} />
+              </div>
+              <input 
+                className="w-full h-12 pl-10 pr-4 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-primary/20 focus:ring-2 focus:ring-primary/5 placeholder-gray-400 text-gray-900 font-medium transition-all duration-300"
+                placeholder="Search partners or locations..." 
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer whitespace-nowrap border ${
+                    activeCategory === cat 
+                      ? "bg-primary text-white border-primary shadow-md" 
+                      : "bg-white text-gray-600 border-gray-200 hover:border-primary/30 hover:text-primary"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
       {/* Sidebar */}
-      <aside className="hidden lg:flex flex-col w-[460px] h-full bg-white z-20 overflow-hidden shrink-0 border-r border-outline-variant/30 shadow-2xl">
+      <aside className="hidden lg:flex flex-col w-[380px] h-full bg-white z-20 overflow-hidden shrink-0 border-r border-outline-variant/30 shadow-2xl">
         {/* Branding Section */}
         <div className="px-10 pt-12 pb-8 bg-white relative">
+          {/* Back Button */}
+          <button
+            onClick={() => navigate('/')}
+            className="absolute top-6 left-6 w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center text-gray-600 hover:text-primary transition-all duration-300 group"
+          >
+            <span className="material-symbols-outlined text-lg group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+          </button>
+          
           <div className="flex flex-col gap-y-1 mb-8">
             <h1 className="text-4xl font-display font-bold tracking-tighter-extra text-primary leading-none">
               THE ARCHIVE
@@ -379,135 +436,142 @@ export default function App() {
 
           <div className="flex flex-col gap-y-5">
             <AnimatePresence mode="popLayout">
-              {filteredPartners.map((partner) => (
-                <motion.div
-                  key={partner.id}
-                  layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  onClick={() => {
-                    setSelectedPartnerId(partner.id);
-                    setIsDetailOpen(true);
-                  }}
-                  className={`group relative bg-white rounded-[24px] p-7 border transition-all duration-500 cursor-pointer overflow-hidden ${
-                    partner.id === highlightPartnerId
-                      ? 'border-blue-500 shadow-2xl shadow-blue-500/20 ring-2 ring-blue-500/20 bg-gradient-to-br from-blue-50/50 to-white'
-                      : selectedPartnerId === partner.id 
-                        ? 'border-primary shadow-2xl shadow-primary/10 ring-1 ring-primary/10' 
-                        : 'border-outline-variant/30 hover:border-primary/40 hover:shadow-xl hover:-translate-y-1'
-                  }`}
-                >
-                  {/* Selection Indicator */}
-                  <AnimatePresence>
-                    {selectedPartnerId === partner.id && (
-                      <motion.div 
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="absolute top-0 left-0 w-1.5 h-full bg-primary" 
-                      />
-                    )}
-                  </AnimatePresence>
+              {filteredPartners.map((partner) => {
+                const getCategoryColor = (category: string) => {
+                  const colors = {
+                    pharmacy: '#10b981',
+                    grocery: '#f59e0b',
+                    restaurant: '#ef4444',
+                    retail: '#8b5cf6',
+                    default: '#6b7280'
+                  };
+                  return colors[category?.toLowerCase() as keyof typeof colors] || colors.default;
+                };
 
-                  {/* Highlighted Partner Badge */}
-                  {partner.id === highlightPartnerId && (
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="absolute top-4 right-4 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg"
+                const getBadgeColor = (cashbackPercent: number) => {
+                  if (cashbackPercent >= 5) return '#f59e0b'; // Orange for high cashback
+                  if (cashbackPercent >= 4) return '#3b82f6'; // Blue for medium cashback
+                  return '#10b981'; // Green for standard cashback
+                };
+
+                const badgeColor = getBadgeColor(partner.cashback_percent);
+                const memberEarns = Math.max(partner.cashback_percent - 2, 1);
+
+                return (
+                  <motion.div
+                    key={partner.id}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    onClick={() => {
+                      setSelectedPartnerId(partner.id);
+                      setIsDetailOpen(true);
+                    }}
+                    className={`group relative bg-white rounded-[24px] border transition-all duration-500 cursor-pointer overflow-hidden ${
+                      partner.id === highlightPartnerId
+                        ? 'border-blue-500 shadow-2xl shadow-blue-500/20 ring-2 ring-blue-500/20 bg-gradient-to-br from-blue-50/50 to-white'
+                        : selectedPartnerId === partner.id 
+                          ? 'border-primary shadow-2xl shadow-primary/10 ring-1 ring-primary/10' 
+                          : 'border-outline-variant/30 hover:border-primary/40 hover:shadow-xl hover:-translate-y-1'
+                    }`}
+                  >
+                    {/* Selection Indicator */}
+                    <AnimatePresence>
+                      {selectedPartnerId === partner.id && (
+                        <motion.div 
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="absolute top-0 left-0 w-1.5 h-full bg-primary" 
+                        />
+                      )}
+                    </AnimatePresence>
+
+                    {/* Badge */}
+                    <div 
+                      className="absolute top-4 right-4 px-3 py-1 rounded-full text-white text-xs font-bold z-10"
+                      style={{ backgroundColor: badgeColor }}
                     >
-                      Featured
-                    </motion.div>
-                  )}
-                  
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="space-y-1 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-md bg-primary/5 text-primary text-[9px] font-black uppercase tracking-widest">
-                          {partner.category || 'Partner'}
-                        </span>
-                        {partner.status === "active" && (
-                          <div className="flex items-center gap-1">
-                            <div className="w-1 h-1 rounded-full bg-green-500" />
-                            <span className="text-[9px] font-bold text-green-600 uppercase tracking-tighter">Live</span>
-                          </div>
-                        )}
-                      </div>
-                      <h3 className="text-2xl font-display font-bold text-on-surface leading-tight tracking-tighter group-hover:text-primary transition-colors duration-300">
-                        {partner.shop_name}
-                      </h3>
+                      {partner.cashback_percent > 3 ? `${memberEarns}%` : 'NEW'}
                     </div>
-                    <div className="flex flex-col items-end gap-3">
-                      {/* Partner Logo */}
-                      {partner.store_logo_url && (
-                        <div className="w-16 h-16 rounded-lg border border-primary/20 bg-surface-container flex items-center justify-center overflow-hidden">
-                          <img
-                            src={partner.store_logo_url}
-                            alt={partner.shop_name}
-                            className="w-full h-full object-contain p-1"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
+
+                    {/* Highlighted Partner Badge */}
+                    {partner.id === highlightPartnerId && (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg z-20"
+                      >
+                        Featured
+                      </motion.div>
+                    )}
+                    
+                    {/* Image/Icon Section */}
+                    <div 
+                      className="h-[140px] w-full flex items-center justify-center relative overflow-hidden rounded-t-[24px]"
+                      style={{ backgroundColor: getCategoryColor(partner.category || 'default') + '20' }}
+                    >
+                      {partner.store_logo_url ? (
+                        <img
+                          src={partner.store_logo_url}
+                          alt={partner.shop_name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const fallback = document.createElement('div');
+                            fallback.className = 'w-full h-full flex items-center justify-center';
+                            fallback.innerHTML = '<span class="material-symbols-outlined text-primary text-4xl">store</span>';
+                            e.currentTarget.parentElement!.appendChild(fallback);
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="material-symbols-outlined text-primary text-4xl">store</span>
                         </div>
                       )}
-                      <div className="bg-primary text-on-primary px-4 py-2.5 rounded-2xl text-center shadow-lg shadow-primary/20">
-                        <span className="text-xl font-black leading-none">{partner.cashback_percent}%</span>
-                        <span className="block text-[8px] font-black uppercase tracking-widest opacity-70 mt-0.5">Back</span>
-                      </div>
                     </div>
-                  </div>
-
-                  <div className="space-y-5">
-                    <div className="flex items-center gap-4 text-on-surface-variant">
-                      <div className="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center shrink-0 group-hover:bg-primary/5 group-hover:text-primary transition-colors duration-300">
-                        <MapPin size={16} strokeWidth={2.5} />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Location</span>
-                        <span className="text-xs font-bold text-on-surface/80 capitalize">
+                    
+                    {/* Content */}
+                    <div className="p-6 flex-1">
+                      <div className="mb-6">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="px-2 py-0.5 rounded-md bg-primary/5 text-primary text-[9px] font-black uppercase tracking-widest">
+                            {partner.category || 'Partner'}
+                          </span>
+                          {partner.status === "active" && (
+                            <div className="flex items-center gap-1">
+                              <div className="w-1 h-1 rounded-full bg-green-500" />
+                              <span className="text-[9px] font-bold text-green-600 uppercase tracking-tighter">Live</span>
+                            </div>
+                          )}
+                        </div>
+                        <h3 className="text-xl font-display font-bold text-on-surface leading-tight tracking-tighter group-hover:text-primary transition-colors duration-300 mb-1">
+                          {partner.shop_name}
+                        </h3>
+                        <p className="text-xs font-bold text-on-surface/60 capitalize">
                           {partner.address || 'Address not available'}, {partner.city || 'City'}
-                        </span>
+                        </p>
                       </div>
-                    </div>
-
-                    {partner.phone && (
-                      <div className="flex items-center gap-4 text-on-surface-variant">
-                        <div className="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center shrink-0 group-hover:bg-primary/5 group-hover:text-primary transition-colors duration-300">
-                          <Phone size={16} strokeWidth={2.5} />
+                      
+                      {/* Status */}
+                      <div className="flex items-center gap-2 mb-6">
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                        <span className="text-green-600 text-xs font-bold uppercase">Active Partner</span>
+                      </div>
+                      
+                      {/* Footer */}
+                      <div className="flex items-center justify-between pt-6 border-t border-outline-variant/20 mt-auto">
+                        <div className="text-xs font-bold text-on-surface/60">
+                          {partner.phone || 'No phone'}
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Contact</span>
-                          <span className="text-xs font-bold text-on-surface/80">{partner.phone}</span>
+                        <div className="flex items-center gap-1 text-primary font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
+                          View Details <ChevronRight size={14} strokeWidth={3} />
                         </div>
                       </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-3 pt-3">
-                      <div className="p-3 bg-surface-container-low rounded-xl">
-                        <span className="block text-[9px] font-black text-on-surface-variant/50 uppercase tracking-widest mb-1">Members</span>
-                        <span className="text-lg font-display font-bold text-on-surface">{partner.member_count || 0}</span>
-                      </div>
-                      <div className="p-3 bg-surface-container-low rounded-xl">
-                        <span className="block text-[9px] font-black text-on-surface-variant/50 uppercase tracking-widest mb-1">Revenue</span>
-                        <span className="text-lg font-display font-bold text-on-surface">R{((partner.total_revenue || 0) / 1000).toFixed(1)}k</span>
-                      </div>
                     </div>
-
-                    <div className="flex items-center justify-between pt-5 border-t border-outline-variant/20">
-                      <div className="flex items-center gap-2">
-                        <Calendar size={14} className="text-on-surface-variant/40" />
-                        <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-tighter">
-                          Since {partner.created_at ? new Date(partner.created_at).getFullYear() : '2024'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 text-primary font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
-                        View Details <ChevronRight size={14} strokeWidth={3} />
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
             
             {filteredPartners.length === 0 && (
@@ -536,7 +600,7 @@ export default function App() {
       </aside>
 
       {/* Main Map View Section */}
-      <section className="flex-1 relative h-full bg-surface-dim">
+      <section className="flex-1 relative h-full bg-surface-dim lg:mt-0 mt-[180px]">
         <MapContainer 
           center={mapCenter} 
           zoom={zoom} 
@@ -639,21 +703,21 @@ export default function App() {
         </MapContainer>
 
         {/* Floating Map Controls */}
-        <div className="absolute top-10 left-10 right-10 flex justify-between items-start pointer-events-none z-[1000]">
+        <div className="absolute top-4 lg:top-10 left-4 lg:left-10 right-4 lg:right-10 flex justify-between items-start pointer-events-none z-[1000]">
           <div className="flex flex-col gap-4 pointer-events-auto">
             <motion.div 
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              className="glass-panel flex items-center gap-6 px-8 py-4 rounded-[24px] shadow-2xl"
+              className="glass-panel flex items-center gap-3 lg:gap-6 px-4 lg:px-8 py-3 lg:py-4 rounded-2xl lg:rounded-[24px] shadow-2xl"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                  <Locate size={16} strokeWidth={2.5} />
+              <div className="flex items-center gap-2 lg:gap-3">
+                <div className="w-6 h-6 lg:w-8 lg:h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                  <Locate size={14} strokeWidth={2.5} />
                 </div>
-                <span className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Range</span>
+                <span className="text-[8px] lg:text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Range</span>
               </div>
-              <div className="flex items-center gap-6">
-                <div className="w-48 h-2 bg-primary/10 rounded-full relative cursor-pointer group">
+              <div className="flex items-center gap-3 lg:gap-6">
+                <div className="w-32 lg:w-48 h-2 bg-primary/10 rounded-full relative cursor-pointer group">
                   <div 
                     className="absolute inset-y-0 left-0 bg-primary rounded-full shadow-[0_0_15px_rgba(26,85,139,0.4)] transition-all duration-300" 
                     style={{ width: `${(radius / 50) * 100}%` }}
@@ -667,40 +731,197 @@ export default function App() {
                     className="absolute inset-0 opacity-0 cursor-pointer z-10"
                   />
                   <motion.div 
-                    className="absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-[3px] border-primary rounded-full shadow-xl pointer-events-none z-20"
-                    style={{ left: `${(radius / 50) * 100}%`, marginLeft: '-12px' }}
+                    className="absolute top-1/2 -translate-y-1/2 w-4 h-4 lg:w-6 lg:h-6 bg-white border-[2px] lg:border-[3px] border-primary rounded-full shadow-xl pointer-events-none z-20"
+                    style={{ left: `${(radius / 50) * 100}%`, marginLeft: '-8px' }}
                     whileHover={{ scale: 1.2 }}
                     whileTap={{ scale: 0.9 }}
                   />
                 </div>
                 <div className="flex items-baseline gap-0.5">
-                  <span className="text-lg font-display font-bold text-primary tabular-nums leading-none">{radius}</span>
-                  <span className="text-[10px] font-black text-primary/60 uppercase">km</span>
+                  <span className="text-sm lg:text-lg font-display font-bold text-primary tabular-nums leading-none">{radius}</span>
+                  <span className="text-[8px] lg:text-[10px] font-black text-primary/60 uppercase">km</span>
                 </div>
               </div>
             </motion.div>
           </div>
 
-          <div className="flex gap-3 pointer-events-auto">
+          <div className="flex gap-2 lg:gap-3 pointer-events-auto">
             <motion.button 
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.1 }}
               onClick={handleLocate}
-              className="w-14 h-14 glass-panel rounded-2xl flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-white transition-all duration-500 shadow-2xl active:scale-90 group"
+              className="w-10 h-10 lg:w-14 lg:h-14 glass-panel rounded-xl lg:rounded-2xl flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-white transition-all duration-500 shadow-2xl active:scale-90 group"
             >
-              <Locate size={22} strokeWidth={2} className="group-hover:rotate-12 transition-transform" />
+              <Locate size={18} strokeWidth={2} className="group-hover:rotate-12 transition-transform" />
             </motion.button>
             <motion.button 
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2 }}
               onClick={toggleLayer}
-              className="w-14 h-14 glass-panel rounded-2xl flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-white transition-all duration-500 shadow-2xl active:scale-90 group"
+              className="w-10 h-10 lg:w-14 lg:h-14 glass-panel rounded-xl lg:rounded-2xl flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-white transition-all duration-500 shadow-2xl active:scale-90 group"
             >
-              <Layers size={22} strokeWidth={2} className="group-hover:rotate-12 transition-transform" />
+              <Layers size={18} strokeWidth={2} className="group-hover:rotate-12 transition-transform" />
+            </motion.button>
+            {/* Mobile Partners Toggle */}
+            <motion.button 
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              onClick={() => setShowMobilePartners(!showMobilePartners)}
+              className="lg:hidden w-10 h-10 glass-panel rounded-xl flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-white transition-all duration-500 shadow-2xl active:scale-90 group"
+            >
+              <span className="material-symbols-outlined text-lg">list</span>
             </motion.button>
           </div>
+        </div>
+
+        {/* Mobile Bottom Sheet for Partners */}
+        <div className="lg:hidden">
+          <AnimatePresence>
+            {showMobilePartners && (
+              <>
+                {/* Backdrop */}
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowMobilePartners(false)}
+                  className="absolute inset-0 bg-black/20 backdrop-blur-sm z-[2000]"
+                />
+                
+                {/* Bottom Sheet */}
+                <motion.div 
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                  className="absolute bottom-0 left-0 right-0 bg-white z-[2001] rounded-t-3xl shadow-2xl max-h-[70vh] overflow-hidden"
+                >
+                  {/* Handle */}
+                  <div className="flex justify-center py-3">
+                    <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
+                  </div>
+                  
+                  {/* Header */}
+                  <div className="px-6 pb-4 border-b border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-gray-900">
+                        Available Partners ({filteredPartners.length})
+                      </h3>
+                      <button 
+                        onClick={() => setShowMobilePartners(false)}
+                        className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Partners Grid */}
+                  <div className="overflow-y-auto p-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      {filteredPartners.map((partner) => {
+                        const getCategoryColor = (category: string) => {
+                          const colors = {
+                            pharmacy: '#10b981',
+                            grocery: '#f59e0b',
+                            restaurant: '#ef4444',
+                            retail: '#8b5cf6',
+                            default: '#6b7280'
+                          };
+                          return colors[category?.toLowerCase() as keyof typeof colors] || colors.default;
+                        };
+
+                        const getBadgeColor = (cashbackPercent: number) => {
+                          if (cashbackPercent >= 5) return '#f59e0b';
+                          if (cashbackPercent >= 4) return '#3b82f6';
+                          return '#10b981';
+                        };
+
+                        const badgeColor = getBadgeColor(partner.cashback_percent);
+                        const memberEarns = Math.max(partner.cashback_percent - 2, 1);
+
+                        return (
+                          <motion.div
+                            key={partner.id}
+                            layout
+                            onClick={() => {
+                              setSelectedPartnerId(partner.id);
+                              setShowMobilePartners(false);
+                            }}
+                            className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden relative"
+                          >
+                            {/* Badge */}
+                            <div 
+                              className="absolute top-2 right-2 px-2 py-1 rounded-full text-white text-xs font-bold z-10"
+                              style={{ backgroundColor: badgeColor }}
+                            >
+                              {partner.cashback_percent > 3 ? `${memberEarns}%` : 'NEW'}
+                            </div>
+                            
+                            {/* Image */}
+                            <div 
+                              className="h-20 w-full flex items-center justify-center relative overflow-hidden"
+                              style={{ backgroundColor: getCategoryColor(partner.category || 'default') + '20' }}
+                            >
+                              {partner.store_logo_url ? (
+                                <img
+                                  src={partner.store_logo_url}
+                                  alt={partner.shop_name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="material-symbols-outlined text-primary text-2xl">store</span>
+                              )}
+                            </div>
+                            
+                            {/* Content */}
+                            <div className="p-3">
+                              <div className="mb-2">
+                                <span className="px-1.5 py-0.5 rounded bg-primary/5 text-primary text-[8px] font-black uppercase tracking-widest">
+                                  {partner.category || 'Partner'}
+                                </span>
+                              </div>
+                              <h4 className="font-bold text-sm text-gray-900 mb-1 line-clamp-1">
+                                {partner.shop_name}
+                              </h4>
+                              <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                                {partner.address || 'Address not available'}
+                              </p>
+                              <div className="flex items-center gap-1">
+                                <div className="w-1 h-1 bg-green-500 rounded-full"></div>
+                                <span className="text-[10px] font-bold text-green-600 uppercase">Active</span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                    
+                    {filteredPartners.length === 0 && (
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Search size={24} className="text-gray-400" />
+                        </div>
+                        <h4 className="text-lg font-bold text-gray-900 mb-2">No partners found</h4>
+                        <p className="text-sm text-gray-600 mb-4">
+                          Try adjusting your search or expanding the radius
+                        </p>
+                        <button 
+                          onClick={() => setRadius(50)}
+                          className="px-6 py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors"
+                        >
+                          Expand to 50km
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Detailed Shop View Overlay - Desktop & Mobile */}
@@ -725,7 +946,7 @@ export default function App() {
                 className="absolute top-0 right-0 bottom-0 w-full lg:w-[540px] bg-white z-[2001] shadow-[-40px_0_80px_rgba(0,0,0,0.1)] flex flex-col"
               >
                 {/* Header Image/Pattern Area */}
-                <div className="h-64 premium-gradient relative overflow-hidden shrink-0">
+                <div className="h-48 lg:h-64 premium-gradient relative overflow-hidden shrink-0">
                   {/* Partner Logo Background */}
                   {selectedPartner.store_logo_url && (
                     <div 
@@ -741,9 +962,9 @@ export default function App() {
                   </div>
                   <button 
                     onClick={() => setIsDetailOpen(false)}
-                    className="absolute top-8 right-8 w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-white hover:text-primary transition-all duration-500 z-10"
+                    className="absolute top-4 lg:top-8 right-4 lg:right-8 w-10 h-10 lg:w-12 lg:h-12 bg-white/10 backdrop-blur-md rounded-xl lg:rounded-2xl flex items-center justify-center text-white hover:bg-white hover:text-primary transition-all duration-500 z-10"
                   >
-                    <X size={24} strokeWidth={2.5} />
+                    <X size={20} strokeWidth={2.5} />
                   </button>
                   
                   <div className="absolute bottom-10 left-10 right-10">
@@ -773,19 +994,13 @@ export default function App() {
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 overflow-y-auto px-10 py-12 space-y-12">
+                <div className="flex-1 overflow-y-auto px-6 lg:px-10 py-8 lg:py-12 space-y-8 lg:space-y-12">
                   {/* Key Stats */}
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="p-6 bg-surface-container-low rounded-[32px] border border-outline-variant/20">
                       <span className="block text-[9px] font-black text-on-surface-variant/60 uppercase tracking-widest mb-2">Cashback</span>
                       <div className="flex items-baseline gap-1">
                         <span className="text-3xl font-display font-bold text-primary">{selectedPartner.cashback_percent}%</span>
-                      </div>
-                    </div>
-                    <div className="p-6 bg-surface-container-low rounded-[32px] border border-outline-variant/20">
-                      <span className="block text-[9px] font-black text-on-surface-variant/60 uppercase tracking-widest mb-2">Members</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-3xl font-display font-bold text-on-surface">{selectedPartner.member_count || 0}</span>
                       </div>
                     </div>
                     <div className="p-6 bg-surface-container-low rounded-[32px] border border-outline-variant/20">
@@ -818,21 +1033,6 @@ export default function App() {
                           <span className="text-sm font-bold text-on-surface/80 capitalize">{selectedPartner.category}</span>
                         </div>
                       )}
-                    </div>
-                  </div>
-
-                  {/* Financial Stats */}
-                  <div className="space-y-6">
-                    <h4 className="text-[10px] font-black text-on-surface-variant/40 tracking-[0.3em] uppercase">Financial Overview</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-6 bg-gradient-to-br from-primary/5 to-primary/10 rounded-[28px] border border-primary/20">
-                        <span className="block text-[10px] font-black text-primary/60 uppercase tracking-widest mb-2">Total Revenue</span>
-                        <span className="text-2xl font-display font-bold text-primary">R{(selectedPartner.total_revenue || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="p-6 bg-gradient-to-br from-green-500/5 to-green-500/10 rounded-[28px] border border-green-500/20">
-                        <span className="block text-[10px] font-black text-green-600/60 uppercase tracking-widest mb-2">Commission Rate</span>
-                        <span className="text-2xl font-display font-bold text-green-600">{selectedPartner.commission_rate || selectedPartner.cashback_percent}%</span>
-                      </div>
                     </div>
                   </div>
 
@@ -872,28 +1072,6 @@ export default function App() {
                             {selectedPartner.email || `contact@${selectedPartner.shop_name.toLowerCase().replace(/\s+/g, '')}.co.za`}
                           </span>
                         </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Partnership Details */}
-                  <div className="space-y-6">
-                    <h4 className="text-[10px] font-black text-on-surface-variant/40 tracking-[0.3em] uppercase">Partnership Details</h4>
-                    <div className="grid gap-4">
-                      <div className="p-6 bg-white rounded-[28px] border border-outline-variant/30">
-                        <span className="block text-[10px] font-black text-on-surface-variant/50 uppercase tracking-widest mb-2">Partner Since</span>
-                        <span className="text-sm font-bold text-on-surface/80">
-                          {selectedPartner.created_at ? new Date(selectedPartner.created_at).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
-                          }) : 'N/A'}
-                        </span>
-                      </div>
-                      
-                      <div className="p-6 bg-white rounded-[28px] border border-outline-variant/30">
-                        <span className="block text-[10px] font-black text-on-surface-variant/50 uppercase tracking-widest mb-2">Partner ID</span>
-                        <span className="text-sm font-mono font-bold text-on-surface/80">{selectedPartner.id.slice(0, 8)}...</span>
                       </div>
                     </div>
                   </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { getSession, clearSession } from '../lib/session';
+import { getSession } from '../lib/session';
 import MemberLayout from '../components/member/MemberLayout';
 import { Notification, useNotification } from '../components/Notification';
 
@@ -39,7 +39,7 @@ export function MemberFindPartners() {
     try {
       const session = getSession();
       
-      if (!session) { 
+      if (!session || !session.user) { 
         navigate('/member/login'); 
         return; 
       }
@@ -324,69 +324,98 @@ export function MemberFindPartners() {
             )}
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
             {filtered.map((partner) => {
               const isConnected = connectedPartnerIds.has(partner.id);
               const isRequesting = requestingShopId === partner.id;
               const earns = memberEarns(partner.commission_rate);
               
+              const getCategoryColor = (category: string) => {
+                const colors = {
+                  pharmacy: '#10b981',
+                  grocery: '#f59e0b',
+                  restaurant: '#ef4444',
+                  retail: '#8b5cf6',
+                  default: '#6b7280'
+                };
+                return colors[category?.toLowerCase() as keyof typeof colors] || colors.default;
+              };
+
+              const getBadgeColor = (cashbackPercent: number) => {
+                if (cashbackPercent >= 5) return '#f59e0b'; // Orange for high cashback
+                if (cashbackPercent >= 4) return '#3b82f6'; // Blue for medium cashback
+                return '#10b981'; // Green for standard cashback
+              };
+
+              const badgeColor = getBadgeColor(partner.commission_rate);
+              
               return (
-                <div key={partner.id} className="p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    {/* Shop Icon */}
-                    <div className="w-14 h-14 bg-gradient-to-br from-[#1a558b]/20 to-[#1a558b]/10 rounded-2xl flex items-center justify-center flex-shrink-0">
+                <div key={partner.id} className="relative bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group">
+                  {/* Badge */}
+                  <div 
+                    className="absolute top-4 right-4 px-3 py-1 rounded-full text-white text-xs font-bold z-10"
+                    style={{ backgroundColor: badgeColor }}
+                  >
+                    {partner.commission_rate > 3 ? `${earns}%` : 'NEW'}
+                  </div>
+                  
+                  {/* Connected Badge */}
+                  {isConnected && (
+                    <div className="absolute top-4 left-4 bg-green-50 text-green-600 border border-green-200 px-3 py-1 rounded-full text-xs font-bold uppercase z-10">
+                      ✓ Connected
+                    </div>
+                  )}
+                  
+                  {/* Image/Icon Section */}
+                  <div 
+                    className="h-32 flex items-center justify-center relative"
+                    style={{ backgroundColor: getCategoryColor('default') + '20' }}
+                  >
+                    <div className="w-16 h-16 bg-gradient-to-br from-[#1a558b]/20 to-[#1a558b]/10 rounded-2xl flex items-center justify-center">
                       <span className="material-symbols-outlined text-[#1a558b] text-2xl">storefront</span>
                     </div>
-
-                    {/* Shop Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-gray-900 font-bold text-lg">{partner.name}</h3>
-                        {isConnected && (
-                          <span className="bg-green-50 text-green-600 border border-green-200 px-3 py-1 rounded-full text-xs font-bold uppercase">
-                            ✓ Connected
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4 text-sm">
-                        <div className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[#1a558b] text-sm">trending_up</span>
-                          <span className="text-gray-700">You earn <span className="text-[#1a558b] font-bold">{earns}%</span> rewards</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-blue-500 text-sm">percent</span>
-                          <span className="text-gray-600">{partner.commission_rate}% commission rate</span>
-                        </div>
-                      </div>
-                      {partner.phone && (
-                        <p className="text-gray-500 text-sm mt-1">📞 {partner.phone}</p>
-                      )}
+                  </div>
+                  
+                  {/* Content */}
+                  <div className="p-6">
+                    <div className="mb-4">
+                      <h3 className="text-gray-900 font-bold text-lg mb-1">{partner.name}</h3>
+                      <p className="text-gray-600 text-sm capitalize">General Store</p>
+                      <p className="text-gray-500 text-xs mt-1">Location not specified</p>
                     </div>
-
-                    {/* Action Button */}
-                    <div className="flex-shrink-0">
+                    
+                    {/* Status */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                      <span className="text-green-600 text-xs font-bold uppercase">Active Partner</span>
+                    </div>
+                    
+                    {/* Footer */}
+                    <div className="flex items-center justify-between">
+                      <div className="text-gray-600 text-sm">
+                        {partner.phone || 'No phone'}
+                      </div>
+                      
+                      {/* Action Button */}
                       {isConnected ? (
-                        <div className="text-center">
-                          <div className="bg-green-50 text-green-600 px-4 py-2 rounded-xl font-bold text-sm mb-1">
-                            ✓ Connected
-                          </div>
-                          <p className="text-gray-500 text-xs">Ready to earn</p>
+                        <div className="bg-green-50 text-green-600 px-3 py-1 rounded-lg text-xs font-bold">
+                          Ready to earn
                         </div>
                       ) : (
                         <button
                           onClick={() => handleConnectToShop(partner.id, partner.name)}
                           disabled={isRequesting}
-                          className="bg-[#1a558b]/10 hover:bg-[#1a558b]/20 text-[#1a558b] font-bold px-6 py-3 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2"
+                          className="bg-[#1a558b] hover:bg-[#1a558b]/90 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 flex items-center gap-1"
                         >
                           {isRequesting ? (
                             <>
-                              <span className="material-symbols-outlined text-sm animate-spin">refresh</span>
+                              <span className="material-symbols-outlined text-xs animate-spin">refresh</span>
                               Connecting...
                             </>
                           ) : (
                             <>
-                              <span className="material-symbols-outlined text-sm">add_circle</span>
-                              Connect to Partner
+                              <span className="material-symbols-outlined text-xs">add</span>
+                              Connect
                             </>
                           )}
                         </button>

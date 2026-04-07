@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabase';
 import LogoUpload from '../LogoUpload';
 import SupplierExpiryBanner from '../SupplierExpiryBanner';
 import { geocodeAddress } from '../../../utils/geocoding';
+import AnimatedPartnerCard from '../../landing/AnimatedPartnerCard';
 
 interface Partner {
   id: string;
@@ -604,6 +605,36 @@ export default function ShopProfile() {
                   )}
                 </div>
               </div>
+
+              {editMode && (
+                <div className="mt-8 pt-6 border-t border-gray-200">
+                  <div className="flex items-center justify-end gap-3">
+                    <button
+                      onClick={handleCancel}
+                      className="px-6 py-3 text-gray-600 hover:text-gray-800 font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel Changes
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="px-8 py-3 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 disabled:opacity-50 flex items-center gap-2 shadow-lg"
+                    >
+                      {saving ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          Saving Profile...
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-lg">save</span>
+                          Save Profile
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -661,6 +692,36 @@ export default function ShopProfile() {
                   )}
                 </div>
               </div>
+
+              {editMode && (
+                <div className="mt-8 pt-6 border-t border-gray-200">
+                  <div className="flex items-center justify-end gap-3">
+                    <button
+                      onClick={handleCancel}
+                      className="px-6 py-3 text-gray-600 hover:text-gray-800 font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel Changes
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="px-8 py-3 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 disabled:opacity-50 flex items-center gap-2 shadow-lg"
+                    >
+                      {saving ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          Saving Profile...
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-lg">save</span>
+                          Save Profile
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -672,11 +733,87 @@ export default function ShopProfile() {
                 Branding & Media
               </h3>
               
-              <LogoUpload
-                currentLogoUrl={partner.store_logo_url}
-                onLogoUpdate={handleLogoUpdate}
-                partnerId={partner.id}
-              />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Logo Upload Section */}
+                <div>
+                  <LogoUpload
+                    currentLogoUrl={partner.store_logo_url}
+                    onLogoUpdate={handleLogoUpdate}
+                    partnerId={partner.id}
+                  />
+                </div>
+
+                {/* Card Preview Section */}
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Live Card Preview</h4>
+                  <p className="text-sm text-gray-600 mb-6">This is your actual live card with all animations and effects. Hover over it to see the interactions!</p>
+                  
+                  <div className="flex justify-center">
+                    <AnimatedPartnerCard
+                      partner={{
+                        id: partner.id,
+                        shop_name: editMode ? (formData.shop_name || 'Your Business Name') : partner.shop_name,
+                        category: editMode ? (formData.category || 'General Store') : (partner.category || 'General Store'),
+                        address: editMode ? (formData.address || 'Address not provided') : (partner.address || 'Address not provided'),
+                        cashback_percent: partner.cashback_percent,
+                        status: partner.status,
+                        store_logo_url: partner.store_logo_url,
+                        phone: editMode ? (formData.phone || 'No phone') : (partner.phone || 'No phone')
+                      }}
+                      onClick={() => {
+                        // Optional: Add click handler for preview
+                        console.log('Preview card clicked');
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <span className="material-symbols-outlined text-green-600 text-xl">auto_awesome</span>
+                      <div>
+                        <h5 className="text-green-800 font-semibold text-sm mb-1">Live Interactive Preview</h5>
+                        <ul className="text-green-700 text-sm space-y-1">
+                          <li>• This is your actual card with full animations and hover effects</li>
+                          <li>• Changes update in real-time as you edit your information</li>
+                          <li>• Badge color automatically adjusts based on cashback percentage</li>
+                          <li>• Upload a logo to see it immediately in the card</li>
+                          <li>• This exact card appears on the homepage and partner directory</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {editMode && (
+                  <div className="mt-8 pt-6 border-t border-gray-200">
+                    <div className="flex items-center justify-end gap-3">
+                      <button
+                        onClick={handleCancel}
+                        className="px-6 py-3 text-gray-600 hover:text-gray-800 font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        Cancel Changes
+                      </button>
+                      <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="px-8 py-3 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 disabled:opacity-50 flex items-center gap-2 shadow-lg"
+                      >
+                        {saving ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            Saving Profile...
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-lg">save</span>
+                            Save Profile
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -754,6 +891,36 @@ export default function ShopProfile() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {editMode && (
+                <div className="mt-8 pt-6 border-t border-gray-200">
+                  <div className="flex items-center justify-end gap-3">
+                    <button
+                      onClick={handleCancel}
+                      className="px-6 py-3 text-gray-600 hover:text-gray-800 font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel Changes
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="px-8 py-3 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 disabled:opacity-50 flex items-center gap-2 shadow-lg"
+                    >
+                      {saving ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          Saving Profile...
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-lg">save</span>
+                          Save Profile
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
