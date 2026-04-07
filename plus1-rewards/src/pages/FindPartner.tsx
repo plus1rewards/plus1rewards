@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { 
   Search, 
@@ -12,10 +12,11 @@ import {
   X,
   Info,
   Calendar,
-  ArrowRight
+  ArrowRight,
+  Loader
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapContainer, TileLayer, Marker, useMap, ZoomControl, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMap, ZoomControl, Popup, Polyline, Circle } from "react-leaflet";
 import L from "leaflet";
 import { supabase } from "../lib/supabase";
 import { geocodeAddress, getCityCoordinates, extractCityFromAddress } from "../utils/geocoding";
@@ -59,8 +60,45 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   return d;
 }
 
+// Fetch route from OSRM API
+async function fetchRoute(
+  startLat: number,
+  startLng: number,
+  destLat: number,
+  destLng: number
+): Promise<[number, number][] | null> {
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${destLng},${destLat}?overview=full&geometries=geojson`;
+    const response = await fetch(url);
+    
+    if (!response.ok) throw new Error('Failed to fetch route');
+    
+    const data = await response.json();
+    
+    if (data.routes && data.routes.length > 0) {
+      // OSRM returns [longitude, latitude], convert to [latitude, longitude] for Leaflet
+      return data.routes[0].geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]]);
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching route:', error);
+    return null;
+  }
+}
+
 // Helper to center map with smooth animation
-function MapController({ center, zoom }: { center: [number, number], zoom: number }) {
+function MapController({ 
+  center, 
+  zoom, 
+  followUser, 
+  onManualOverride 
+}: { 
+  center: [number, number], 
+  zoom: number,
+  followUser: boolean,
+  onManualOverride: () => void
+}) {
   const map = useMap();
   
   useEffect(() => {
@@ -69,14 +107,34 @@ function MapController({ center, zoom }: { center: [number, number], zoom: numbe
     const currentZoom = map.getZoom();
     
     // Only flyTo if the change is significant (programmatic move)
-    // This prevents jitter during manual panning while allowing smooth animation for selection/locate
     if (dist > 0.001 || currentZoom !== zoom) {
       map.flyTo(center, zoom, {
-        duration: 1.5,
-        easeLinearity: 0.25
+        duration: followUser ? 0.5 : 1.2,
+        easeLinearity: 0.25,
+        noMoveStart: false
       });
     }
-  }, [center, zoom, map]);
+  }, [center, zoom, map, followUser]);
+
+  // Detect manual map interaction to disable follow mode
+  useEffect(() => {
+    const handleDragStart = () => onManualOverride();
+    const handleZoomStart = () => onManualOverride();
+    const handleMouseDown = () => onManualOverride();
+    const handleTouchStart = () => onManualOverride();
+
+    map.on('dragstart', handleDragStart);
+    map.on('zoomstart', handleZoomStart);
+    map.on('mousedown', handleMouseDown);
+    map.on('touchstart', handleTouchStart);
+
+    return () => {
+      map.off('dragstart', handleDragStart);
+      map.off('zoomstart', handleZoomStart);
+      map.off('mousedown', handleMouseDown);
+      map.off('touchstart', handleTouchStart);
+    };
+  }, [map, onManualOverride]);
 
   return null;
 }
@@ -92,6 +150,17 @@ export default function App() {
   const [radius, setRadius] = useState(25);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Real-time navigation state
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [followUser, setFollowUser] = useState(false);
+  const [route, setRoute] = useState<[number, number][] | null>(null);
+  const [isRouting, setIsRouting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [routeError, setRouteError] = useState<string | null>(null);
+  const [userAccuracy, setUserAccuracy] = useState<number | null>(null);
+  const [routeTransition, setRouteTransition] = useState<'entering' | 'exiting' | 'idle'>('idle');
+  const watchIdRef = useRef<number | null>(null);
   
   // Default map center (Cape Town)
   const [mapCenter, setMapCenter] = useState<[number, number]>([-33.9249, 18.4241]);
@@ -226,6 +295,46 @@ export default function App() {
     fetchPartners();
   }, [highlightPartnerId]);
 
+  // Real-time geolocation tracking
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      console.error('Geolocation not supported');
+      return;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        setUserLocation([latitude, longitude]);
+        setUserAccuracy(accuracy);
+
+        // Update map center if follow mode is active
+        if (followUser) {
+          setMapCenter([latitude, longitude]);
+        }
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        if (error.code === error.PERMISSION_DENIED) {
+          setRouteError('Location permission denied. Please enable location access.');
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+
+    watchIdRef.current = watchId;
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, [followUser]);
+
   const categories = ["All Partners", "Active", "Appliances", "Service", "Electronics", "Home Decor", "Furniture"];
 
   const filteredPartners = useMemo(() => {
@@ -251,21 +360,83 @@ export default function App() {
     partners.find(p => p.id === selectedPartnerId) || null
   , [selectedPartnerId, partners]);
 
-  // Sync map center when partner is selected
+  // Dynamic routing - recalculate when user location changes
+  useEffect(() => {
+    if (!userLocation || !selectedPartner || !selectedPartner.latitude || !selectedPartner.longitude) {
+      // Smooth exit animation
+      if (route) {
+        setRouteTransition('exiting');
+        const exitTimer = setTimeout(() => {
+          setRoute(null);
+          setRouteTransition('idle');
+        }, 600);
+        return () => clearTimeout(exitTimer);
+      }
+      return;
+    }
+
+    // Smooth entry animation
+    setRouteTransition('entering');
+
+    // Throttle route recalculation to every 3-5 seconds
+    const routeTimer = setTimeout(async () => {
+      setIsRouting(true);
+      setRouteError(null);
+      
+      try {
+        const newRoute = await fetchRoute(
+          userLocation[0],
+          userLocation[1],
+          selectedPartner.latitude!,
+          selectedPartner.longitude!
+        );
+        
+        if (newRoute) {
+          setRoute(newRoute);
+          setRouteTransition('idle');
+        } else {
+          setRouteError('Could not calculate route');
+          setRouteTransition('idle');
+        }
+      } catch (error) {
+        console.error('Routing error:', error);
+        setRouteError('Error calculating route');
+        setRouteTransition('idle');
+      } finally {
+        setIsRouting(false);
+      }
+    }, 3000);
+
+    return () => clearTimeout(routeTimer);
+  }, [userLocation, selectedPartner]);
+
+  // Sync map center when partner is selected with smooth transition
   useEffect(() => {
     if (selectedPartner && selectedPartner.latitude && selectedPartner.longitude) {
-      setMapCenter([selectedPartner.latitude, selectedPartner.longitude]);
-      setZoom(15);
+      // Add a small delay for smooth visual transition
+      const transitionTimer = setTimeout(() => {
+        setMapCenter([selectedPartner.latitude, selectedPartner.longitude]);
+        setZoom(15);
+      }, 100);
+      
+      return () => clearTimeout(transitionTimer);
     }
   }, [selectedPartner]);
 
   const handleLocate = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((position) => {
-        setMapCenter([position.coords.latitude, position.coords.longitude]);
+        const userLoc: [number, number] = [position.coords.latitude, position.coords.longitude];
+        setUserLocation(userLoc);
+        setMapCenter(userLoc);
+        setFollowUser(true);
         setZoom(15);
       });
     }
+  };
+
+  const handleManualOverride = () => {
+    setFollowUser(false);
   };
 
   const toggleLayer = () => {
@@ -611,8 +782,94 @@ export default function App() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url={getTileUrl()}
           />
-          <MapController center={mapCenter} zoom={zoom} />
+          <MapController center={mapCenter} zoom={zoom} followUser={followUser} onManualOverride={handleManualOverride} />
           <ZoomControl position="bottomright" />
+          
+          {/* Route Polyline */}
+          {route && (
+            <>
+              {/* Base route layer */}
+              <Polyline
+                positions={route}
+                color="#1a558b"
+                weight={6}
+                opacity={0.3}
+                lineJoin="round"
+                dashArray="0"
+                className={routeTransition === 'entering' ? 'route-enter' : routeTransition === 'exiting' ? 'route-exit' : ''}
+                style={{
+                  filter: 'drop-shadow(0 0 4px rgba(26, 85, 139, 0.3))',
+                  transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                }}
+              />
+              
+              {/* Animated flowing route */}
+              <Polyline
+                positions={route}
+                color="#2563eb"
+                weight={6}
+                opacity={0.9}
+                lineJoin="round"
+                dashArray="10, 10"
+                className={`route-flowing ${routeTransition === 'entering' ? 'route-enter' : routeTransition === 'exiting' ? 'route-exit' : ''}`}
+                style={{
+                  filter: 'drop-shadow(0 0 12px rgba(37, 99, 235, 0.8))',
+                  animation: 'route-flow 2s linear infinite',
+                  transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                }}
+              />
+              
+              {/* Glow effect layer */}
+              <Polyline
+                positions={route}
+                color="#1a558b"
+                weight={12}
+                opacity={0.15}
+                lineJoin="round"
+                dashArray="0"
+                className={routeTransition === 'entering' ? 'route-enter' : routeTransition === 'exiting' ? 'route-exit' : ''}
+                style={{
+                  filter: 'drop-shadow(0 0 20px rgba(26, 85, 139, 0.6))',
+                  pointerEvents: 'none',
+                  transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                }}
+              />
+            </>
+          )}
+
+          {/* User Location Marker */}
+          {userLocation && (
+            <>
+              <Marker
+                position={userLocation}
+                icon={L.divIcon({
+                  html: `
+                    <div class="relative">
+                      <div class="w-6 h-6 bg-blue-500 rounded-full border-4 border-white shadow-lg animate-pulse"></div>
+                      <div class="absolute inset-0 w-6 h-6 rounded-full border-2 border-blue-500 animate-ping opacity-75"></div>
+                    </div>
+                  `,
+                  className: '',
+                  iconSize: [24, 24],
+                  iconAnchor: [12, 12],
+                })}
+              />
+              {/* Accuracy Circle */}
+              {userAccuracy && (
+                <Circle
+                  center={userLocation}
+                  radius={userAccuracy}
+                  color="#3b82f6"
+                  weight={1}
+                  opacity={0.2}
+                  fill={true}
+                  fillColor="#3b82f6"
+                  fillOpacity={0.05}
+                  dashArray="5, 5"
+                />
+              )}
+            </>
+          )}
           
           {filteredPartners
             .map((p) => {
@@ -677,15 +934,30 @@ export default function App() {
                       </div>
                       
                       <div className="flex gap-2">
-                        <a 
-                          href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 h-11 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary-container transition-all duration-300 no-underline shadow-lg shadow-primary/10"
+                        <button 
+                          onClick={() => {
+                            // Enable follow mode and calculate route
+                            setFollowUser(true);
+                            setSelectedPartnerId(p.id);
+                            
+                            // Get user location if not already available
+                            if (!userLocation) {
+                              navigator.geolocation.getCurrentPosition((position) => {
+                                const userLoc: [number, number] = [position.coords.latitude, position.coords.longitude];
+                                setUserLocation(userLoc);
+                                setMapCenter(userLoc);
+                                setZoom(15);
+                              });
+                            } else {
+                              setMapCenter(userLocation);
+                              setZoom(15);
+                            }
+                          }}
+                          className="flex-1 h-11 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary-container transition-all duration-300 shadow-lg shadow-primary/10 cursor-pointer group"
                         >
-                          <Navigation size={14} strokeWidth={2.5} />
+                          <Navigation size={14} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
                           Directions
-                        </a>
+                        </button>
                         <button 
                           onClick={() => setIsDetailOpen(true)}
                           className="w-11 h-11 bg-surface-container rounded-xl flex items-center justify-center text-primary hover:bg-primary/10 transition-all duration-300"
@@ -705,6 +977,74 @@ export default function App() {
         {/* Floating Map Controls */}
         <div className="absolute top-4 lg:top-10 left-4 lg:left-10 right-4 lg:right-10 flex justify-between items-start pointer-events-none z-[1000]">
           <div className="flex flex-col gap-4 pointer-events-auto">
+            {/* Route Error Message */}
+            {routeError && (
+              <motion.div 
+                initial={{ x: -20, opacity: 0, scale: 0.95 }}
+                animate={{ x: 0, opacity: 1, scale: 1 }}
+                exit={{ x: -20, opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                className="glass-panel px-5 lg:px-7 py-4 lg:py-5 rounded-2xl lg:rounded-[24px] shadow-2xl bg-gradient-to-r from-red-50 to-transparent border border-red-200/50"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-xs font-bold">!</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-xs lg:text-sm font-bold text-red-900">{routeError}</p>
+                    <p className="text-[10px] lg:text-xs font-medium text-red-600/70">Try selecting another partner or check your connection</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            
+            {/* Routing Status */}
+            {isRouting && (
+              <motion.div 
+                initial={{ x: -20, opacity: 0, scale: 0.95 }}
+                animate={{ x: 0, opacity: 1, scale: 1 }}
+                exit={{ x: -20, opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                className="glass-panel flex items-center gap-4 px-5 lg:px-7 py-4 lg:py-5 rounded-2xl lg:rounded-[24px] shadow-2xl bg-gradient-to-r from-blue-50 to-transparent border border-blue-100/50"
+              >
+                {/* Enhanced Loader */}
+                <div className="relative w-5 h-5 lg:w-6 lg:h-6">
+                  {/* Outer pulsing ring */}
+                  <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-blue-500 border-r-blue-500 loader-spin" />
+                  
+                  {/* Inner rotating circle */}
+                  <div className="absolute inset-1 rounded-full border-2 border-transparent border-b-blue-400 loader-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }} />
+                  
+                  {/* Center dot */}
+                  <div className="absolute inset-2 rounded-full bg-gradient-to-br from-blue-500 to-blue-600" />
+                </div>
+                
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs lg:text-sm font-bold text-blue-900">Calculating route...</span>
+                  <span className="text-[10px] lg:text-xs font-medium text-blue-600/70">Finding optimal path</span>
+                </div>
+              </motion.div>
+            )}
+            
+            {/* Follow Mode Status */}
+            {followUser && userLocation && (
+              <motion.div 
+                initial={{ x: -20, opacity: 0, scale: 0.95 }}
+                animate={{ x: 0, opacity: 1, scale: 1 }}
+                exit={{ x: -20, opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                className="glass-panel flex items-center gap-3 px-5 lg:px-7 py-4 lg:py-5 rounded-2xl lg:rounded-[24px] shadow-2xl bg-gradient-to-r from-green-50 to-transparent border border-green-100/50"
+              >
+                <div className="relative w-3 h-3">
+                  <div className="absolute inset-0 rounded-full bg-green-500 animate-pulse" />
+                  <div className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-75" />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs lg:text-sm font-bold text-green-900">Following your location</span>
+                  <span className="text-[10px] lg:text-xs font-medium text-green-600/70">Real-time tracking active</span>
+                </div>
+              </motion.div>
+            )}
             <motion.div 
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
@@ -751,9 +1091,13 @@ export default function App() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.1 }}
               onClick={handleLocate}
-              className="w-10 h-10 lg:w-14 lg:h-14 glass-panel rounded-xl lg:rounded-2xl flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-white transition-all duration-500 shadow-2xl active:scale-90 group"
+              className={`w-10 h-10 lg:w-14 lg:h-14 glass-panel rounded-xl lg:rounded-2xl flex items-center justify-center transition-all duration-500 shadow-2xl active:scale-90 group ${
+                followUser 
+                  ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                  : 'text-on-surface-variant hover:text-primary hover:bg-white'
+              }`}
             >
-              <Locate size={18} strokeWidth={2} className="group-hover:rotate-12 transition-transform" />
+              <Locate size={18} strokeWidth={2} className={`${followUser ? 'animate-pulse' : 'group-hover:rotate-12'} transition-transform`} />
             </motion.button>
             <motion.button 
               initial={{ y: -20, opacity: 0 }}
@@ -764,6 +1108,19 @@ export default function App() {
             >
               <Layers size={18} strokeWidth={2} className="group-hover:rotate-12 transition-transform" />
             </motion.button>
+            {/* Clear Route Button */}
+            {route && (
+              <motion.button 
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.25 }}
+                onClick={() => setRoute(null)}
+                className="w-10 h-10 lg:w-14 lg:h-14 glass-panel rounded-xl lg:rounded-2xl flex items-center justify-center text-red-500 hover:bg-red-50 transition-all duration-500 shadow-2xl active:scale-90 group"
+                title="Clear Route"
+              >
+                <X size={18} strokeWidth={2} className="group-hover:rotate-12 transition-transform" />
+              </motion.button>
+            )}
             {/* Mobile Partners Toggle */}
             <motion.button 
               initial={{ y: -20, opacity: 0 }}
@@ -933,16 +1290,23 @@ export default function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
                 onClick={() => setIsDetailOpen(false)}
                 className="absolute inset-0 bg-black/20 backdrop-blur-sm z-[2000]"
               />
               
               {/* Detail Card */}
               <motion.div 
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                initial={{ x: "100%", opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: "100%", opacity: 0 }}
+                transition={{ 
+                  type: "spring", 
+                  damping: 28, 
+                  stiffness: 300,
+                  mass: 1,
+                  velocity: 2
+                }}
                 className="absolute top-0 right-0 bottom-0 w-full lg:w-[540px] bg-white z-[2001] shadow-[-40px_0_80px_rgba(0,0,0,0.1)] flex flex-col"
               >
                 {/* Header Image/Pattern Area */}
@@ -1093,16 +1457,32 @@ export default function App() {
                       }
                       
                       return lat && lng ? (
-                        <a 
-                          href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full py-6 premium-gradient text-white rounded-[28px] font-black text-sm uppercase tracking-[0.25em] flex items-center justify-center gap-4 shadow-2xl shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-1 transition-all duration-500 no-underline"
+                        <button 
+                          onClick={() => {
+                            // Enable follow mode and calculate route
+                            setFollowUser(true);
+                            setSelectedPartnerId(selectedPartner.id);
+                            setIsDetailOpen(false);
+                            
+                            // Get user location if not already available
+                            if (!userLocation) {
+                              navigator.geolocation.getCurrentPosition((position) => {
+                                const userLoc: [number, number] = [position.coords.latitude, position.coords.longitude];
+                                setUserLocation(userLoc);
+                                setMapCenter(userLoc);
+                                setZoom(15);
+                              });
+                            } else {
+                              setMapCenter(userLocation);
+                              setZoom(15);
+                            }
+                          }}
+                          className="w-full py-6 premium-gradient text-white rounded-[28px] font-black text-sm uppercase tracking-[0.25em] flex items-center justify-center gap-4 shadow-2xl shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-1 transition-all duration-500 cursor-pointer group"
                         >
-                          <Navigation size={20} strokeWidth={2.5} />
+                          <Navigation size={20} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
                           Start Navigation
-                          <ArrowRight size={20} strokeWidth={2.5} />
-                        </a>
+                          <ArrowRight size={20} strokeWidth={2.5} className="group-hover:translate-x-1 transition-transform" />
+                        </button>
                       ) : (
                         <div className="w-full py-6 bg-gray-100 text-gray-500 rounded-[28px] font-black text-sm uppercase tracking-[0.25em] flex items-center justify-center gap-4">
                           <MapPin size={20} strokeWidth={2.5} />
