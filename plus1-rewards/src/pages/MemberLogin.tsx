@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import AuthLayout from '../components/auth/AuthLayout';
 import { AuthInput, AuthButton, AuthDivider, AuthError, AuthLink } from '../components/auth/AuthComponents';
+import SEO from '../components/SEO';
 
 const BLUE = '#1a558b'
 
@@ -102,6 +103,13 @@ export default function MemberLogin() {
         { value: 'R390', label: 'Monthly Target' },
       ]}
     >
+      <SEO
+        title="Member Login & Register | Plus1 Rewards"
+        description="Sign in or create your Plus1 Rewards account to start earning cashback toward your medical cover plan."
+        keywords="Plus1 Rewards login, member login, medical cover login, cashback account"
+        canonical="https://plus1rewards.com/member/login"
+        robots="noindex, nofollow"
+      />
       <div className="space-y-6">
         <div>
           <h2 className="text-2xl font-black text-gray-900">Welcome back</h2>

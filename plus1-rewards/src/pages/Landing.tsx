@@ -9,6 +9,7 @@ import Roles from '../components/landing/Roles'
 import OfflineFeature from '../components/landing/OfflineFeature'
 import FAQ from '../components/landing/FAQ'
 import Footer from '../components/landing/Footer'
+import SEO from '../components/SEO'
 
 export default function Landing() {
   const pageVariants = {
@@ -40,6 +41,13 @@ export default function Landing() {
       initial="initial"
       animate="animate"
     >
+      <SEO
+        title="Plus1 Rewards | Earn Cashback Toward Medical Cover"
+        description="Shop at partner stores and earn real cashback that funds your medical cover. Plus1 Rewards makes healthcare accessible for everyone in South Africa."
+        keywords="medical cover South Africa, cashback rewards, healthcare funding, Day1Health, affordable medical insurance, shop and earn, partner stores SA, medical cover cashback"
+        canonical="https://plus1rewards.com/"
+        robots="index, follow"
+      />
       <Navbar />
       <Hero />
       <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-100px" }}>

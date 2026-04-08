@@ -20,6 +20,7 @@ import { MapContainer, TileLayer, Marker, useMap, ZoomControl, Popup, Polyline, 
 import L from "leaflet";
 import { supabase } from "../lib/supabase";
 import { geocodeAddress, getCityCoordinates, extractCityFromAddress } from "../utils/geocoding";
+import SEO from "../components/SEO";
 import "leaflet/dist/leaflet.css";
 
 // Partner interface matching database schema
@@ -480,6 +481,13 @@ export default function App() {
 
   return (
     <main className="find-partner-page flex h-screen w-full relative overflow-hidden font-sans bg-white selection:bg-primary/10 selection:text-primary">
+      <SEO
+        title="Find Partners | Plus1 Rewards"
+        description="Discover partner stores near you where you can earn cashback toward your medical cover. Browse our network of trusted partners across South Africa."
+        keywords="find partners, partner stores, cashback stores, Plus1 Rewards partners, medical cover partners, shop and earn"
+        canonical="https://plus1rewards.com/find-partner"
+        robots="index, follow"
+      />
       {loading ? (
         <div className="flex items-center justify-center w-full h-full">
           <div className="text-center">

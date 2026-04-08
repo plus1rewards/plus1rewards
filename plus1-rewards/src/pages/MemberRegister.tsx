@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import AuthLayout from '../components/auth/AuthLayout';
 import { AuthInput, AuthButton, AuthError, AuthLink } from '../components/auth/AuthComponents';
 import { Notification, useNotification } from '../components/Notification';
+import SEO from '../components/SEO';
 
 const BLUE = '#1a558b'
 
@@ -155,6 +156,13 @@ export default function MemberRegister() {
         { value: 'R390', label: 'Monthly Target' },
       ]}
     >
+      <SEO
+        title="Member Login & Register | Plus1 Rewards"
+        description="Sign in or create your Plus1 Rewards account to start earning cashback toward your medical cover plan."
+        keywords="Plus1 Rewards register, sign up, create account, medical cover registration"
+        canonical="https://plus1rewards.com/member/register"
+        robots="noindex, nofollow"
+      />
       {notification && (
         <Notification
           type={notification.type}
