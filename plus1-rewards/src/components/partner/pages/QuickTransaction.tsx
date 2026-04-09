@@ -193,17 +193,31 @@ export default function QuickTransaction() {
           const toAdd = Math.min(remainingAmount, needed);
 
           const newFundedAmount = plan.funded_amount + toAdd;
-          const newStatus = newFundedAmount >= plan.target_amount ? 'active' : 'in_progress';
+          
+          // Check if member profile is complete
+          const { data: memberData } = await supabase
+            .from('members')
+            .select('email, sa_id, address_line_1')
+            .eq('id', member.id)
+            .single();
+          
+          const isProfileComplete = memberData && 
+            memberData.email && 
+            !memberData.email.includes('@plus1rewards.local') &&
+            memberData.sa_id && 
+            memberData.address_line_1;
+          
+          // Determine status based on funding and profile completeness
+          let newStatus = 'in_progress';
+          if (newFundedAmount >= plan.target_amount) {
+            newStatus = isProfileComplete ? 'pending' : 'suspended';
+          }
 
           await supabase
             .from('member_cover_plans')
             .update({
               funded_amount: newFundedAmount,
-              status: newStatus,
-              ...(newStatus === 'active' && {
-                active_from: new Date().toISOString(),
-                active_to: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-              })
+              status: newStatus
             })
             .eq('id', plan.id);
 
@@ -219,6 +233,31 @@ export default function QuickTransaction() {
             });
 
           remainingAmount -= toAdd;
+          
+          // If there's overflow after reaching 100%, add it to the same plan's overflow
+          if (remainingAmount > 0 && newFundedAmount >= plan.target_amount) {
+            const newOverflow = (plan.overflow_balance || 0) + remainingAmount;
+            
+            await supabase
+              .from('member_cover_plans')
+              .update({
+                overflow_balance: newOverflow
+              })
+              .eq('id', plan.id);
+
+            await supabase
+              .from('cover_plan_wallet_entries')
+              .insert({
+                member_id: member.id,
+                member_cover_plan_id: plan.id,
+                transaction_id: transaction.id,
+                entry_type: 'overflow_added',
+                amount: remainingAmount,
+                balance_after: newOverflow
+              });
+
+            remainingAmount = 0;
+          }
         }
       }
 

@@ -27,6 +27,7 @@ interface ComprehensiveStats {
   // Entity counts
   totalMembers: number; activeMembers: number; totalShops: number; activeShops: number;
   suspendedShops: number; totalAgents: number; totalPolicyProviders: number;
+  pendingDay1HealthApprovals: number;
   
   // Policy stats
   totalPolicies: number; activePolicies: number; policiesInProgress: number;
@@ -55,7 +56,7 @@ export function AdminDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<ComprehensiveStats>({
     totalMembers: 0, activeMembers: 0, totalShops: 0, activeShops: 0, suspendedShops: 0,
-    totalAgents: 0, totalPolicyProviders: 0, totalPolicies: 0, activePolicies: 0,
+    totalAgents: 0, totalPolicyProviders: 0, pendingDay1HealthApprovals: 0, totalPolicies: 0, activePolicies: 0,
     policiesInProgress: 0, totalPolicyValue: 0, totalFundedAmount: 0, revenueThisMonth: 0,
     revenueAllTime: 0, totalTransactions: 0, totalRewardsIssued: 0, totalAgentCommissions: 0,
     totalPlatformFees: 0, overdueInvoices: 0, pendingApprovals: 0, systemHealth: 100
@@ -70,6 +71,9 @@ export function AdminDashboard() {
   const [alerts, setAlerts] = useState<Array<{ id: string; type: 'error' | 'warning' | 'info'; message: string; action?: () => void }>>([]);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<'overview' | 'members' | 'shops' | 'agents' | 'providers' | 'policies' | 'member-policies' | 'notifications' | 'transactions'>('overview');
+  const [suspendModalOpen, setSuspendModalOpen] = useState(false);
+  const [memberToSuspend, setMemberToSuspend] = useState<Entity | null>(null);
+  const [suspensionReason, setSuspensionReason] = useState('');
 
   useEffect(() => { 
     console.log('🎯 useEffect triggered - calling loadComprehensiveData');
@@ -243,6 +247,7 @@ export function AdminDashboard() {
         suspendedShops: shops.filter((s: any) => s.status === 'suspended').length,
         totalAgents: agents.length,
         totalPolicyProviders: insurers.length,
+        pendingDay1HealthApprovals: coverPlans.filter((p: any) => p.status === 'pending').length,
         
         // Policy stats
         totalPolicies: coverPlans.length,
@@ -378,6 +383,66 @@ export function AdminDashboard() {
     }
   };
 
+  const handleSuspendMember = (member: Entity) => {
+    setMemberToSuspend(member);
+    setSuspensionReason('');
+    setSuspendModalOpen(true);
+  };
+
+  const confirmSuspendMember = async () => {
+    if (!memberToSuspend || !suspensionReason.trim()) {
+      alert('Please provide a reason for suspension');
+      return;
+    }
+
+    try {
+      // Update member status to suspended
+      const { error: memberError } = await supabaseAdmin
+        .from('members')
+        .update({ status: 'suspended' })
+        .eq('id', memberToSuspend.id);
+      
+      if (memberError) throw memberError;
+
+      // Suspend all member's cover plans
+      const { error: plansError } = await supabaseAdmin
+        .from('member_cover_plans')
+        .update({ 
+          status: 'suspended',
+          suspended_at: new Date().toISOString()
+        })
+        .eq('member_id', memberToSuspend.id);
+      
+      if (plansError) throw plansError;
+
+      // Create admin notification for audit trail
+      await supabaseAdmin.from('admin_notifications').insert({
+        type: 'member_suspended',
+        member_id: memberToSuspend.id,
+        member_name: getFullName(memberToSuspend),
+        member_phone: memberToSuspend.cell_phone,
+        message: `Member ${getFullName(memberToSuspend)} (${memberToSuspend.cell_phone}) has been SUSPENDED by admin. Reason: ${suspensionReason}`,
+        priority: 'high',
+        metadata: {
+          suspension_reason: suspensionReason,
+          suspended_at: new Date().toISOString(),
+          action: 'member_suspended'
+        }
+      });
+
+      // Close modal and refresh
+      setSuspendModalOpen(false);
+      setMemberToSuspend(null);
+      setSuspensionReason('');
+      loadComprehensiveData();
+      
+      alert(`Member ${getFullName(memberToSuspend)} has been suspended successfully.`);
+    } catch (error) {
+      console.error('Failed to suspend member:', error);
+      alert('Failed to suspend member. Please try again.');
+    }
+  };
+
   const deleteEntity = async (entityType: string, id: string) => {
     if (!confirm('Are you sure you want to delete this record? This action cannot be undone.')) return;
     
@@ -401,7 +466,7 @@ export function AdminDashboard() {
     { label: 'Total Members', value: stats.totalMembers.toLocaleString(), sub: `${stats.activeMembers} with QR codes`, color: 'var(--blue)', category: 'entities' },
     { label: 'Total Shops', value: stats.totalShops.toLocaleString(), sub: `${stats.activeShops} active, ${stats.suspendedShops} suspended`, color: 'var(--green-dark)', category: 'entities' },
     { label: 'Total Agents', value: stats.totalAgents.toLocaleString(), sub: 'Sales representatives', color: '#0891b2', category: 'entities' },
-    { label: 'Policy Providers', value: stats.totalPolicyProviders.toLocaleString(), sub: 'Insurance partners', color: '#064e3b', category: 'entities' },
+    { label: 'Pending Day1Health Approval', value: stats.pendingDay1HealthApprovals.toLocaleString(), sub: 'Awaiting verification', color: '#f59e0b', category: 'entities' },
     
     // Policy Overview
     { label: 'Total Policies', value: stats.totalPolicies.toLocaleString(), sub: `${stats.activePolicies} active`, color: 'var(--blue)', category: 'policies' },
@@ -484,7 +549,7 @@ export function AdminDashboard() {
               { key: 'notifications', label: 'Notifications', icon: '🔔' },
               { key: 'shops', label: 'Shops', icon: '🏪', count: stats.totalShops },
               { key: 'agents', label: 'Agents', icon: '📈', count: stats.totalAgents },
-              { key: 'providers', label: 'Policy Providers', icon: '🏥', count: stats.totalPolicyProviders },
+              { key: 'providers', label: 'Pending Day1Health', icon: '⏳', count: stats.pendingDay1HealthApprovals },
               { key: 'policies', label: 'Policies', icon: '📋', count: stats.totalPolicies },
               { key: 'transactions', label: 'Transactions', icon: '💳', count: stats.totalTransactions }
             ].map(tab => (
@@ -582,6 +647,7 @@ export function AdminDashboard() {
                       <th>Member</th>
                       <th>Contact</th>
                       <th>QR Code</th>
+                      <th>Status</th>
                       <th>Active Policy</th>
                       <th>Joined</th>
                       <th>Actions</th>
@@ -610,6 +676,15 @@ export function AdminDashboard() {
                           )}
                         </td>
                         <td>
+                          <span className={`badge ${
+                            member.status === 'active' ? 'badge-green' :
+                            member.status === 'suspended' ? 'badge-red' :
+                            'badge-yellow'
+                          }`}>
+                            {member.status}
+                          </span>
+                        </td>
+                        <td>
                           <span className="badge badge-blue">
                             {member.active_policy || 'None selected'}
                           </span>
@@ -618,16 +693,41 @@ export function AdminDashboard() {
                           {new Date(member.created_at).toLocaleDateString()}
                         </td>
                         <td>
-                          <button
-                            onClick={() => deleteEntity('members', member.id)}
-                            style={{
-                              background: '#ef4444', color: '#fff', border: 'none',
-                              borderRadius: '4px', padding: '0.25rem 0.5rem',
-                              fontSize: '0.75rem', cursor: 'pointer'
-                            }}
-                          >
-                            Delete
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            {member.status === 'suspended' ? (
+                              <button
+                                onClick={() => updateEntityStatus('members', member.id, 'active')}
+                                style={{
+                                  background: '#16a34a', color: '#fff', border: 'none',
+                                  borderRadius: '4px', padding: '0.25rem 0.5rem',
+                                  fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600
+                                }}
+                              >
+                                Reactivate
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleSuspendMember(member)}
+                                style={{
+                                  background: '#ea580c', color: '#fff', border: 'none',
+                                  borderRadius: '4px', padding: '0.25rem 0.5rem',
+                                  fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600
+                                }}
+                              >
+                                Suspend
+                              </button>
+                            )}
+                            <button
+                              onClick={() => deleteEntity('members', member.id)}
+                              style={{
+                                background: '#ef4444', color: '#fff', border: 'none',
+                                borderRadius: '4px', padding: '0.25rem 0.5rem',
+                                fontSize: '0.75rem', cursor: 'pointer'
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -828,112 +928,85 @@ export function AdminDashboard() {
             </div>
           )}
 
-          {/* Policy Providers Tab */}
+          {/* Pending Day1Health Approvals Tab */}
           {activeView === 'providers' && (
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
               <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gray-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>🏥 All Policy Providers ({stats.totalPolicyProviders.toLocaleString()})</h2>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>⏳ Pending Day1Health Approvals ({stats.pendingDay1HealthApprovals.toLocaleString()})</h2>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <span className="badge badge-green">{recentProviders.filter(p => p.status === 'active').length} active</span>
-                  <span className="badge badge-orange">{recentProviders.filter(p => p.status === 'pending').length} pending approval</span>
+                  <span className="badge badge-orange">{stats.pendingDay1HealthApprovals} awaiting verification</span>
                 </div>
               </div>
               <div className="table-wrapper">
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Provider</th>
-                      <th>Company</th>
-                      <th>Contact</th>
-                      <th>Commission Rate</th>
+                      <th>Member</th>
+                      <th>Plan</th>
+                      <th>Target Amount</th>
+                      <th>Funded Amount</th>
+                      <th>Progress</th>
                       <th>Status</th>
-                      <th>Joined</th>
-                      <th>Actions</th>
+                      <th>Created</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {recentProviders.length === 0 ? (
+                    {recentPolicies.filter(p => p.status === 'pending').length === 0 ? (
                       <tr>
                         <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--gray-text)' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ fontSize: '3rem' }}>🏥</div>
+                            <div style={{ fontSize: '3rem' }}>✅</div>
                             <div>
-                              <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.125rem', fontWeight: 600 }}>No Policy Providers Found</h3>
+                              <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.125rem', fontWeight: 600 }}>No Pending Approvals</h3>
                               <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--gray-light)' }}>
-                                The policy_providers table may not exist yet.<br/>
-                                Run the CREATE_POLICY_PROVIDERS_TABLE.sql file to set up the table.
+                                All policies have been verified by Day1Health
                               </p>
                             </div>
-                            <button 
-                              onClick={() => window.open('/provider/register', '_blank')}
-                              style={{ 
-                                background: 'var(--blue)', color: '#fff', border: 'none',
-                                borderRadius: '8px', padding: '0.5rem 1rem', fontSize: '0.875rem',
-                                fontWeight: 600, cursor: 'pointer'
-                              }}
-                            >
-                              Register New Provider
-                            </button>
                           </div>
                         </td>
                       </tr>
-                    ) : recentProviders.map(provider => (
-                      <tr key={provider.id}>
+                    ) : recentPolicies.filter(p => p.status === 'pending').map(policy => (
+                      <tr key={policy.id}>
                         <td>
-                          <div style={{ fontWeight: 600 }}>{provider.full_name || provider.provider_name}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--gray-text)' }}>
-                            ID: {provider.id.slice(0, 8)}...
-                          </div>
+                          <div style={{ fontWeight: 600 }}>{policy.member_name}</div>
                         </td>
                         <td>
-                          <div style={{ fontWeight: 600 }}>{provider.provider_name}</div>
-                        </td>
-                        <td>
-                          <div>{provider.email}</div>
+                          <div style={{ fontWeight: 600 }}>{policy.plan_name}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--gray-text)' }}>
-                            {provider.cell_phone || 'No phone'}
+                            {policy.provider_name}
                           </div>
+                        </td>
+                        <td style={{ fontWeight: 600, color: 'var(--blue)' }}>
+                          R{policy.monthly_premium?.toFixed(2) || '0.00'}
                         </td>
                         <td style={{ fontWeight: 600, color: 'var(--green-dark)' }}>
-                          N/A
+                          R{policy.amount_funded?.toFixed(2) || '0.00'}
                         </td>
                         <td>
-                          <span className={`badge ${
-                            provider.status === 'active' ? 'badge-green' :
-                            provider.status === 'suspended' ? 'badge-red' :
-                            'badge-orange'
-                          }`}>
-                            {provider.status}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{ 
+                              width: '60px', height: '6px', background: 'var(--gray-light)', 
+                              borderRadius: '3px', overflow: 'hidden' 
+                            }}>
+                              <div style={{ 
+                                width: `${Math.min(100, ((policy.amount_funded || 0) / (policy.monthly_premium || 1)) * 100)}%`, 
+                                height: '100%', 
+                                background: 'var(--orange)',
+                                transition: 'width 0.3s ease'
+                              }} />
+                            </div>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-text)' }}>
+                              {Math.min(100, ((policy.amount_funded || 0) / (policy.monthly_premium || 1)) * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="badge badge-orange">
+                            Pending Verification
                           </span>
                         </td>
                         <td style={{ fontSize: '0.875rem', color: 'var(--gray-text)' }}>
-                          {new Date(provider.created_at).toLocaleDateString()}
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <select
-                              value={provider.status}
-                              onChange={(e) => updateEntityStatus('insurers', provider.id, e.target.value)}
-                              style={{
-                                padding: '0.25rem', fontSize: '0.75rem', borderRadius: '4px',
-                                border: '1px solid var(--gray-border)', background: '#fff'
-                              }}
-                            >
-                              <option value="active">Active</option>
-                              <option value="suspended">Suspended</option>
-                              <option value="pending">Pending</option>
-                            </select>
-                            <button
-                              onClick={() => deleteEntity('insurers', provider.id)}
-                              style={{
-                                background: '#ef4444', color: '#fff', border: 'none',
-                                borderRadius: '4px', padding: '0.25rem 0.5rem',
-                                fontSize: '0.75rem', cursor: 'pointer'
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </div>
+                          {new Date(policy.start_date).toLocaleDateString()}
                         </td>
                       </tr>
                     ))}
@@ -1099,6 +1172,206 @@ export function AdminDashboard() {
 
         </div>
       </main>
+
+      {/* Suspend Member Modal */}
+      {suspendModalOpen && memberToSuspend && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '1rem'
+          }}
+          onClick={() => setSuspendModalOpen(false)}
+        >
+          <div 
+            style={{
+              background: '#fff',
+              borderRadius: '16px',
+              maxWidth: '500px',
+              width: '100%',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
+              color: '#fff',
+              padding: '1.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem'
+            }}>
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.2)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: '12px',
+                padding: '0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '2rem' }}>block</span>
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Suspend Member</h2>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', opacity: 0.9 }}>
+                  This will freeze all transactions and funds
+                </p>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: '1.5rem' }}>
+              {/* Member Info */}
+              <div style={{
+                background: '#fef2f2',
+                border: '2px solid #fecaca',
+                borderRadius: '12px',
+                padding: '1rem',
+                marginBottom: '1.5rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                  <span className="material-symbols-outlined" style={{ color: '#dc2626', fontSize: '1.5rem' }}>warning</span>
+                  <p style={{ margin: 0, fontWeight: 700, color: '#991b1b', fontSize: '0.875rem' }}>
+                    WARNING: This action will:
+                  </p>
+                </div>
+                <ul style={{ margin: '0.5rem 0 0 2.25rem', padding: 0, fontSize: '0.875rem', color: '#7f1d1d' }}>
+                  <li>Suspend member account access</li>
+                  <li>Freeze all cover plans</li>
+                  <li>Block all future transactions</li>
+                  <li>Prevent cashback earnings</li>
+                </ul>
+              </div>
+
+              {/* Member Details */}
+              <div style={{
+                background: '#f9fafb',
+                borderRadius: '8px',
+                padding: '1rem',
+                marginBottom: '1.5rem'
+              }}>
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Member Details
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div>
+                    <span style={{ fontWeight: 700, fontSize: '1rem' }}>{getFullName(memberToSuspend)}</span>
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    <div>📧 {memberToSuspend.email || 'No email'}</div>
+                    <div>📱 {memberToSuspend.cell_phone || 'No phone'}</div>
+                    <div>🆔 {memberToSuspend.id.slice(0, 13)}...</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reason Input */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '0.5rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  color: '#374151'
+                }}>
+                  Reason for Suspension <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <textarea
+                  value={suspensionReason}
+                  onChange={(e) => setSuspensionReason(e.target.value)}
+                  placeholder="Enter detailed reason for suspending this member (e.g., fraudulent activity, policy violation, etc.)"
+                  style={{
+                    width: '100%',
+                    minHeight: '100px',
+                    padding: '0.75rem',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    outline: 'none',
+                    transition: 'border-color 0.2s'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#dc2626'}
+                  onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                />
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+                  This reason will be logged for audit purposes
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  onClick={() => {
+                    setSuspendModalOpen(false);
+                    setMemberToSuspend(null);
+                    setSuspensionReason('');
+                  }}
+                  style={{
+                    flex: 1,
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.75rem 1.5rem',
+                    fontSize: '0.875rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#e5e7eb'}
+                  onMouseOut={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmSuspendMember}
+                  disabled={!suspensionReason.trim()}
+                  style={{
+                    flex: 1,
+                    background: suspensionReason.trim() ? '#dc2626' : '#9ca3af',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.75rem 1.5rem',
+                    fontSize: '0.875rem',
+                    fontWeight: 700,
+                    cursor: suspensionReason.trim() ? 'pointer' : 'not-allowed',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem'
+                  }}
+                  onMouseOver={(e) => {
+                    if (suspensionReason.trim()) {
+                      e.currentTarget.style.background = '#991b1b';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (suspensionReason.trim()) {
+                      e.currentTarget.style.background = '#dc2626';
+                    }
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>block</span>
+                  Suspend Member
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

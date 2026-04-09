@@ -7,6 +7,7 @@ import QRCode from 'qrcode';
 import UpgradePromptModal from '../components/member/UpgradePromptModal';
 import ProfileIncompleteModal from '../components/member/ProfileIncompleteModal';
 import PlanSelectionModal from '../components/member/PlanSelectionModal';
+import PendingVerificationModal from '../components/member/PendingVerificationModal';
 import { Notification, useNotification } from '../components/Notification';
 
 interface Member {
@@ -88,6 +89,7 @@ const DashboardNew: React.FC = () => {
   const [showPlanSelection, setShowPlanSelection] = useState(false);
   const [canChangePlan, setCanChangePlan] = useState(true);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [showPendingVerification, setShowPendingVerification] = useState(false);
 
 
   // Debug: Log when showProfileIncomplete changes
@@ -283,6 +285,23 @@ const DashboardNew: React.FC = () => {
     }
   }, [mainCoverPlan, overflowBalance, targetAmount]);
 
+  // Check if policy reached 100% and is pending verification
+  useEffect(() => {
+    if (!member || !mainCoverPlan) return;
+
+    // Show pending verification modal if status is pending (only once per session unless dismissed)
+    if (mainCoverPlan.status === 'pending' && progressPercent >= 100) {
+      const hasSeenPendingModal = sessionStorage.getItem(`pending_modal_seen_${mainCoverPlan.id}`);
+      const hasDismissedTemp = sessionStorage.getItem(`pending_modal_dismissed_temp`);
+      
+      // Only show if not seen before AND not temporarily dismissed
+      if (!hasSeenPendingModal && !hasDismissedTemp) {
+        setShowPendingVerification(true);
+        sessionStorage.setItem(`pending_modal_seen_${mainCoverPlan.id}`, 'true');
+      }
+    }
+  }, [member, mainCoverPlan, progressPercent]);
+
   // Check profile completeness when plan reaches 90%+
   useEffect(() => {
     if (!member || !mainCoverPlan || isEditingProfile) return;
@@ -309,27 +328,51 @@ const DashboardNew: React.FC = () => {
         email: member.email,
         sa_id: member.sa_id,
         address_line_1: member.address_line_1,
+        status: mainCoverPlan.status,
         shouldShow: isProfileIncomplete && progressPercent >= 90
       });
 
-      // At 96%+: Suspend plan if profile incomplete
-      if (isProfileIncomplete && progressPercent >= 96) {
-        console.log('⚠️ At 96%+: Profile incomplete - suspending plan');
+      // If plan is suspended (reached 100% with incomplete profile), show modal
+      if (mainCoverPlan.status === 'suspended' && isProfileIncomplete) {
+        console.log('⚠️ Plan is suspended due to incomplete profile at 100%');
         
-        // Suspend the plan if not already suspended
-        if (mainCoverPlan.status !== 'suspended') {
-          const { error: suspendError } = await supabase
-            .from('member_cover_plans')
-            .update({ status: 'suspended' })
-            .eq('id', mainCoverPlan.id);
+        // Check if user can still change plan
+        const planChangesCount = mainCoverPlan.plan_changes_count || 0;
+        setCanChangePlan(planChangesCount < 1);
+        
+        setMissingFields(missing);
+        setShowProfileIncomplete(true);
+        
+        const lastPromptProgress = sessionStorage.getItem('last_profile_prompt_suspended');
+        const currentProgressKey = `${mainCoverPlan.id}_suspended`;
+        
+        if (lastPromptProgress !== currentProgressKey) {
+          sessionStorage.setItem('last_profile_prompt_suspended', currentProgressKey);
 
-          if (suspendError) {
-            console.error('Error suspending plan:', suspendError);
-          } else {
-            console.log('✅ Plan suspended due to incomplete profile at 96%+');
+          try {
+            await supabase.from('admin_notifications').insert({
+              type: 'profile_incomplete_suspended',
+              member_id: member.id,
+              member_name: member.name,
+              member_phone: member.phone,
+              message: `CRITICAL: Member ${member.name} (${member.phone}) reached 100% with incomplete profile. Plan has been SUSPENDED. Missing: ${missing.join(', ')}`,
+              priority: 'high',
+              metadata: {
+                progress_percent: progressPercent,
+                missing_fields: missing,
+                cover_plan_id: mainCoverPlan.id,
+                action: 'plan_suspended'
+              }
+            });
+          } catch (error) {
+            console.error('Error creating admin notification:', error);
           }
         }
-
+      }
+      // At 96%+: Show warning modal
+      else if (isProfileIncomplete && progressPercent >= 96 && progressPercent < 100) {
+        console.log('⚠️ At 96%+: Profile incomplete - showing warning');
+        
         // Check if user has dismissed this modal at 96%
         const dismissedKey96 = `profile_modal_dismissed_96_${mainCoverPlan.id}`;
         const isDismissed96 = localStorage.getItem(dismissedKey96) === 'true';
@@ -345,11 +388,11 @@ const DashboardNew: React.FC = () => {
         setMissingFields(missing);
         setShowProfileIncomplete(true);
         
-        const lastPromptProgress = sessionStorage.getItem('last_profile_prompt_progress_96');
+        const lastPromptProgress = sessionStorage.getItem('last_profile_prompt_96');
         const currentProgressKey = `${mainCoverPlan.id}_96`;
         
         if (lastPromptProgress !== currentProgressKey) {
-          sessionStorage.setItem('last_profile_prompt_progress_96', currentProgressKey);
+          sessionStorage.setItem('last_profile_prompt_96', currentProgressKey);
 
           try {
             await supabase.from('admin_notifications').insert({
@@ -456,41 +499,51 @@ const DashboardNew: React.FC = () => {
           }
         }
       }
-      // If profile is complete and plan was suspended, unsuspend it
-      else if (isProfileComplete && mainCoverPlan.status === 'suspended') {
-        console.log('✅ Profile complete - unsuspending plan');
-        const { error: unsuspendError } = await supabase
+      // If profile is complete and plan was suspended, change to pending for Day1Health verification
+      else if (isProfileComplete && mainCoverPlan.status === 'suspended' && progressPercent >= 100) {
+        console.log('✅ Profile complete - changing suspended plan to pending for verification');
+        const { error: updateError } = await supabase
           .from('member_cover_plans')
-          .update({ status: 'in_progress' })
+          .update({ status: 'pending' })
           .eq('id', mainCoverPlan.id);
 
-        if (unsuspendError) {
-          console.error('Error unsuspending plan:', unsuspendError);
+        if (updateError) {
+          console.error('Error updating plan to pending:', updateError);
         } else {
-          console.log('✅ Plan unsuspended and set to in_progress');
+          console.log('✅ Plan changed to pending - ready for Day1Health verification');
           
           try {
             await supabase.from('admin_notifications').insert({
-              type: 'profile_complete_unsuspended',
+              type: 'profile_complete_pending',
               member_id: member.id,
               member_name: member.name,
               member_phone: member.phone,
-              message: `Member ${member.name} (${member.phone}) has completed their profile. Suspended plan has been unsuspended and set to in_progress.`,
+              message: `Member ${member.name} (${member.phone}) has completed their profile. Suspended plan has been changed to pending for Day1Health verification.`,
               priority: 'medium',
               metadata: {
                 progress_percent: progressPercent,
                 cover_plan_id: mainCoverPlan.id,
-                action: 'plan_unsuspended'
+                action: 'plan_pending'
               }
             });
           } catch (error) {
             console.error('Error creating admin notification:', error);
           }
+          
+          // Close the modal and reload data to show pending status
+          setShowProfileIncomplete(false);
+          await loadDashboardData();
+          
+          // Show pending verification modal after data reload
+          setTimeout(() => {
+            setShowPendingVerification(true);
+          }, 500);
         }
-        
-        // Close the modal
+      }
+      // If profile is complete and plan is already pending, don't show profile incomplete modal
+      else if (isProfileComplete && mainCoverPlan.status === 'pending') {
+        console.log('✅ Profile complete and plan is pending - no action needed');
         setShowProfileIncomplete(false);
-        loadDashboardData();
       }
     };
 
@@ -612,7 +665,13 @@ const DashboardNew: React.FC = () => {
         })
         .eq('id', member.id);
 
-      if (error) throw error;
+      if (error) {
+        // Check for duplicate SA ID error
+        if (error.code === '23505' && error.message.includes('sa_id')) {
+          throw new Error('This SA ID number is already registered to another member. Please check your SA ID or contact support if you believe this is an error.');
+        }
+        throw error;
+      }
 
       // Close the profile incomplete modal after successful save
       setShowProfileIncomplete(false);
@@ -620,10 +679,13 @@ const DashboardNew: React.FC = () => {
 
       showSuccess('Profile Updated', 'Profile updated successfully!', 3000);
       loadDashboardData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error);
       setIsEditingProfile(false);
-      showError('Update Failed', 'Failed to update profile. Please try again.', 3000);
+      
+      // Show specific error message
+      const errorMessage = error.message || 'Failed to update profile. Please try again.';
+      showError('Update Failed', errorMessage, 5000);
     }
   };
 
@@ -870,7 +932,11 @@ const DashboardNew: React.FC = () => {
           {/* Side Grid Column */}
           <div className="md:col-span-4 flex flex-col gap-6">
             {/* Active Policy Card */}
-            <div className={`${mainCoverPlan?.status === 'suspended' ? 'bg-red-50 border-red-300' : 'bg-white border-gray-200'} border p-6 rounded-lg shadow-sm`}>
+            <div className={`${
+              mainCoverPlan?.status === 'suspended' ? 'bg-red-50 border-red-300' : 
+              mainCoverPlan?.status === 'pending' ? 'bg-yellow-50 border-yellow-300' : 
+              'bg-white border-gray-200'
+            } border p-6 rounded-lg shadow-sm`}>
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.1em]">
@@ -880,8 +946,16 @@ const DashboardNew: React.FC = () => {
                     {mainCoverPlan?.cover_plans?.plan_name || 'No Plan'}
                   </h3>
                 </div>
-                <span className={`material-symbols-outlined ${mainCoverPlan?.status === 'suspended' ? 'text-red-600' : 'text-blue-600'}`}>
-                  {mainCoverPlan?.status === 'suspended' ? 'pause_circle' : 'verified'}
+                <span className={`material-symbols-outlined ${
+                  mainCoverPlan?.status === 'suspended' ? 'text-red-600' : 
+                  mainCoverPlan?.status === 'pending' ? 'text-yellow-600' : 
+                  mainCoverPlan?.status === 'active' ? 'text-green-600' :
+                  'text-blue-600'
+                }`}>
+                  {mainCoverPlan?.status === 'suspended' ? 'pause_circle' : 
+                   mainCoverPlan?.status === 'pending' ? 'pending_actions' :
+                   mainCoverPlan?.status === 'active' ? 'check_circle' :
+                   'verified'}
                 </span>
               </div>
               <div className="space-y-4">
@@ -896,19 +970,60 @@ const DashboardNew: React.FC = () => {
                     </p>
                   </div>
                 )}
+                {mainCoverPlan?.status === 'pending' && (
+                  <div className="bg-yellow-100 border-2 border-yellow-400 rounded-lg p-3 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="material-symbols-outlined text-yellow-600 text-xl">pending_actions</span>
+                      <p className="text-sm font-black text-yellow-700">PENDING VERIFICATION</p>
+                    </div>
+                    <p className="text-xs text-yellow-700 font-semibold mb-3">
+                      Your policy is fully funded! Complete verification at Day1Health to activate your coverage.
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => window.open('https://www.day1main.com/plus1confirm', '_blank')}
+                        className="w-full bg-yellow-600 text-white py-2 px-4 rounded-lg font-bold hover:bg-yellow-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-sm">open_in_new</span>
+                        Verify at Day1Health
+                      </button>
+                      <button
+                        onClick={() => setShowPendingVerification(true)}
+                        className="text-xs font-bold text-yellow-800 hover:text-yellow-900 underline"
+                      >
+                        View Verification Steps →
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-between items-end">
-                  <span className={`text-xs font-bold ${mainCoverPlan?.status === 'active' ? 'text-green-600' : mainCoverPlan?.status === 'suspended' ? 'text-red-600' : 'text-gray-600'}`}>
-                    Policy {mainCoverPlan?.status === 'active' ? 'Active' : mainCoverPlan?.status === 'suspended' ? 'SUSPENDED' : 'In Progress'}
+                  <span className={`text-xs font-bold ${
+                    mainCoverPlan?.status === 'active' ? 'text-green-600' : 
+                    mainCoverPlan?.status === 'suspended' ? 'text-red-600' : 
+                    mainCoverPlan?.status === 'pending' ? 'text-yellow-600' :
+                    'text-gray-600'
+                  }`}>
+                    Policy {
+                      mainCoverPlan?.status === 'active' ? 'Active' : 
+                      mainCoverPlan?.status === 'suspended' ? 'SUSPENDED' : 
+                      mainCoverPlan?.status === 'pending' ? 'PENDING' :
+                      'In Progress'
+                    }
                   </span>
                   <span className="text-xs font-bold text-slate-900">
-                    {mainCoverPlan?.status === 'active' ? '100' : progressPercent.toFixed(2)}% Utilization
+                    {mainCoverPlan?.status === 'active' || mainCoverPlan?.status === 'pending' ? '100' : progressPercent.toFixed(2)}% Utilization
                   </span>
                 </div>
                 {/* Precision Progress Bar */}
                 <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
                   <div 
-                    className={`h-full ${mainCoverPlan?.status === 'active' ? 'bg-green-500' : mainCoverPlan?.status === 'suspended' ? 'bg-red-500' : 'bg-blue-500'}`} 
-                    style={{ width: `${mainCoverPlan?.status === 'active' ? 100 : progressPercent}%` }}
+                    className={`h-full ${
+                      mainCoverPlan?.status === 'active' ? 'bg-green-500' : 
+                      mainCoverPlan?.status === 'suspended' ? 'bg-red-500' : 
+                      mainCoverPlan?.status === 'pending' ? 'bg-yellow-500' :
+                      'bg-blue-500'
+                    }`} 
+                    style={{ width: `${mainCoverPlan?.status === 'active' || mainCoverPlan?.status === 'pending' ? 100 : progressPercent}%` }}
                   ></div>
                 </div>
                 <div className="pt-2 border-t border-gray-100 grid grid-cols-2 gap-4">
@@ -1298,6 +1413,15 @@ const DashboardNew: React.FC = () => {
               window.location.reload();
             }, 1000);
           }}
+        />
+      )}
+
+      {/* Pending Verification Modal - Show when policy reaches 100% */}
+      {showPendingVerification && member && (
+        <PendingVerificationModal
+          memberName={member.name}
+          memberPhone={member.phone}
+          onClose={() => setShowPendingVerification(false)}
         />
       )}
     </div>

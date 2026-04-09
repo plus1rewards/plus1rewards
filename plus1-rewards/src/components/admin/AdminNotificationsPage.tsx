@@ -25,6 +25,7 @@ export default function AdminNotificationsPage() {
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread' | 'high'>('all');
+  const [groupBy, setGroupBy] = useState<'member' | 'time'>('member');
 
   useEffect(() => {
     fetchNotifications();
@@ -95,6 +96,26 @@ export default function AdminNotificationsPage() {
     return notifications;
   };
 
+  const getGroupedNotifications = () => {
+    const filtered = getFilteredNotifications();
+    
+    if (groupBy === 'time') {
+      return { ungrouped: filtered };
+    }
+    
+    // Group by member
+    const grouped: { [key: string]: AdminNotification[] } = {};
+    filtered.forEach(notification => {
+      const key = notification.member_id || 'system';
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(notification);
+    });
+    
+    return grouped;
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
@@ -115,6 +136,7 @@ export default function AdminNotificationsPage() {
   };
 
   const filteredNotifications = getFilteredNotifications();
+  const groupedNotifications = getGroupedNotifications();
   const unreadCount = notifications.filter(n => !n.read).length;
   const highPriorityCount = notifications.filter(n => n.priority === 'high').length;
 
@@ -159,7 +181,7 @@ export default function AdminNotificationsPage() {
           </div>
 
           {/* Filter Tabs */}
-          <div className="flex gap-3 flex-wrap">
+          <div className="flex gap-3 flex-wrap items-center">
             {[
               { key: 'all', label: 'All Notifications', icon: 'inbox', count: notifications.length },
               { key: 'unread', label: 'Unread', icon: 'mail', count: unreadCount },
@@ -184,6 +206,29 @@ export default function AdminNotificationsPage() {
                 </span>
               </button>
             ))}
+            
+            <div className="ml-auto flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-1">
+              <button
+                onClick={() => setGroupBy('member')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-semibold text-xs transition-all ${
+                  groupBy === 'member' ? 'text-white' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+                style={groupBy === 'member' ? { backgroundColor: BLUE } : {}}
+              >
+                <span className="material-symbols-outlined text-sm">person</span>
+                By Member
+              </button>
+              <button
+                onClick={() => setGroupBy('time')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-semibold text-xs transition-all ${
+                  groupBy === 'time' ? 'text-white' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+                style={groupBy === 'time' ? { backgroundColor: BLUE } : {}}
+              >
+                <span className="material-symbols-outlined text-sm">schedule</span>
+                By Time
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -198,7 +243,167 @@ export default function AdminNotificationsPage() {
               {filter === 'unread' ? 'All notifications have been read' : 'You have no notifications'}
             </p>
           </div>
+        ) : groupBy === 'member' ? (
+          // Grouped by Member View
+          <div className="space-y-6">
+            {Object.entries(groupedNotifications).map(([memberId, memberNotifications]) => {
+              if (memberId === 'ungrouped') return null;
+              
+              const firstNotification = memberNotifications[0];
+              const unreadInGroup = memberNotifications.filter(n => !n.read).length;
+              const highPriorityInGroup = memberNotifications.filter(n => n.priority === 'high').length;
+              
+              return (
+                <div key={memberId} className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all">
+                  {/* Member Header */}
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200 p-5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-full flex items-center justify-center font-black text-xl text-white" style={{ backgroundColor: BLUE }}>
+                          {firstNotification.member_name?.charAt(0).toUpperCase() || '?'}
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-black text-gray-900">{firstNotification.member_name || 'Unknown Member'}</h3>
+                          <p className="text-sm text-gray-600 font-semibold">{firstNotification.member_phone || 'No phone'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
+                              {memberNotifications.length} {memberNotifications.length === 1 ? 'Notification' : 'Notifications'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 justify-end">
+                            {unreadInGroup > 0 && (
+                              <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-bold">
+                                {unreadInGroup} Unread
+                              </span>
+                            )}
+                            {highPriorityInGroup > 0 && (
+                              <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs font-bold">
+                                {highPriorityInGroup} High
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Notifications List */}
+                  <div className="divide-y divide-gray-200">
+                    {memberNotifications.map(notification => {
+                      const colors = getPriorityColor(notification.priority);
+                      const icon = getNotificationIcon(notification.type);
+                      
+                      return (
+                        <div
+                          key={notification.id}
+                          className={`p-5 transition-all hover:bg-gray-50 ${!notification.read ? 'bg-blue-50/30' : ''}`}
+                        >
+                          <div className="flex gap-4">
+                            {/* Left accent bar */}
+                            <div className={`w-1 rounded-full flex-shrink-0 ${colors.dot}`}></div>
+
+                            {/* Icon and content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-4 mb-3">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-2xl">{icon}</span>
+                                  <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${colors.badge}`}>
+                                        {notification.priority.toUpperCase()}
+                                      </span>
+                                      {!notification.read && (
+                                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
+                                          <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
+                                          NEW
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                <span className="text-xs text-gray-500 font-medium whitespace-nowrap">
+                                  {new Date(notification.created_at).toLocaleDateString('en-ZA', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
+
+                              {/* Message */}
+                              <p className="text-gray-900 font-semibold mb-3 leading-relaxed">
+                                {notification.message}
+                              </p>
+
+                              {/* Metadata */}
+                              {notification.metadata && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                                  <div className="space-y-1.5 text-sm">
+                                    {notification.metadata.progress_percent !== undefined && (
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-blue-900 font-semibold">Progress</span>
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-24 h-2 bg-blue-200 rounded-full overflow-hidden">
+                                            <div 
+                                              className="h-full bg-blue-600 rounded-full transition-all"
+                                              style={{ width: `${notification.metadata.progress_percent}%` }}
+                                            ></div>
+                                          </div>
+                                          <span className="text-blue-700 font-bold text-xs">{notification.metadata.progress_percent.toFixed(0)}%</span>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {notification.metadata.missing_fields && notification.metadata.missing_fields.length > 0 && (
+                                      <p className="text-blue-900">
+                                        <span className="font-semibold">Missing Fields:</span> {notification.metadata.missing_fields.join(', ')}
+                                      </p>
+                                    )}
+                                    {notification.metadata.action && (
+                                      <p className="text-red-700 font-semibold">
+                                        <span className="material-symbols-outlined text-sm align-middle mr-1">info</span>
+                                        Action: {notification.metadata.action.replace(/_/g, ' ').toUpperCase()}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex gap-2 flex-shrink-0">
+                              {!notification.read && (
+                                <button
+                                  onClick={() => markAsRead(notification.id)}
+                                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                                  title="Mark as read"
+                                >
+                                  <span className="material-symbols-outlined">done</span>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => deleteNotification(notification.id)}
+                                className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                title="Delete"
+                              >
+                                <span className="material-symbols-outlined">delete</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
+          // Time-based View (original)
           <div className="space-y-4">
             {filteredNotifications.map(notification => {
               const colors = getPriorityColor(notification.priority);

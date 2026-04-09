@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { getSession, clearSession } from '../lib/session';
 import MemberLayout from '../components/member/MemberLayout';
+import MemberChatWidget from '../components/member/MemberChatWidget';
 
 interface Member {
   id: string;
@@ -23,15 +24,54 @@ export default function MemberSupport() {
   const [description, setDescription] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [showChat, setShowChat] = useState(false);
+  const [hasPendingFeedback, setHasPendingFeedback] = useState(false);
+  const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
+    checkPendingFeedback();
   }, []);
+
+  const checkPendingFeedback = async () => {
+    try {
+      const session = getSession();
+      if (!session?.member?.id) return;
+
+      // Check for closed conversations with pending feedback
+      const { data: pendingConvo } = await supabase
+        .from('chat_conversations')
+        .select('id')
+        .eq('member_id', session.member.id)
+        .eq('status', 'closed')
+        .eq('feedback_requested', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (pendingConvo) {
+        // Check if feedback already given
+        const { data: existingFeedback } = await supabase
+          .from('chat_feedback')
+          .select('id')
+          .eq('conversation_id', pendingConvo.id)
+          .eq('member_id', session.member.id)
+          .maybeSingle();
+
+        if (!existingFeedback) {
+          setHasPendingFeedback(true);
+          setPendingConversationId(pendingConvo.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking pending feedback:', error);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const session = getSession('member');
+      const session = getSession();
       if (!session || !session.member) {
         console.log('No session found, redirecting to login');
         navigate('/member/login');
@@ -47,7 +87,7 @@ export default function MemberSupport() {
 
       const { data: memberData, error } = await supabase
         .from('members')
-        .select('id, full_name, cell_phone, email, qr_code')
+        .select('id, first_name, last_name, cell_phone, email, qr_code')
         .eq('id', memberId)
         .single();
 
@@ -58,9 +98,11 @@ export default function MemberSupport() {
       }
 
       if (memberData) {
+        const fullName = `${memberData.first_name || ''} ${memberData.last_name || ''}`.trim();
         setMember({
           ...memberData,
-          name: memberData.full_name,
+          full_name: fullName,
+          name: fullName,
           phone: memberData.cell_phone
         });
       }
@@ -82,7 +124,7 @@ export default function MemberSupport() {
 
     setSubmitting(true);
     try {
-      const session = getSession('member');
+      const session = getSession();
       if (!session || !session.member) {
         navigate('/member/login');
         return;
@@ -161,7 +203,7 @@ export default function MemberSupport() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Support & Admin Chat</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Support Center</h1>
           <p className="text-gray-600">Get help with your account and cover plans</p>
         </div>
         <button
@@ -170,6 +212,57 @@ export default function MemberSupport() {
         >
           ← Back to Dashboard
         </button>
+      </div>
+
+      {/* Pending Feedback Banner */}
+      {hasPendingFeedback && (
+        <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 mb-6 flex items-start gap-3">
+          <span className="material-symbols-outlined text-yellow-600 flex-shrink-0">feedback</span>
+          <div className="flex-1">
+            <h3 className="font-bold text-yellow-900 mb-1">Feedback Requested</h3>
+            <p className="text-sm text-yellow-800 mb-3">
+              We'd love to hear about your recent support experience!
+            </p>
+            <button
+              onClick={() => {
+                setHasPendingFeedback(false);
+                setShowChat(true);
+              }}
+              className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
+            >
+              Leave Feedback Now
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Chat with Admin - Primary CTA */}
+      <div className="bg-gradient-to-br from-[#1a558b] via-blue-600 to-purple-600 rounded-2xl p-8 mb-6 shadow-xl relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30"></div>
+        
+        <div className="relative flex flex-col md:flex-row items-center gap-6">
+          <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/30 flex-shrink-0">
+            <span className="material-symbols-outlined text-5xl text-white">support_agent</span>
+          </div>
+          <div className="flex-1 text-center md:text-left">
+            <h2 className="text-2xl font-bold text-white mb-2">Need Help? Chat with Us! 💬</h2>
+            <p className="text-white/90 text-sm mb-4">
+              Our friendly support team is online and ready to help you with anything. 
+              Get instant answers to your questions!
+            </p>
+            <button
+              onClick={() => {
+                console.log('🚀 Opening chat widget');
+                setShowChat(true);
+              }}
+              className="bg-white hover:bg-gray-50 text-[#1a558b] font-bold px-8 py-4 rounded-full transition-all shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 inline-flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined">chat</span>
+              Start Live Chat
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Success Message */}
@@ -349,14 +442,29 @@ export default function MemberSupport() {
         <div className="flex gap-3">
           <span className="material-symbols-outlined text-blue-600 flex-shrink-0">info</span>
           <div>
-            <h3 className="font-bold text-gray-900 mb-2">Note</h3>
+            <h3 className="font-bold text-gray-900 mb-2">Quick Response Times</h3>
             <p className="text-sm text-gray-700">
-              In a production environment, this page would include a live chat widget or messaging system 
-              for instant communication with admin support. For now, please use the contact information above.
+              Our support team typically responds within minutes during business hours (Mon-Fri, 7:30 AM - 7:00 PM). 
+              For urgent matters, you can also call or WhatsApp us directly.
             </p>
           </div>
         </div>
       </div>
+
+      {/* Chat Widget */}
+      {showChat && (
+        <>
+          {console.log('💬 Rendering MemberChatWidget, showChat:', showChat)}
+          <MemberChatWidget 
+            isOpen={showChat} 
+            onClose={() => {
+              console.log('❌ Closing chat widget');
+              setShowChat(false);
+            }}
+            memberName={member?.name?.split(' ')[0] || 'there'}
+          />
+        </>
+      )}
     </MemberLayout>
   );
 }

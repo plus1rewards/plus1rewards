@@ -161,6 +161,7 @@ export default function App() {
   const [routeError, setRouteError] = useState<string | null>(null);
   const [userAccuracy, setUserAccuracy] = useState<number | null>(null);
   const [routeTransition, setRouteTransition] = useState<'entering' | 'exiting' | 'idle'>('idle');
+  const [navigationRequested, setNavigationRequested] = useState(false);
   const watchIdRef = useRef<number | null>(null);
   
   // Default map center (Cape Town)
@@ -363,53 +364,94 @@ export default function App() {
 
   // Dynamic routing - recalculate when user location changes
   useEffect(() => {
-    if (!userLocation || !selectedPartner || !selectedPartner.latitude || !selectedPartner.longitude) {
+    if (!navigationRequested || !userLocation || !selectedPartner || !selectedPartner.latitude || !selectedPartner.longitude) {
       // Smooth exit animation
       if (route) {
         setRouteTransition('exiting');
         const exitTimer = setTimeout(() => {
           setRoute(null);
           setRouteTransition('idle');
-        }, 600);
+        }, 400);
         return () => clearTimeout(exitTimer);
       }
       return;
     }
 
-    // Smooth entry animation
-    setRouteTransition('entering');
-
-    // Throttle route recalculation to every 3-5 seconds
-    const routeTimer = setTimeout(async () => {
-      setIsRouting(true);
-      setRouteError(null);
+    // Clear existing route immediately when partner changes for smooth transition
+    if (route) {
+      setRouteTransition('exiting');
+      const clearTimer = setTimeout(() => {
+        setRoute(null);
+      }, 300);
       
-      try {
-        const newRoute = await fetchRoute(
-          userLocation[0],
-          userLocation[1],
-          selectedPartner.latitude!,
-          selectedPartner.longitude!
-        );
+      // Fetch new route after clearing
+      const fetchTimer = setTimeout(async () => {
+        setRouteTransition('entering');
+        setIsRouting(true);
+        setRouteError(null);
         
-        if (newRoute) {
-          setRoute(newRoute);
+        try {
+          const newRoute = await fetchRoute(
+            userLocation[0],
+            userLocation[1],
+            selectedPartner.latitude!,
+            selectedPartner.longitude!
+          );
+          
+          if (newRoute) {
+            setRoute(newRoute);
+            setTimeout(() => setRouteTransition('idle'), 100);
+          } else {
+            setRouteError('Could not calculate route');
+            setRouteTransition('idle');
+          }
+        } catch (error) {
+          console.error('Routing error:', error);
+          setRouteError('Error calculating route');
           setRouteTransition('idle');
-        } else {
-          setRouteError('Could not calculate route');
-          setRouteTransition('idle');
+        } finally {
+          setIsRouting(false);
         }
-      } catch (error) {
-        console.error('Routing error:', error);
-        setRouteError('Error calculating route');
-        setRouteTransition('idle');
-      } finally {
-        setIsRouting(false);
-      }
-    }, 3000);
+      }, 400);
 
-    return () => clearTimeout(routeTimer);
-  }, [userLocation, selectedPartner]);
+      return () => {
+        clearTimeout(clearTimer);
+        clearTimeout(fetchTimer);
+      };
+    } else {
+      // No existing route, fetch immediately
+      setRouteTransition('entering');
+      const fetchTimer = setTimeout(async () => {
+        setIsRouting(true);
+        setRouteError(null);
+        
+        try {
+          const newRoute = await fetchRoute(
+            userLocation[0],
+            userLocation[1],
+            selectedPartner.latitude!,
+            selectedPartner.longitude!
+          );
+          
+          if (newRoute) {
+            setRoute(newRoute);
+            setTimeout(() => setRouteTransition('idle'), 100);
+          } else {
+            setRouteError('Could not calculate route');
+            setRouteTransition('idle');
+          }
+        } catch (error) {
+          console.error('Routing error:', error);
+          setRouteError('Error calculating route');
+          setRouteTransition('idle');
+        } finally {
+          setIsRouting(false);
+        }
+      }, 200);
+
+      return () => clearTimeout(fetchTimer);
+    }
+  }, [navigationRequested, userLocation, selectedPartner?.id]);
 
   // Sync map center when partner is selected with smooth transition
   useEffect(() => {
@@ -551,21 +593,15 @@ export default function App() {
           {/* Back Button */}
           <button
             onClick={() => navigate('/')}
-            className="absolute top-6 left-6 w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center text-gray-600 hover:text-primary transition-all duration-300 group"
+            className="absolute top-6 left-6 w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center text-gray-600 hover:text-primary transition-all duration-300 group mr-4"
           >
             <span className="material-symbols-outlined text-lg group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
           </button>
           
-          <div className="flex flex-col gap-y-1 mb-8">
+          <div className="flex flex-col gap-y-1 mb-8 ml-14">
             <h1 className="text-4xl font-display font-bold tracking-tighter-extra text-primary leading-none">
-              THE ARCHIVE
+              Partner Directory
             </h1>
-            <div className="flex items-center gap-3">
-              <div className="h-[1px] w-8 bg-primary/30" />
-              <p className="text-on-surface-variant font-bold text-[10px] tracking-[0.3em] uppercase">
-                Curated Partner Directory
-              </p>
-            </div>
           </div>
           
           <div className="relative group">
@@ -794,7 +830,7 @@ export default function App() {
           <ZoomControl position="bottomright" />
           
           {/* Route Polyline */}
-          {route && (
+          {route && routeTransition !== 'exiting' && (
             <>
               {/* Base route layer */}
               <Polyline
@@ -804,26 +840,18 @@ export default function App() {
                 opacity={0.3}
                 lineJoin="round"
                 dashArray="0"
-                className={routeTransition === 'entering' ? 'route-enter' : routeTransition === 'exiting' ? 'route-exit' : ''}
-                style={{
-                  filter: 'drop-shadow(0 0 4px rgba(26, 85, 139, 0.3))',
-                  transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                }}
               />
               
               {/* Animated flowing route */}
               <Polyline
                 positions={route}
-                color="#2563eb"
+                color="#1a558b"
                 weight={6}
                 opacity={0.9}
                 lineJoin="round"
                 dashArray="10, 10"
-                className={`route-flowing ${routeTransition === 'entering' ? 'route-enter' : routeTransition === 'exiting' ? 'route-exit' : ''}`}
-                style={{
-                  filter: 'drop-shadow(0 0 12px rgba(37, 99, 235, 0.8))',
-                  animation: 'route-flow 2s linear infinite',
-                  transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                pathOptions={{
+                  className: 'route-flowing'
                 }}
               />
               
@@ -835,12 +863,6 @@ export default function App() {
                 opacity={0.15}
                 lineJoin="round"
                 dashArray="0"
-                className={routeTransition === 'entering' ? 'route-enter' : routeTransition === 'exiting' ? 'route-exit' : ''}
-                style={{
-                  filter: 'drop-shadow(0 0 20px rgba(26, 85, 139, 0.6))',
-                  pointerEvents: 'none',
-                  transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                }}
               />
             </>
           )}
@@ -910,41 +932,36 @@ export default function App() {
                   }}
                 >
                   <Popup className="custom-popup" closeButton={false}>
-                    <div className="p-6 bg-white">
-                      <div className="flex justify-between items-start gap-4 mb-6">
+                    <div className="p-4 bg-white rounded-2xl min-w-[280px]">
+                      <div className="flex justify-between items-start gap-3 mb-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="px-2 py-0.5 rounded bg-primary/5 text-primary text-[8px] font-black uppercase tracking-widest">{p.category || 'Partner'}</span>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="px-2 py-0.5 rounded-md bg-primary/5 text-primary text-[8px] font-black uppercase tracking-widest">{p.category || 'Partner'}</span>
                             <div className="flex items-center gap-1">
                               <div className="w-1 h-1 rounded-full bg-green-500" />
                               <span className="text-[8px] font-bold text-green-600 uppercase">Live</span>
                             </div>
                           </div>
-                          <h4 className="text-xl font-display font-bold text-primary m-0 leading-tight tracking-tighter">{p.shop_name}</h4>
+                          <h4 className="text-lg font-display font-bold text-primary m-0 leading-tight tracking-tighter">{p.shop_name}</h4>
                         </div>
-                        <div className="bg-primary text-white w-12 h-12 rounded-2xl flex flex-col items-center justify-center shadow-lg shadow-primary/20 shrink-0">
-                          <span className="text-sm font-black leading-none">{p.cashback_percent}%</span>
-                          <span className="text-[6px] font-black uppercase opacity-70">Back</span>
+                        <div className="bg-primary text-white w-14 h-14 rounded-xl flex flex-col items-center justify-center shadow-lg shadow-primary/20 shrink-0">
+                          <span className="text-base font-black leading-none">{p.cashback_percent}%</span>
+                          <span className="text-[7px] font-black uppercase opacity-70">Back</span>
                         </div>
                       </div>
                       
-                      <div className="space-y-3 mb-6">
-                        <div className="flex items-center gap-3 text-on-surface-variant">
-                          <MapPin size={12} strokeWidth={2.5} className="text-primary/40" />
-                          <span className="text-[11px] font-bold text-on-surface/70 leading-tight">{p.address || 'Address not available'}, {p.city || 'City'}</span>
+                      <div className="mb-4">
+                        <div className="flex items-start gap-2 text-on-surface-variant">
+                          <MapPin size={14} strokeWidth={2.5} className="text-primary/40 mt-0.5 shrink-0" />
+                          <span className="text-[11px] font-semibold text-on-surface/70 leading-snug">{p.address || 'Address not available'}</span>
                         </div>
-                        {p.phone && (
-                          <div className="flex items-center gap-3 text-on-surface-variant">
-                            <Phone size={12} strokeWidth={2.5} className="text-primary/40" />
-                            <span className="text-[11px] font-bold text-on-surface/70">{p.phone}</span>
-                          </div>
-                        )}
                       </div>
                       
-                      <div className="flex gap-2">
-                        <button 
+                      <div className="flex gap-2 items-center">
+                        <div 
                           onClick={() => {
                             // Enable follow mode and calculate route
+                            setNavigationRequested(true);
                             setFollowUser(true);
                             setSelectedPartnerId(p.id);
                             
@@ -961,16 +978,29 @@ export default function App() {
                               setZoom(15);
                             }
                           }}
-                          className="flex-1 h-11 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary-container transition-all duration-300 shadow-lg shadow-primary/10 cursor-pointer group"
+                          className="map-btn-wrapper"
+                          style={{ margin: 0, width: 'auto' }}
                         >
-                          <Navigation size={14} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
-                          Directions
-                        </button>
+                          <svg height="0" width="0">
+                            <filter id="land-popup">
+                              <feTurbulence result="turb" numOctaves="7" baseFrequency="0.006" type="fractalNoise"></feTurbulence>
+                              <feDisplacementMap yChannelSelector="G" xChannelSelector="R" scale="700" in="SourceGraphic" in2="turb"></feDisplacementMap>
+                            </filter>
+                          </svg>
+                          <div className="map-btn" style={{ fontSize: '11px', padding: '1.2em 1.8em 1.1em 4em' }}>Get Directions</div>
+                          <div className="pinpoint"></div>
+                          <div className="map-container">
+                            <div className="map fold-1"></div>
+                            <div className="map fold-2"></div>
+                            <div className="map fold-3"></div>
+                            <div className="map fold-4"></div>
+                          </div>
+                        </div>
                         <button 
                           onClick={() => setIsDetailOpen(true)}
-                          className="w-11 h-11 bg-surface-container rounded-xl flex items-center justify-center text-primary hover:bg-primary/10 transition-all duration-300"
+                          className="w-10 h-10 bg-surface-container rounded-lg flex items-center justify-center text-primary hover:bg-primary/10 transition-all duration-300 shrink-0"
                         >
-                          <Info size={18} strokeWidth={2.5} />
+                          <Info size={16} strokeWidth={2.5} />
                         </button>
                       </div>
                     </div>
@@ -1465,9 +1495,10 @@ export default function App() {
                       }
                       
                       return lat && lng ? (
-                        <button 
+                        <div 
                           onClick={() => {
                             // Enable follow mode and calculate route
+                            setNavigationRequested(true);
                             setFollowUser(true);
                             setSelectedPartnerId(selectedPartner.id);
                             setIsDetailOpen(false);
@@ -1485,12 +1516,23 @@ export default function App() {
                               setZoom(15);
                             }
                           }}
-                          className="w-full py-6 premium-gradient text-white rounded-[28px] font-black text-sm uppercase tracking-[0.25em] flex items-center justify-center gap-4 shadow-2xl shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-1 transition-all duration-500 cursor-pointer group"
+                          className="map-btn-wrapper"
                         >
-                          <Navigation size={20} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
-                          Start Navigation
-                          <ArrowRight size={20} strokeWidth={2.5} className="group-hover:translate-x-1 transition-transform" />
-                        </button>
+                          <svg height="0" width="0">
+                            <filter id="land">
+                              <feTurbulence result="turb" numOctaves="7" baseFrequency="0.006" type="fractalNoise"></feTurbulence>
+                              <feDisplacementMap yChannelSelector="G" xChannelSelector="R" scale="700" in="SourceGraphic" in2="turb"></feDisplacementMap>
+                            </filter>
+                          </svg>
+                          <div className="map-btn">Get Directions</div>
+                          <div className="pinpoint"></div>
+                          <div className="map-container">
+                            <div className="map fold-1"></div>
+                            <div className="map fold-2"></div>
+                            <div className="map fold-3"></div>
+                            <div className="map fold-4"></div>
+                          </div>
+                        </div>
                       ) : (
                         <div className="w-full py-6 bg-gray-100 text-gray-500 rounded-[28px] font-black text-sm uppercase tracking-[0.25em] flex items-center justify-center gap-4">
                           <MapPin size={20} strokeWidth={2.5} />

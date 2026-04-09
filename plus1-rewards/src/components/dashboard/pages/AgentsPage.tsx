@@ -421,10 +421,69 @@ export default function AgentsPage() {
                                   <span className="material-symbols-outlined text-sm">cancel</span>
                                 </button>
                               </>
+                            ) : agent.status === 'suspended' ? (
+                              <>
+                                <button 
+                                  onClick={async () => {
+                                    if (confirm(`Reactivate ${agent.first_name} ${agent.last_name}?`)) {
+                                      try {
+                                        await supabaseAdmin
+                                          .from('agents')
+                                          .update({ status: 'active' })
+                                          .eq('id', agent.id);
+                                        alert('Agent reactivated');
+                                        fetchData();
+                                      } catch (err: any) {
+                                        alert('Error: ' + err.message);
+                                      }
+                                    }
+                                  }}
+                                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-150" 
+                                  title="Reactivate Agent"
+                                >
+                                  <span className="material-symbols-outlined text-xl">check_circle</span>
+                                </button>
+                              </>
                             ) : (
                               <>
-                                <button className="p-2 text-gray-600 hover:text-[#1a558b] transition-colors rounded-lg bg-gray-100 hover:bg-[#1a558b]/10" title="Edit Agent"><span className="material-symbols-outlined text-sm">edit</span></button>
-                                <button className="p-2 text-gray-600 hover:text-red-500 transition-colors rounded-lg bg-gray-100 hover:bg-red-50" title="Suspend Agent"><span className="material-symbols-outlined text-sm">block</span></button>
+                                <button 
+                                  onClick={async () => {
+                                    const reason = prompt(`Enter reason for suspending ${agent.first_name} ${agent.last_name}:`);
+                                    if (reason && reason.trim()) {
+                                      try {
+                                        await supabaseAdmin
+                                          .from('agents')
+                                          .update({ status: 'suspended' })
+                                          .eq('id', agent.id);
+                                        
+                                        // Create audit log
+                                        await supabaseAdmin.from('admin_notifications').insert({
+                                          type: 'agent_suspended',
+                                          member_id: null,
+                                          member_name: `${agent.first_name} ${agent.last_name}`,
+                                          member_phone: agent.cell_phone,
+                                          message: `Agent ${agent.first_name} ${agent.last_name} (${agent.cell_phone}) has been SUSPENDED by admin. Reason: ${reason}`,
+                                          priority: 'high',
+                                          metadata: {
+                                            suspension_reason: reason,
+                                            suspended_at: new Date().toISOString(),
+                                            action: 'agent_suspended',
+                                            agent_id: agent.id
+                                          }
+                                        });
+                                        
+                                        alert(`Agent ${agent.first_name} ${agent.last_name} suspended successfully`);
+                                        fetchData();
+                                      } catch (err: any) {
+                                        alert('Error: ' + err.message);
+                                      }
+                                    }
+                                  }}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-150" 
+                                  title="Suspend Agent"
+                                >
+                                  <span className="material-symbols-outlined text-xl">block</span>
+                                </button>
                               </>
                             )}
                           </div>

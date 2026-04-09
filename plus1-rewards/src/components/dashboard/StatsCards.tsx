@@ -10,7 +10,7 @@ interface Stats {
   suspendedShops: number;
   totalAgents: number;
   activeAgents: number;
-  totalPolicyProviders: number;
+  pendingDay1HealthApprovals: number;
   totalPolicies: number;
   activePolicies: number;
   inProgressPolicies: number;
@@ -29,7 +29,7 @@ const StatsCards = forwardRef<StatsCardsRef>((_, ref) => {
     suspendedShops: 0,
     totalAgents: 0,
     activeAgents: 0,
-    totalPolicyProviders: 0,
+    pendingDay1HealthApprovals: 0,
     totalPolicies: 0,
     activePolicies: 0,
     inProgressPolicies: 0,
@@ -72,15 +72,6 @@ const StatsCards = forwardRef<StatsCardsRef>((_, ref) => {
       const totalAgents = agentsData?.length || 0;
       const activeAgents = agentsData?.filter(a => a.status === 'active').length || 0;
 
-      // Fetch providers stats (medical cover providers)
-      const { data: providersData, error: providersError } = await supabaseAdmin
-        .from('providers')
-        .select('id, status');
-      
-      console.log('🏥 Providers:', providersData?.length, 'Error:', providersError);
-      
-      const totalPolicyProviders = providersData?.length || 0;
-
       // Fetch member cover plans stats (policies)
       const { data: coverPlansData, error: coverPlansError } = await supabaseAdmin
         .from('member_cover_plans')
@@ -91,13 +82,14 @@ const StatsCards = forwardRef<StatsCardsRef>((_, ref) => {
       const totalPolicies = coverPlansData?.length || 0;
       const activePolicies = coverPlansData?.filter(p => p.status === 'active').length || 0;
       const inProgressPolicies = coverPlansData?.filter(p => p.status === 'in_progress').length || 0;
+      const pendingDay1HealthApprovals = coverPlansData?.filter(p => p.status === 'pending').length || 0;
 
       console.log('✅ Stats calculated:', {
         totalMembers,
         totalShops,
         totalAgents,
         activeAgents,
-        totalPolicyProviders,
+        pendingDay1HealthApprovals,
         totalPolicies,
         activePolicies,
         inProgressPolicies
@@ -111,7 +103,7 @@ const StatsCards = forwardRef<StatsCardsRef>((_, ref) => {
         suspendedShops,
         totalAgents,
         activeAgents,
-        totalPolicyProviders,
+        pendingDay1HealthApprovals,
         totalPolicies,
         activePolicies,
         inProgressPolicies,
@@ -186,14 +178,14 @@ const StatsCards = forwardRef<StatsCardsRef>((_, ref) => {
       
       <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
         <div className="flex justify-between items-start mb-4">
-          <span className="material-symbols-outlined text-[#1a558b] bg-[#1a558b]/10 p-2 rounded-lg">handshake</span>
-          {stats.totalPolicyProviders > 0 && (
-            <span className="text-[10px] font-bold py-0.5 px-2 rounded bg-[#1a558b]/10 text-[#1a558b] uppercase">Active</span>
+          <span className={`material-symbols-outlined p-2 rounded-lg ${stats.pendingDay1HealthApprovals > 0 ? 'text-orange-600 bg-orange-100' : 'text-gray-400 bg-gray-100'}`}>schedule</span>
+          {stats.pendingDay1HealthApprovals > 0 && (
+            <span className="text-[10px] font-bold py-0.5 px-2 rounded bg-orange-100 text-orange-600 uppercase">Pending</span>
           )}
         </div>
-        <p className="text-gray-600 text-xs font-bold uppercase tracking-wider">Policy Providers</p>
-        <h3 className="text-3xl font-black mt-1 text-gray-900">{stats.totalPolicyProviders}</h3>
-        <p className="text-[11px] text-gray-500 mt-2">Insurance partners</p>
+        <p className="text-gray-600 text-xs font-bold uppercase tracking-wider">Pending Day1Health Approval</p>
+        <h3 className={`text-3xl font-black mt-1 ${stats.pendingDay1HealthApprovals > 0 ? 'text-gray-900' : 'text-gray-400'}`}>{stats.pendingDay1HealthApprovals}</h3>
+        <p className="text-[11px] text-gray-500 mt-2">Awaiting verification</p>
       </div>
       
       <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">

@@ -164,7 +164,7 @@ export default function PlanSelectionModal({
         }
         console.log('Member cover plan updated successfully!');
       } else {
-        // Create new plan
+        // Create new plan - this is the initial selection, not a change
         console.log('Creating new member cover plan');
         const { error: coverPlanError } = await supabase
           .from('member_cover_plans')
@@ -176,7 +176,7 @@ export default function PlanSelectionModal({
             funded_amount: 0,
             overflow_balance: 0,
             status: 'in_progress',
-            plan_changes_count: 1
+            plan_changes_count: 0
           });
 
         if (coverPlanError) {
@@ -188,14 +188,20 @@ export default function PlanSelectionModal({
 
       console.log('Plan selection successful, showing notification');
       
-      // Update local state to disable button
-      setCanChangePlan(false);
-      setPlanChangesCount(1);
+      // Update local state based on whether this was a change or initial selection
+      const newChangesCount = existingPlan ? (existingPlan.plan_changes_count || 0) + 1 : 0;
+      setCanChangePlan(newChangesCount < 1);
+      setPlanChangesCount(newChangesCount);
       
       // Show success notification
+      const notificationTitle = existingPlan ? 'Plan Changed Successfully!' : 'Plan Selected Successfully!';
+      const notificationMessage = existingPlan 
+        ? `You've switched to ${selectedPlan.name}. Your earned rewards have been preserved!`
+        : `You've selected ${selectedPlan.name}. Start earning rewards to activate your cover!`;
+      
       showSuccess(
-        'Plan Changed Successfully!',
-        `You've switched to ${selectedPlan.name}. Your earned rewards have been preserved!`,
+        notificationTitle,
+        notificationMessage,
         5000
       );
 

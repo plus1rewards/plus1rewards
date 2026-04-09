@@ -565,38 +565,18 @@ export default function PartnersPage() {
                             )}
                           </td>
                           <td className="px-4 py-4">
-                            <div className="flex gap-2">
+                            <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={() => handleViewDetails(partner)}
-                                className="px-3 py-1.5 bg-[#1a558b] text-white rounded-lg text-xs font-bold hover:opacity-80 transition-opacity"
+                                className="p-2 text-[#1a558b] hover:bg-[#1a558b]/10 rounded-lg transition-colors duration-150"
+                                title="View Details"
                               >
-                                View Details
+                                <span className="material-symbols-outlined text-xl">visibility</span>
                               </button>
-                              {partner.status === 'active' && (
+                              {partner.status === 'suspended' ? (
                                 <button
                                   onClick={async () => {
-                                    if (confirm('Suspend this partner?')) {
-                                      try {
-                                        await supabaseAdmin
-                                          .from('partners')
-                                          .update({ status: 'suspended' })
-                                          .eq('id', partner.id);
-                                        alert('Partner suspended');
-                                        fetchData();
-                                      } catch (err: any) {
-                                        alert('Error: ' + err.message);
-                                      }
-                                    }
-                                  }}
-                                  className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold hover:opacity-80 transition-opacity"
-                                >
-                                  Suspend
-                                </button>
-                              )}
-                              {partner.status === 'suspended' && (
-                                <button
-                                  onClick={async () => {
-                                    if (confirm('Reactivate this partner?')) {
+                                    if (confirm(`Reactivate ${partner.shop_name}?`)) {
                                       try {
                                         await supabaseAdmin
                                           .from('partners')
@@ -609,9 +589,49 @@ export default function PartnersPage() {
                                       }
                                     }
                                   }}
-                                  className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:opacity-80 transition-opacity"
+                                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-150"
+                                  title="Reactivate Partner"
                                 >
-                                  Activate
+                                  <span className="material-symbols-outlined text-xl">check_circle</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={async () => {
+                                    const reason = prompt(`Enter reason for suspending ${partner.shop_name}:`);
+                                    if (reason && reason.trim()) {
+                                      try {
+                                        await supabaseAdmin
+                                          .from('partners')
+                                          .update({ status: 'suspended' })
+                                          .eq('id', partner.id);
+                                        
+                                        // Create audit log
+                                        await supabaseAdmin.from('admin_notifications').insert({
+                                          type: 'partner_suspended',
+                                          member_id: null,
+                                          member_name: partner.shop_name,
+                                          member_phone: partner.cell_phone,
+                                          message: `Partner ${partner.shop_name} (${partner.cell_phone}) has been SUSPENDED by admin. Reason: ${reason}`,
+                                          priority: 'high',
+                                          metadata: {
+                                            suspension_reason: reason,
+                                            suspended_at: new Date().toISOString(),
+                                            action: 'partner_suspended',
+                                            partner_id: partner.id
+                                          }
+                                        });
+                                        
+                                        alert(`Partner ${partner.shop_name} suspended successfully`);
+                                        fetchData();
+                                      } catch (err: any) {
+                                        alert('Error: ' + err.message);
+                                      }
+                                    }
+                                  }}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-150"
+                                  title="Suspend Partner"
+                                >
+                                  <span className="material-symbols-outlined text-xl">block</span>
                                 </button>
                               )}
                             </div>

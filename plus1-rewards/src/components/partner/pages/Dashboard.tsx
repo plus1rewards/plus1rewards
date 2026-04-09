@@ -155,16 +155,16 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4 md:space-y-6 px-2 md:px-0">
-      {/* Header */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm">
-        <div className="flex items-center gap-4">
-          {/* Logo */}
-          <div className="w-16 h-16 md:w-20 md:h-20 flex-shrink-0">
+      {/* Header Banner */}
+      <div className="bg-gradient-to-r from-[#1a558b] to-[#2563eb] rounded-xl p-6 md:p-8 shadow-lg">
+        <div className="flex items-center gap-6">
+          {/* Logo - Larger and more prominent */}
+          <div className="w-24 h-24 md:w-32 md:h-32 flex-shrink-0">
             {partner.store_logo_url ? (
               <img
                 src={partner.store_logo_url}
                 alt={`${partner.shop_name} Logo`}
-                className="w-full h-full object-contain rounded-lg border border-gray-200 bg-gray-50"
+                className="w-full h-full object-contain rounded-xl border-2 border-white/30 bg-white shadow-md p-2"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
                   const fallback = e.currentTarget.nextElementSibling as HTMLElement;
@@ -173,16 +173,32 @@ export default function Dashboard() {
               />
             ) : null}
             <div 
-              className={`w-full h-full bg-gray-100 border border-gray-200 rounded-lg flex items-center justify-center ${partner.store_logo_url ? 'hidden' : 'flex'}`}
+              className={`w-full h-full bg-white/90 border-2 border-white/30 rounded-xl flex items-center justify-center shadow-md ${partner.store_logo_url ? 'hidden' : 'flex'}`}
             >
-              <span className="material-symbols-outlined text-gray-400 text-2xl md:text-3xl">storefront</span>
+              <span className="material-symbols-outlined text-[#1a558b] text-4xl md:text-5xl">storefront</span>
             </div>
           </div>
           
           {/* Header Text */}
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900 truncate">Partner Dashboard</h1>
-            <p className="text-sm md:text-base text-gray-600 truncate">Welcome back, {partner?.shop_name || partner?.name}</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 truncate">Partner Dashboard</h1>
+            <p className="text-base md:text-lg text-white/90 truncate">Welcome back, {partner?.shop_name || partner?.name}</p>
+            <div className="mt-3 flex items-center gap-2">
+              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
+                partner.status === 'active' 
+                  ? 'bg-green-500/20 text-green-100 border border-green-400/30' 
+                  : 'bg-yellow-500/20 text-yellow-100 border border-yellow-400/30'
+              }`}>
+                <span className="material-symbols-outlined text-sm">
+                  {partner.status === 'active' ? 'check_circle' : 'pending'}
+                </span>
+                {partner.status}
+              </span>
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white border border-white/30">
+                <span className="material-symbols-outlined text-sm">percent</span>
+                {partner.cashback_percent}% Cashback
+              </span>
+            </div>
           </div>
         </div>
       </div>

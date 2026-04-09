@@ -33,6 +33,7 @@ import MemberCoverPlans from './pages/MemberCoverPlans'
 import MemberTransactions from './pages/MemberTransactions'
 import MemberTopUp from './pages/MemberTopUp'
 import MemberSupport from './pages/MemberSupport'
+import MemberChat from './pages/MemberChat'
 import AddDependant from './pages/AddDependant'
 import SponsorSomeone from './pages/SponsorSomeone'
 import PartnerDashboard from './components/partner/PartnerDashboard'
@@ -147,6 +148,7 @@ export default function App() {
           <Route path="/admin/settings" element={<SettingsPage />} />
           <Route path="/admin/chat" element={<AdminChatDashboard />} />
           <Route path="/member/dashboard" element={<MemberDashboard />} />
+          <Route path="/member/chat" element={<MemberChat />} />
           <Route path="/member/cover-plans" element={<MemberCoverPlans />} />
           <Route path="/member/transactions" element={<MemberTransactions />} />
           <Route path="/member/top-up" element={<MemberTopUp />} />

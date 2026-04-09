@@ -563,12 +563,78 @@ export default function MembersPage() {
                           
                           {/* Actions */}
                           <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <button
-                              onClick={() => handleViewDetails(member)}
-                              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#1a558b] hover:bg-[#1a558b]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1a558b] transition-colors duration-150"
-                            >
-                              View Details
-                            </button>
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => handleViewDetails(member)}
+                                className="p-2 text-[#1a558b] hover:bg-[#1a558b]/10 rounded-lg transition-colors duration-150"
+                                title="View Details"
+                              >
+                                <span className="material-symbols-outlined text-xl">visibility</span>
+                              </button>
+                              {member.status === 'suspended' ? (
+                                <button
+                                  onClick={() => {
+                                    // Reactivate member
+                                    if (confirm(`Reactivate ${getFullName(member)}?`)) {
+                                      supabaseAdmin
+                                        .from('members')
+                                        .update({ status: 'active' })
+                                        .eq('id', member.id)
+                                        .then(() => fetchData());
+                                    }
+                                  }}
+                                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-150"
+                                  title="Reactivate Member"
+                                >
+                                  <span className="material-symbols-outlined text-xl">check_circle</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    // Open suspend modal
+                                    const reason = prompt(`Enter reason for suspending ${getFullName(member)}:`);
+                                    if (reason && reason.trim()) {
+                                      supabaseAdmin
+                                        .from('members')
+                                        .update({ status: 'suspended' })
+                                        .eq('id', member.id)
+                                        .then(async () => {
+                                          // Suspend all cover plans
+                                          await supabaseAdmin
+                                            .from('member_cover_plans')
+                                            .update({ 
+                                              status: 'suspended',
+                                              suspended_at: new Date().toISOString()
+                                            })
+                                            .eq('member_id', member.id);
+                                          
+                                          // Create audit log
+                                          await supabaseAdmin.from('admin_notifications').insert({
+                                            type: 'member_suspended',
+                                            member_id: member.id,
+                                            member_name: getFullName(member),
+                                            member_phone: member.cell_phone,
+                                            message: `Member ${getFullName(member)} (${member.cell_phone}) has been SUSPENDED by admin. Reason: ${reason}`,
+                                            priority: 'high',
+                                            metadata: {
+                                              suspension_reason: reason,
+                                              suspended_at: new Date().toISOString(),
+                                              action: 'member_suspended'
+                                            }
+                                          });
+                                          
+                                          fetchData();
+                                          alert(`Member ${getFullName(member)} has been suspended successfully.`);
+                                        });
+                                    }
+                                  }}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-150"
+                                  title="Suspend Member"
+                                >
+                                  <span className="material-symbols-outlined text-xl">block</span>
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -659,32 +725,82 @@ export default function MembersPage() {
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                         <div>
-                          <p className="text-xs text-gray-600 uppercase tracking-wider">Full Name</p>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Full Name</p>
                           <p className="text-sm text-gray-900 font-semibold truncate">{getFullName(memberDetails.member)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-600 uppercase tracking-wider">Phone</p>
-                          <p className="text-sm text-gray-900 font-semibold">{memberDetails.member.cell_phone || 'Not provided'}</p>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">First Name</p>
+                          <p className="text-sm text-gray-900 font-semibold">{memberDetails.member.first_name || 'Not provided'}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-600 uppercase tracking-wider">Email</p>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Last Name</p>
+                          <p className="text-sm text-gray-900 font-semibold">{memberDetails.member.last_name || 'Not provided'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">SA ID Number</p>
+                          <p className="text-sm text-gray-900 font-semibold font-mono">{memberDetails.member.sa_id || 'Not provided'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Phone</p>
+                          <p className="text-sm text-gray-900 font-semibold">{memberDetails.member.cell_phone || memberDetails.member.phone || 'Not provided'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Email</p>
                           <p className="text-sm text-gray-900 font-semibold break-all">{memberDetails.member.email || 'Not provided'}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-600 uppercase tracking-wider">QR Code</p>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Address Line 1</p>
+                          <p className="text-sm text-gray-900 font-semibold">{memberDetails.member.address_line_1 || 'Not provided'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Address Line 2</p>
+                          <p className="text-sm text-gray-900 font-semibold">{memberDetails.member.address_line_2 || 'Not provided'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">City</p>
+                          <p className="text-sm text-gray-900 font-semibold">{memberDetails.member.city || 'Not provided'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Province</p>
+                          <p className="text-sm text-gray-900 font-semibold">{memberDetails.member.province || 'Not provided'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Postal Code</p>
+                          <p className="text-sm text-gray-900 font-semibold">{memberDetails.member.postal_code || 'Not provided'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Country</p>
+                          <p className="text-sm text-gray-900 font-semibold">{memberDetails.member.country || 'South Africa'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">QR Code</p>
                           <p className="text-sm text-gray-900 font-semibold font-mono truncate">{memberDetails.member.qr_code || 'Not issued'}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-600 uppercase tracking-wider">Status</p>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Cover Plan Price</p>
+                          <p className="text-sm text-gray-900 font-semibold">R{memberDetails.member.cover_plan_price || '0'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Status</p>
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                            memberDetails.member.status === 'active' ? 'bg-[#1a558b]/20 text-[#1a558b]' : 'bg-yellow-500/20 text-yellow-600'
+                            memberDetails.member.status === 'active' ? 'bg-[#1a558b]/20 text-[#1a558b]' : 
+                            memberDetails.member.status === 'suspended' ? 'bg-red-500/20 text-red-600' :
+                            'bg-yellow-500/20 text-yellow-600'
                           }`}>
                             {memberDetails.member.status}
                           </span>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-600 uppercase tracking-wider">Joined</p>
-                          <p className="text-sm text-gray-900 font-semibold">{new Date(memberDetails.member.created_at).toLocaleDateString()}</p>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Joined</p>
+                          <p className="text-sm text-gray-900 font-semibold">{new Date(memberDetails.member.created_at).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Last Updated</p>
+                          <p className="text-sm text-gray-900 font-semibold">{memberDetails.member.updated_at ? new Date(memberDetails.member.updated_at).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Member ID</p>
+                          <p className="text-xs text-gray-900 font-semibold font-mono break-all">{memberDetails.member.id}</p>
                         </div>
                       </div>
                     </div>
@@ -749,10 +865,20 @@ export default function MembersPage() {
                                   <p className="text-sm font-bold text-[#1a558b]">R{parseFloat(plan.funded_amount || 0).toFixed(2)}</p>
                                 </div>
                                 <div>
+                                  <p className="text-xs text-gray-600">Overflow</p>
+                                  <p className="text-sm font-bold text-green-600">R{parseFloat(plan.overflow_balance || 0).toFixed(2)}</p>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4 mb-3">
+                                <div>
                                   <p className="text-xs text-gray-600">Progress</p>
                                   <p className="text-sm font-bold text-gray-900">
                                     {((parseFloat(plan.funded_amount || 0) / parseFloat(plan.target_amount || 1)) * 100).toFixed(1)}%
                                   </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-600">Total Earned</p>
+                                  <p className="text-sm font-bold text-teal-600">R{(parseFloat(plan.funded_amount || 0) + parseFloat(plan.overflow_balance || 0)).toFixed(2)}</p>
                                 </div>
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2">
