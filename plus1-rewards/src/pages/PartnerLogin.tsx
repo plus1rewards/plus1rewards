@@ -76,8 +76,8 @@ export default function PartnerLogin() {
         setLoading(false);
         return;
       }
-      if (partnerData.status === 'suspended') {
-        showNotification('error', 'Account Suspended', `Your business "${partnerData.shop_name}" has been suspended. Please contact admin.`);
+      if (partnerData.status === 'paused') {
+        showNotification('error', 'Account Paused', `Your business "${partnerData.shop_name}" has been paused. Please contact admin.`);
         setLoading(false);
         return;
       }

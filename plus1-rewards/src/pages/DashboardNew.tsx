@@ -184,6 +184,8 @@ const DashboardNew: React.FC = () => {
 
       if (coverPlansData && coverPlansData.length > 0) {
         console.log('Found cover plan:', coverPlansData[0]);
+        console.log('🔍 COVER PLAN STATUS:', coverPlansData[0].status);
+        console.log('🔍 COVER PLAN FULL DATA:', JSON.stringify(coverPlansData[0], null, 2));
         const planWithNumbers = {
           ...coverPlansData[0],
           target_amount: typeof coverPlansData[0].target_amount === 'string' 
@@ -196,6 +198,7 @@ const DashboardNew: React.FC = () => {
             ? parseFloat(coverPlansData[0].overflow_balance) 
             : (coverPlansData[0].overflow_balance || 0)
         };
+        console.log('🔍 PLAN WITH NUMBERS STATUS:', planWithNumbers.status);
         setMainCoverPlan(planWithNumbers);
       } else {
         console.log('No cover plans found - showing plan selection modal');
@@ -332,9 +335,9 @@ const DashboardNew: React.FC = () => {
         shouldShow: isProfileIncomplete && progressPercent >= 90
       });
 
-      // If plan is suspended (reached 100% with incomplete profile), show modal
-      if (mainCoverPlan.status === 'suspended' && isProfileIncomplete) {
-        console.log('⚠️ Plan is suspended due to incomplete profile at 100%');
+      // If plan is paused (reached 100% with incomplete profile), show modal
+      if (mainCoverPlan.status === 'paused' && isProfileIncomplete) {
+        console.log('⚠️ Plan is paused due to incomplete profile at 100%');
         
         // Check if user can still change plan
         const planChangesCount = mainCoverPlan.plan_changes_count || 0;
@@ -343,25 +346,25 @@ const DashboardNew: React.FC = () => {
         setMissingFields(missing);
         setShowProfileIncomplete(true);
         
-        const lastPromptProgress = sessionStorage.getItem('last_profile_prompt_suspended');
-        const currentProgressKey = `${mainCoverPlan.id}_suspended`;
+        const lastPromptProgress = sessionStorage.getItem('last_profile_prompt_paused');
+        const currentProgressKey = `${mainCoverPlan.id}_paused`;
         
         if (lastPromptProgress !== currentProgressKey) {
-          sessionStorage.setItem('last_profile_prompt_suspended', currentProgressKey);
+          sessionStorage.setItem('last_profile_prompt_paused', currentProgressKey);
 
           try {
             await supabase.from('admin_notifications').insert({
-              type: 'profile_incomplete_suspended',
+              type: 'profile_incomplete_paused',
               member_id: member.id,
               member_name: member.name,
               member_phone: member.phone,
-              message: `CRITICAL: Member ${member.name} (${member.phone}) reached 100% with incomplete profile. Plan has been SUSPENDED. Missing: ${missing.join(', ')}`,
+              message: `CRITICAL: Member ${member.name} (${member.phone}) reached 100% with incomplete profile. Plan has been PAUSED. Missing: ${missing.join(', ')}`,
               priority: 'high',
               metadata: {
                 progress_percent: progressPercent,
                 missing_fields: missing,
                 cover_plan_id: mainCoverPlan.id,
-                action: 'plan_suspended'
+                action: 'plan_paused'
               }
             });
           } catch (error) {
@@ -400,7 +403,7 @@ const DashboardNew: React.FC = () => {
               member_id: member.id,
               member_name: member.name,
               member_phone: member.phone,
-              message: `CRITICAL: Member ${member.name} (${member.phone}) has reached ${progressPercent.toFixed(0)}% cover plan completion with incomplete profile. Plan has been SUSPENDED. Missing: ${missing.join(', ')}`,
+              message: `CRITICAL: Member ${member.name} (${member.phone}) has reached ${progressPercent.toFixed(0)}% cover plan completion with incomplete profile. Plan has been PAUSED. Missing: ${missing.join(', ')}`,
               priority: 'high',
               metadata: {
                 progress_percent: progressPercent,
@@ -499,9 +502,9 @@ const DashboardNew: React.FC = () => {
           }
         }
       }
-      // If profile is complete and plan was suspended, change to pending for Day1Health verification
-      else if (isProfileComplete && mainCoverPlan.status === 'suspended' && progressPercent >= 100) {
-        console.log('✅ Profile complete - changing suspended plan to pending for verification');
+      // If profile is complete and plan was paused, change to pending for Day1Health verification
+      else if (isProfileComplete && mainCoverPlan.status === 'paused' && progressPercent >= 100) {
+        console.log('✅ Profile complete - changing paused plan to pending for verification');
         const { error: updateError } = await supabase
           .from('member_cover_plans')
           .update({ status: 'pending' })
@@ -518,7 +521,7 @@ const DashboardNew: React.FC = () => {
               member_id: member.id,
               member_name: member.name,
               member_phone: member.phone,
-              message: `Member ${member.name} (${member.phone}) has completed their profile. Suspended plan has been changed to pending for Day1Health verification.`,
+              message: `Member ${member.name} (${member.phone}) has completed their profile. Paused plan has been changed to pending for Day1Health verification.`,
               priority: 'medium',
               metadata: {
                 progress_percent: progressPercent,
@@ -933,7 +936,7 @@ const DashboardNew: React.FC = () => {
           <div className="md:col-span-4 flex flex-col gap-6">
             {/* Active Policy Card */}
             <div className={`${
-              mainCoverPlan?.status === 'suspended' ? 'bg-red-50 border-red-300' : 
+              mainCoverPlan?.status === 'paused' ? 'bg-orange-50 border-orange-300' : 
               mainCoverPlan?.status === 'pending' ? 'bg-yellow-50 border-yellow-300' : 
               'bg-white border-gray-200'
             } border p-6 rounded-lg shadow-sm`}>
@@ -947,26 +950,26 @@ const DashboardNew: React.FC = () => {
                   </h3>
                 </div>
                 <span className={`material-symbols-outlined ${
-                  mainCoverPlan?.status === 'suspended' ? 'text-red-600' : 
+                  mainCoverPlan?.status === 'paused' ? 'text-orange-600' : 
                   mainCoverPlan?.status === 'pending' ? 'text-yellow-600' : 
                   mainCoverPlan?.status === 'active' ? 'text-green-600' :
                   'text-blue-600'
                 }`}>
-                  {mainCoverPlan?.status === 'suspended' ? 'pause_circle' : 
+                  {mainCoverPlan?.status === 'paused' ? 'pause_circle' : 
                    mainCoverPlan?.status === 'pending' ? 'pending_actions' :
                    mainCoverPlan?.status === 'active' ? 'check_circle' :
                    'verified'}
                 </span>
               </div>
               <div className="space-y-4">
-                {mainCoverPlan?.status === 'suspended' && (
-                  <div className="bg-red-100 border-2 border-red-400 rounded-lg p-3 mb-4">
+                {mainCoverPlan?.status === 'paused' && (
+                  <div className="bg-orange-100 border-2 border-orange-400 rounded-lg p-3 mb-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="material-symbols-outlined text-red-600 text-xl">error</span>
-                      <p className="text-sm font-black text-red-700">POLICY SUSPENDED</p>
+                      <span className="material-symbols-outlined text-orange-600 text-xl">pause_circle</span>
+                      <p className="text-sm font-black text-orange-700">POLICY PAUSED</p>
                     </div>
-                    <p className="text-xs text-red-700 font-semibold">
-                      Your policy is suspended due to incomplete profile information. Complete your profile immediately to reactivate.
+                    <p className="text-xs text-orange-700 font-semibold">
+                      Your policy is paused due to incomplete profile information. Complete your profile below to reactivate.
                     </p>
                   </div>
                 )}
@@ -999,13 +1002,13 @@ const DashboardNew: React.FC = () => {
                 <div className="flex justify-between items-end">
                   <span className={`text-xs font-bold ${
                     mainCoverPlan?.status === 'active' ? 'text-green-600' : 
-                    mainCoverPlan?.status === 'suspended' ? 'text-red-600' : 
+                    mainCoverPlan?.status === 'paused' ? 'text-orange-600' : 
                     mainCoverPlan?.status === 'pending' ? 'text-yellow-600' :
                     'text-gray-600'
                   }`}>
                     Policy {
                       mainCoverPlan?.status === 'active' ? 'Active' : 
-                      mainCoverPlan?.status === 'suspended' ? 'SUSPENDED' : 
+                      mainCoverPlan?.status === 'paused' ? 'PAUSED' : 
                       mainCoverPlan?.status === 'pending' ? 'PENDING' :
                       'In Progress'
                     }
@@ -1019,7 +1022,7 @@ const DashboardNew: React.FC = () => {
                   <div 
                     className={`h-full ${
                       mainCoverPlan?.status === 'active' ? 'bg-green-500' : 
-                      mainCoverPlan?.status === 'suspended' ? 'bg-red-500' : 
+                      mainCoverPlan?.status === 'paused' ? 'bg-orange-500' : 
                       mainCoverPlan?.status === 'pending' ? 'bg-yellow-500' :
                       'bg-blue-500'
                     }`} 

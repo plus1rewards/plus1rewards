@@ -22,9 +22,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     providers: 0,
     transactions: 0,
     disputes: 0,
-    topUps: 0,
-    exports: 0,
-    auditLogs: 0
+    topUps: 0
   });
 
   // Track last visit times for each page
@@ -89,13 +87,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         .in('status', ['open', 'investigating'])
         .gte('created_at', new Date(lastDisputesVisit).toISOString());
 
-      // Count pending top-ups created after last visit
+      // Count top-ups created after last visit
       let topUpsCount = 0;
       try {
         const { count } = await supabaseAdmin
           .from('top_ups')
           .select('*', { count: 'exact', head: true })
-          .eq('status', 'pending')
           .gte('created_at', new Date(lastTopUpsVisit).toISOString());
         topUpsCount = count || 0;
       } catch (error) {
@@ -148,18 +145,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         .select('*', { count: 'exact', head: true })
         .gte('created_at', today);
 
-      // Count pending exports
-      const { count: pendingExportsCount } = await supabaseAdmin
-        .from('insurer_exports')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
-
-      // Count today's audit logs
-      const { count: todayAuditLogsCount } = await supabaseAdmin
-        .from('audit_logs')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', today);
-
       const totalApprovals = (partnersCount || 0) + (agentsCount || 0) + (providersCount || 0);
 
       setPendingCounts({
@@ -173,9 +158,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         providers: allProvidersCount || 0,
         transactions: todayTransactionsCount || 0,
         disputes: disputesCount || 0,
-        topUps: topUpsCount,
-        exports: pendingExportsCount || 0,
-        auditLogs: todayAuditLogsCount || 0
+        topUps: topUpsCount
       });
     } catch (error) {
       console.error('Error fetching pending counts:', error);
@@ -333,26 +316,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             )}
           </a>
           
-          <a className={getLinkClasses('/admin/exports')} href="/admin/exports">
-            <span className="material-symbols-outlined">upload_file</span>
-            <span className={getTextClasses('/admin/exports')}>Exports</span>
-            {pendingCounts.exports > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded-full">
-                {pendingCounts.exports}
-              </span>
-            )}
-          </a>
-          
-          <a className={getLinkClasses('/admin/audit-logs')} href="/admin/audit-logs">
-            <span className="material-symbols-outlined">history</span>
-            <span className={getTextClasses('/admin/audit-logs')}>Audit Logs</span>
-            {pendingCounts.auditLogs > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-gray-500 text-white text-xs font-bold rounded-full">
-                {pendingCounts.auditLogs}
-              </span>
-            )}
-          </a>
-          
           <a className={getLinkClasses('/admin/settings')} href="/admin/settings">
             <span className="material-symbols-outlined">settings</span>
             <span className={getTextClasses('/admin/settings')}>Settings / Config</span>
@@ -506,26 +469,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             {pendingCounts.topUps > 0 && (
               <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
                 {pendingCounts.topUps}
-              </span>
-            )}
-          </a>
-          
-          <a className={getLinkClasses('/admin/exports')} href="/admin/exports" onClick={handleLinkClick}>
-            <span className="material-symbols-outlined">upload_file</span>
-            <span className={getTextClasses('/admin/exports')}>Exports</span>
-            {pendingCounts.exports > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded-full">
-                {pendingCounts.exports}
-              </span>
-            )}
-          </a>
-          
-          <a className={getLinkClasses('/admin/audit-logs')} href="/admin/audit-logs" onClick={handleLinkClick}>
-            <span className="material-symbols-outlined">history</span>
-            <span className={getTextClasses('/admin/audit-logs')}>Audit Logs</span>
-            {pendingCounts.auditLogs > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-gray-500 text-white text-xs font-bold rounded-full">
-                {pendingCounts.auditLogs}
               </span>
             )}
           </a>

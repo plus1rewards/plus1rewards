@@ -24,8 +24,8 @@ import CommissionsPage from './components/dashboard/pages/CommissionsPage'
 import DisputesPage from './components/dashboard/pages/DisputesPage'
 import TopUpsPage from './components/dashboard/pages/TopUpsPage'
 import ProvidersPage from './components/dashboard/pages/ProvidersPage'
-import ExportsPage from './components/dashboard/pages/ExportsPage'
-import AuditLogsPage from './components/dashboard/pages/AuditLogsPage'
+
+
 import SettingsPage from './components/dashboard/pages/SettingsPage'
 import AdminChatDashboard from './components/dashboard/pages/AdminChatDashboard'
 import { default as MemberDashboard } from './pages/DashboardNew'
@@ -143,8 +143,6 @@ export default function App() {
           <Route path="/admin/transactions" element={<TransactionsPage />} />
           <Route path="/admin/disputes" element={<DisputesPage />} />
           <Route path="/admin/top-ups" element={<TopUpsPage />} />
-          <Route path="/admin/exports" element={<ExportsPage />} />
-          <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />
           <Route path="/admin/chat" element={<AdminChatDashboard />} />
           <Route path="/member/dashboard" element={<MemberDashboard />} />

@@ -210,7 +210,7 @@ export default function QuickTransaction() {
           // Determine status based on funding and profile completeness
           let newStatus = 'in_progress';
           if (newFundedAmount >= plan.target_amount) {
-            newStatus = isProfileComplete ? 'pending' : 'suspended';
+            newStatus = isProfileComplete ? 'pending' : 'paused';
           }
 
           await supabase

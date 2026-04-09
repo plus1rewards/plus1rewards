@@ -5,7 +5,7 @@ import jsQR from 'jsqr';
 import { parseMemberQR } from '../lib/config';
 
 interface Member { id: string; name: string; phone: string; qr_code: string }
-interface Wallet { id: string; member_id: string; balance: number; policies: { name: string; current: number; target: number; status: 'active' | 'suspended' } }
+interface Wallet { id: string; member_id: string; balance: number; policies: { name: string; current: number; target: number; status: 'active' | 'paused' } }
 
 export function PartnerScanMember() {
   const navigate = useNavigate();

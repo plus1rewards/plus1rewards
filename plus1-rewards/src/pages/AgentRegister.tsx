@@ -240,11 +240,12 @@ export default function AgentRegister() {
       const { error: agentError } = await supabase
         .from('agents')
         .insert({
-          full_name: `${formData.firstName} ${formData.surname}`,
-          mobile_number: cleanPhone,
+          first_name: formData.firstName,
+          last_name: formData.surname,
+          cell_phone: cleanPhone,
           pin_code: formData.pin,
           email: formData.email,
-          id_number: formData.idNumber,
+          sa_id: formData.idNumber,
           agreement_file: signatureStoragePath,
           status: 'pending',
           role: 'agent'

@@ -31,7 +31,7 @@ export async function changeMemberPolicyStatus({
 
     // Create notification for member
     const notificationMessages: Record<string, string> = {
-      suspended: `Your cover plan has been suspended. ${reason ? `Reason: ${reason}` : 'Please contact support for more information.'}`,
+      suspended: `Your cover plan has been PAUSED. ${reason ? `Reason: ${reason}` : 'Please contact support for more information.'}`,
       'in_progress': `Your cover plan status has been changed to in progress. ${reason ? `Reason: ${reason}` : ''}`,
       active: `Your cover plan is now active. ${reason ? `Reason: ${reason}` : ''}`
     };

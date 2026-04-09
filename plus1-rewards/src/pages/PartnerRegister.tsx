@@ -256,7 +256,7 @@ export default function PartnerRegister() {
           address: formData.address,
           postal_code: formData.postalCode,
           category: formData.category,
-          phone: cleanPhone,
+          cell_phone: cleanPhone,
           email: formData.email,
           cashback_percent: cashbackPercent,
           first_name: formData.responsiblePersonFirstName,
@@ -265,9 +265,7 @@ export default function PartnerRegister() {
           signature_url: uploadError ? null : signatureFileName,
           suppliers: [],
           pin_code: formData.pin,
-          mobile_number: cleanPhone,
-          role: 'partner',
-          kyc_status: 'pending'
+          role: 'partner'
         });
 
       if (partnerError) throw partnerError;

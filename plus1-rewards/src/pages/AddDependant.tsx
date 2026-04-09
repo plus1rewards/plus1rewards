@@ -40,30 +40,18 @@ const AddDependant: React.FC = () => {
     loadData();
   }, []);
 
-  // Calculate dependant cost based on plan and relationship
+  // Calculate dependant cost based on relationship (Day to Day pricing)
   useEffect(() => {
     if (!memberCoverPlan) return;
 
-    const planAmount = Number(memberCoverPlan.target_amount);
     let cost = 0;
 
-    // Hospital/Value plans (R390 or R385)
-    if (planAmount <= 390) {
-      if (linkedType === 'child') {
-        cost = 156;
-      } else {
-        // adult, spouse, dependant, other
-        cost = 312;
-      }
-    }
-    // Comprehensive plans (R665)
-    else if (planAmount >= 665) {
-      if (linkedType === 'child') {
-        cost = 266;
-      } else {
-        // adult, spouse, dependant, other
-        cost = 486;
-      }
+    // Day to Day pricing structure
+    if (linkedType === 'child') {
+      cost = 193; // Children
+    } else {
+      // adult, spouse, dependant, other
+      cost = 289; // Adults
     }
 
     setDependantCost(cost);
@@ -413,14 +401,8 @@ const AddDependant: React.FC = () => {
                         <div className="flex items-start gap-2">
                           <span className="material-symbols-outlined text-amber-600 text-lg mt-0.5">info</span>
                           <div className="text-xs text-amber-800">
-                            <p className="font-bold mb-1">Pricing Information:</p>
-                            <p>
-                              {Number(memberCoverPlan.target_amount) <= 390 ? (
-                                <>Hospital/Value Plan: Adults R312/month • Children R156/month</>
-                              ) : (
-                                <>Comprehensive Plan: Adults R486/month • Children R266/month</>
-                              )}
-                            </p>
+                            <p className="font-bold mb-1">Day to Day Pricing:</p>
+                            <p>Adults R289/month • Children R193/month</p>
                           </div>
                         </div>
                       </div>

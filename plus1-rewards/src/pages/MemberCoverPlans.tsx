@@ -25,10 +25,10 @@ interface MemberCoverPlan {
   creation_order: number;
   target_amount: number;
   funded_amount: number;
-  status: 'in_progress' | 'active' | 'suspended';
+  status: 'in_progress' | 'active' | 'paused';
   active_from: string | null;
   active_to: string | null;
-  suspended_at: string | null;
+  paused_at: string | null;
   created_at: string;
   sponsored_by: string | null;
   cover_plans: CoverPlan;

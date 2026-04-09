@@ -8,6 +8,27 @@ import { Notification, useNotification } from '../../Notification';
 
 type ApprovalTab = 'partners' | 'agents' | 'cover_plans' | 'linked_people';
 
+// Helper function to get owner/agent name from first_name and last_name
+const getOwnerName = (person: any): string => {
+  if (!person) return 'Unknown';
+  if (person.first_name || person.last_name) {
+    const firstName = person.first_name || '';
+    const lastName = person.last_name || '';
+    return `${firstName} ${lastName}`.trim() || 'Unknown';
+  }
+  return person.full_name || person.responsible_person || 'Unknown';
+};
+
+// Helper function to calculate days until deletion for rejected partners
+const getDaysUntilDeletion = (rejectedAt: string | null): number | null => {
+  if (!rejectedAt) return null;
+  const rejectionDate = new Date(rejectedAt);
+  const deletionDate = new Date(rejectionDate.getTime() + (3 * 24 * 60 * 60 * 1000)); // 3 days
+  const now = new Date();
+  const daysLeft = Math.ceil((deletionDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+  return daysLeft > 0 ? daysLeft : 0;
+};
+
 export default function ApprovalsPage() {
   const navigate = useNavigate();
   const { notification, showSuccess, showError, showWarning, hideNotification } = useNotification();
@@ -16,6 +37,7 @@ export default function ApprovalsPage() {
   
   // Data states
   const [pendingPartners, setPendingPartners] = useState<any[]>([]);
+  const [rejectedPartners, setRejectedPartners] = useState<any[]>([]);
   const [pendingAgents, setPendingAgents] = useState<any[]>([]);
   const [coverPlanRequests, setCoverPlanRequests] = useState<any[]>([]);
   const [linkedPeopleRequests, setLinkedPeopleRequests] = useState<any[]>([]);
@@ -81,12 +103,18 @@ export default function ApprovalsPage() {
         .order('created_at', { ascending: false });
 
       // Also fetch partners without agents
-      const { data: partnersWithoutAgents, error: partnersWithoutAgentsError } = await supabaseAdmin
+      let partnersWithoutAgentsQuery = supabaseAdmin
         .from('partners')
         .select('*')
         .eq('status', 'pending')
-        .not('id', 'in', `(${partners?.map(p => p.id).join(',') || 'null'})`)
         .order('created_at', { ascending: false });
+
+      // Exclude partners that already have agents
+      if (partners && partners.length > 0) {
+        partnersWithoutAgentsQuery = partnersWithoutAgentsQuery.not('id', 'in', `(${partners.map(p => p.id).join(',')})`);
+      }
+
+      const { data: partnersWithoutAgents, error: partnersWithoutAgentsError } = await partnersWithoutAgentsQuery;
 
       // Combine both results
       const allPartners = [
@@ -126,17 +154,17 @@ export default function ApprovalsPage() {
       // Agent details are stored directly in agents table
       setAllAgents(activeAgents || []);
 
-      // Fetch pending providers (if table exists)
-      const { data: providers, error: providersError } = await supabaseAdmin
-        .from('providers')
+      // Fetch pending insurers
+      const { data: insurers, error: insurersError } = await supabaseAdmin
+        .from('insurers')
         .select('*')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
-      if (providersError) {
-        console.error('❌ Providers error:', providersError);
+      if (insurersError) {
+        console.error('❌ Insurers error:', insurersError);
       } else {
-        console.log('✅ Providers:', providers?.length || 0);
+        console.log('✅ Insurers:', insurers?.length || 0);
       }
 
       // Fetch pending linked people/dependants
@@ -159,7 +187,23 @@ export default function ApprovalsPage() {
         setPendingAgents([]);
       }
 
-      const totalPending = (allPartners?.length || 0) + (agents?.length || 0) + (providers?.length || 0);
+      // Fetch rejected partners (to show deletion countdown)
+      const { data: rejected, error: rejectedError } = await supabaseAdmin
+        .from('partners')
+        .select('*')
+        .eq('status', 'rejected')
+        .not('rejected_at', 'is', null)
+        .order('rejected_at', { ascending: true });
+
+      if (rejectedError) {
+        console.error('❌ Rejected partners error:', rejectedError);
+        setRejectedPartners([]);
+      } else {
+        console.log('✅ Rejected partners:', rejected?.length || 0);
+        setRejectedPartners(rejected || []);
+      }
+
+      const totalPending = (allPartners?.length || 0) + (agents?.length || 0) + (insurers?.length || 0);
       
       console.log('📊 Total pending:', totalPending);
       
@@ -167,7 +211,7 @@ export default function ApprovalsPage() {
         totalPending,
         partners: partners?.length || 0,
         agents: agents?.length || 0,
-        providers: providers?.length || 0,
+        providers: insurers?.length || 0,
         coverPlans: 0,
         linkedPeople: linkedPeople?.length || 0
       });
@@ -487,57 +531,76 @@ export default function ApprovalsPage() {
                   <div className="divide-y divide-gray-200">
                     {pendingPartners.map((partner) => (
                       <div key={partner.id} className="p-6 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start justify-between">
+                        <div className="flex items-start justify-between gap-6">
+                          {/* Left side - Business Info */}
                           <div className="flex-1">
-                            <h4 className="text-lg font-bold text-gray-900 mb-2">{partner.shop_name || 'Unknown Shop'}</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                              <div>
-                                <p className="text-xs text-gray-600 uppercase font-bold">Category</p>
-                                <p className="text-sm text-gray-900">{partner.category || 'Not specified'}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-600 uppercase font-bold">Address</p>
-                                <p className="text-sm text-gray-900">{partner.address || 'Not specified'}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-600 uppercase font-bold">Postal Code</p>
-                                <p className="text-sm text-gray-900">{partner.postal_code || 'Not specified'}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-600 uppercase font-bold">Cashback Percent</p>
-                                <p className="text-sm text-[#1a558b] font-bold">{partner.cashback_percent || 0}%</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-600 uppercase font-bold">Phone</p>
-                                <p className="text-sm text-gray-900">{partner.cell_phone || 'Not provided'}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-600 uppercase font-bold">Email</p>
-                                <p className="text-sm text-gray-900">{partner.email || 'Not provided'}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-600 uppercase font-bold">Applied</p>
-                                <p className="text-sm text-gray-900">{new Date(partner.created_at).toLocaleDateString()}</p>
+                            {/* Shop Name */}
+                            <div className="mb-4">
+                              <h4 className="text-xl font-bold text-gray-900">{partner.shop_name || 'Unknown Shop'}</h4>
+                              <p className="text-sm text-gray-500 mt-1">Applied on {new Date(partner.created_at).toLocaleDateString()}</p>
+                            </div>
+
+                            {/* Business Details Grid */}
+                            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Category & Cashback */}
+                                <div className="space-y-3">
+                                  <div>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Category</p>
+                                    <p className="text-sm font-medium text-gray-900">{partner.category || 'Not specified'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Cashback Rate</p>
+                                    <p className="text-lg font-bold text-[#1a558b]">{partner.cashback_percent || 0}%</p>
+                                  </div>
+                                </div>
+
+                                {/* Location */}
+                                <div className="space-y-3">
+                                  <div>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Address</p>
+                                    <p className="text-sm font-medium text-gray-900">{partner.address || 'Not specified'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Postal Code</p>
+                                    <p className="text-sm font-medium text-gray-900">{partner.postal_code || 'Not specified'}</p>
+                                  </div>
+                                </div>
                               </div>
                             </div>
+
+                            {/* Contact Info */}
+                            <div className="flex flex-wrap gap-4">
+                              <div className="flex items-center gap-2 text-sm">
+                                <span className="material-symbols-outlined text-gray-400 text-lg">phone</span>
+                                <span className="font-medium text-gray-900">{partner.cell_phone || 'Not provided'}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm">
+                                <span className="material-symbols-outlined text-gray-400 text-lg">email</span>
+                                <span className="font-medium text-gray-900">{partner.email || 'Not provided'}</span>
+                              </div>
+                            </div>
+
                             {partner.agreement_accepted && (
-                              <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-lg text-xs font-bold">
+                              <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-lg text-xs font-bold mt-3">
                                 <span className="material-symbols-outlined text-sm">check_circle</span>
                                 Agreement Accepted
                               </div>
                             )}
                           </div>
-                          <div className="flex flex-col gap-2 ml-4">
+
+                          {/* Right side - Action Buttons */}
+                          <div className="flex flex-col gap-2 min-w-[160px]">
                             <button
                               onClick={() => handleApprovePartner(partner.id)}
-                              className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
+                              className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm"
                             >
                               <span className="material-symbols-outlined text-lg">check_circle</span>
                               Approve
                             </button>
                             <button
                               onClick={() => handleRejectPartner(partner.id)}
-                              className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
+                              className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm"
                             >
                               <span className="material-symbols-outlined text-lg">cancel</span>
                               Reject
@@ -547,13 +610,13 @@ export default function ApprovalsPage() {
                                 setSelectedItem({ ...partner, type: 'partner' });
                                 setShowDetailsModal(true);
                               }}
-                              className="px-6 py-2 bg-[#1a558b] hover:bg-[#1a558b]/90 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
+                              className="px-6 py-2.5 bg-[#1a558b] hover:bg-[#1a558b]/90 text-white rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm"
                             >
                               <span className="material-symbols-outlined text-lg">visibility</span>
                               View Details
                             </button>
                             <button
-                              className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
+                              className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 border border-gray-300"
                             >
                               <span className="material-symbols-outlined text-lg">phone</span>
                               Call Required
@@ -562,6 +625,86 @@ export default function ApprovalsPage() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+                
+                {/* Rejected Partners - Pending Deletion */}
+                {rejectedPartners.length > 0 && (
+                  <div className="mt-8">
+                    <div className="px-6 py-4 border-b border-red-200 bg-red-50">
+                      <h3 className="text-lg font-bold text-red-900 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-red-600">delete_forever</span>
+                        Rejected Partners - Scheduled for Deletion ({rejectedPartners.length})
+                      </h3>
+                      <p className="text-sm text-red-700 mt-1">
+                        These partners will be automatically deleted 3 days after rejection
+                      </p>
+                    </div>
+                    
+                    <div className="divide-y divide-red-100 bg-red-50/30">
+                      {rejectedPartners.map((partner) => {
+                        const daysLeft = getDaysUntilDeletion(partner.rejected_at);
+                        return (
+                          <div key={partner.id} className="p-6 hover:bg-red-50/50 transition-colors">
+                            <div className="flex items-start justify-between gap-6">
+                              {/* Left side - Business Info */}
+                              <div className="flex-1">
+                                <div className="mb-3">
+                                  <h4 className="text-lg font-bold text-gray-900">{partner.shop_name || 'Unknown Shop'}</h4>
+                                  <p className="text-sm text-red-600 mt-1 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-sm">schedule</span>
+                                    {daysLeft !== null && daysLeft > 0 ? (
+                                      <>Will be deleted in {daysLeft} day{daysLeft !== 1 ? 's' : ''}</>
+                                    ) : (
+                                      <>Scheduled for deletion (processing...)</>
+                                    )}
+                                  </p>
+                                </div>
+
+                                <div className="bg-white rounded-lg p-4 mb-3 border border-red-200">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Rejection Reason</p>
+                                      <p className="text-sm font-medium text-red-700">{partner.rejection_reason || 'No reason provided'}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Rejected On</p>
+                                      <p className="text-sm font-medium text-gray-900">
+                                        {partner.rejected_at ? new Date(partner.rejected_at).toLocaleDateString() : 'Unknown'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-3 text-sm text-gray-600">
+                                  <span className="flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-sm">phone</span>
+                                    {partner.cell_phone || 'N/A'}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-sm">email</span>
+                                    {partner.email || 'N/A'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Right side - Status Badge */}
+                              <div className="flex flex-col items-end gap-2">
+                                <div className="px-4 py-2 bg-red-100 border-2 border-red-300 rounded-lg">
+                                  <p className="text-xs font-bold text-red-800 uppercase tracking-wider">Rejected</p>
+                                  {daysLeft !== null && (
+                                    <p className="text-2xl font-black text-red-600 text-center mt-1">
+                                      {daysLeft}
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-red-700 text-center">day{daysLeft !== 1 ? 's' : ''} left</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
@@ -875,11 +1018,15 @@ export default function ApprovalsPage() {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                           <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">Responsible Person</p>
-                            <p className="text-sm text-gray-900 font-semibold">{selectedItem.responsible_person || selectedItem.full_name || '-'}</p>
+                            <p className="text-sm text-gray-900 font-semibold">
+                              {selectedItem.first_name && selectedItem.last_name 
+                                ? `${selectedItem.first_name} ${selectedItem.last_name}` 
+                                : selectedItem.responsible_person || '-'}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">Phone</p>
-                            <p className="text-sm text-gray-900 font-semibold">{selectedItem.phone || '-'}</p>
+                            <p className="text-sm text-gray-900 font-semibold">{selectedItem.cell_phone || '-'}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">Email</p>
@@ -990,12 +1137,17 @@ export default function ApprovalsPage() {
                         </h3>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <p className="text-xs text-gray-600 uppercase tracking-wider">User ID</p>
-                            <p className="text-sm text-gray-900 font-mono">{selectedItem.user_id || '-'}</p>
-                          </div>
-                          <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">Applied Date</p>
                             <p className="text-sm text-gray-900 font-semibold">{new Date(selectedItem.created_at).toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600 uppercase tracking-wider">Application Status</p>
+                            <p className="text-sm font-semibold">
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-50 text-yellow-700 rounded">
+                                <span className="material-symbols-outlined text-sm">pending</span>
+                                {selectedItem.status || 'Pending'}
+                              </span>
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">Agreement Status</p>
@@ -1117,15 +1269,11 @@ export default function ApprovalsPage() {
                         </h3>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <p className="text-xs text-gray-600 uppercase tracking-wider">User ID</p>
-                            <p className="text-sm text-gray-900 font-mono">{selectedItem.id || '-'}</p>
-                          </div>
-                          <div>
                             <p className="text-xs text-gray-600 uppercase tracking-wider">Applied Date</p>
                             <p className="text-sm text-gray-900 font-semibold">{new Date(selectedItem.created_at).toLocaleString()}</p>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-600 uppercase tracking-wider">Status</p>
+                            <p className="text-xs text-gray-600 uppercase tracking-wider">Application Status</p>
                             <p className="text-sm text-gray-900 font-semibold">
                               <span className="px-2 py-1 bg-yellow-500/20 text-yellow-600 rounded text-xs font-bold uppercase">
                                 {selectedItem.status}

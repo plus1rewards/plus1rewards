@@ -8,14 +8,13 @@ const BLUE = '#1a558b';
 
 interface FormData {
   shop_name: string;
-  phone: string;
+  cell_phone: string;
   email: string;
   address: string;
   postal_code: string;
   category: string;
   cashback_percent: string;
   responsible_person: string;
-  mobile_number: string;
   pin_code: string;
 }
 
@@ -25,14 +24,13 @@ export function AgentAddShop() {
   const [step, setStep] = useState<'details' | 'agreement' | 'confirmation'>('details');
   const [form, setForm] = useState<FormData>({ 
     shop_name: '', 
-    phone: '', 
+    cell_phone: '', 
     email: '', 
     address: '', 
     postal_code: '',
     category: '',
     cashback_percent: '5',
     responsible_person: '',
-    mobile_number: '',
     pin_code: ''
   });
   const [loading, setLoading] = useState(false);
@@ -69,7 +67,7 @@ export function AgentAddShop() {
     }
 
     // Validate mobile number
-    if (!isValidMobileNumber(form.mobile_number.trim())) {
+    if (!isValidMobileNumber(form.cell_phone.trim())) {
       showError('Invalid Mobile Number', 'Please enter a valid 10-digit mobile number (e.g., 060 296 2491)');
       return;
     }
@@ -101,14 +99,13 @@ export function AgentAddShop() {
         .from('partners')
         .insert([{
           shop_name: form.shop_name.trim(),
-          phone: form.phone.trim(),
+          cell_phone: normalizePhoneNumber(form.cell_phone.trim()),
           email: form.email.trim() || null,
           address: form.address.trim(),
           postal_code: form.postal_code.trim(),
           category: form.category.trim() || null,
           cashback_percent: cashback,
           responsible_person: form.responsible_person.trim(),
-          mobile_number: normalizePhoneNumber(form.mobile_number.trim()),
           pin_code: form.pin_code.trim(),
           status: 'pending'
         }])
@@ -433,20 +430,6 @@ export function AgentAddShop() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Shop Phone Number <span className="text-red-500">*</span>
-                  </label>
-                  <input 
-                    type="tel" 
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
-                    placeholder="011 555 0000" 
-                    value={form.phone} 
-                    onChange={e => update('phone', e.target.value)} 
-                    required 
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Business contact number</p>
-                </div>
-                <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Shop Email</label>
                   <input 
                     type="email" 
@@ -531,18 +514,18 @@ export function AgentAddShop() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  Mobile Number (for login) <span className="text-red-500">*</span>
+                  Cell Phone Number <span className="text-red-500">*</span>
                 </label>
                 <input 
                   type="tel" 
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
                   placeholder="0812345678" 
-                  value={form.mobile_number} 
-                  onChange={e => update('mobile_number', e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                  value={form.cell_phone} 
+                  onChange={e => update('cell_phone', e.target.value.replace(/\D/g, '').slice(0, 10))} 
                   maxLength="10"
                   required 
                 />
-                <p className="text-xs text-gray-500 mt-1">10-digit mobile number for system login</p>
+                <p className="text-xs text-gray-500 mt-1">10-digit cell phone number for system login and contact</p>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
@@ -771,7 +754,7 @@ export function AgentAddShop() {
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <p className="text-sm text-gray-700 mb-2"><strong>Shop Name:</strong> {form.shop_name}</p>
                   <p className="text-sm text-gray-700 mb-2"><strong>Contact Person:</strong> {form.responsible_person}</p>
-                  <p className="text-sm text-gray-700 mb-2"><strong>Phone:</strong> {form.phone}</p>
+                  <p className="text-sm text-gray-700 mb-2"><strong>Phone:</strong> {form.cell_phone}</p>
                   <p className="text-sm text-gray-700"><strong>Cashback Rate:</strong> {form.cashback_percent}%</p>
                 </div>
 

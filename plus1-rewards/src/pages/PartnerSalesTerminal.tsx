@@ -145,6 +145,20 @@ export default function PartnerSalesTerminal() {
         return;
       }
 
+      // Check if member has any paused cover plans
+      const { data: pausedPlans, error: planError } = await supabase
+        .from('member_cover_plans')
+        .select('id, status')
+        .eq('member_id', data.id)
+        .eq('status', 'paused');
+
+      if (!planError && pausedPlans && pausedPlans.length > 0) {
+        setError('Member policy is PAUSED. Member needs to complete their profile information (email, ID number, address) in the +1 Rewards app before transactions can continue. Please ask them to update their information.');
+        setLoading(false);
+        setActiveField('phone');
+        return;
+      }
+
       setMember(data);
       setStep('confirm');
       setError('');
@@ -159,8 +173,8 @@ export default function PartnerSalesTerminal() {
   const handleConfirmTransaction = async () => {
     if (!member || !purchaseAmount || !partner) return;
 
-    if (partner.status === 'suspended') {
-      setError('Your account has been suspended. You cannot process transactions. Please contact admin.');
+    if (partner.status === 'paused') {
+      setError('Your account has been paused. You cannot process transactions. Please contact admin.');
       setLoading(false);
       return;
     }
@@ -235,7 +249,7 @@ export default function PartnerSalesTerminal() {
           // Determine status based on funding and profile completeness
           let newStatus = 'in_progress';
           if (newFundedAmount >= plan.target_amount) {
-            newStatus = isProfileComplete ? 'pending' : 'suspended';
+            newStatus = isProfileComplete ? 'pending' : 'paused';
           }
 
           await supabase

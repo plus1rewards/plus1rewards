@@ -20,10 +20,10 @@ interface CoverPlan {
   plan_name: string;
   target_amount: number;
   funded_amount: number;
-  status: 'active' | 'suspended' | 'in_progress';
+  status: 'active' | 'paused' | 'in_progress';
   active_from: string | null;
   active_to: string | null;
-  suspended_at: string | null;
+  paused_at: string | null;
   linked_people_count: number;
 }
 
@@ -31,10 +31,10 @@ export function PolicyProviderDashboard() {
   const navigate = useNavigate();
   const [provider, setProvider] = useState<Provider | null>(null);
   const [activePlans, setActivePlans] = useState<CoverPlan[]>([]);
-  const [suspendedPlans, setSuspendedPlans] = useState<CoverPlan[]>([]);
+  const [pausedPlans, setPausedPlans] = useState<CoverPlan[]>([]);
   const [inProgressPlans, setInProgressPlans] = useState<CoverPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'active' | 'suspended' | 'in_progress'>('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'paused' | 'in_progress'>('active');
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -94,7 +94,7 @@ export function PolicyProviderDashboard() {
           status,
           active_from,
           active_to,
-          suspended_at,
+          paused_at,
           created_at
         `);
 
@@ -104,7 +104,7 @@ export function PolicyProviderDashboard() {
         console.error('Error loading cover plans:', error);
         console.log('Error details:', JSON.stringify(error, null, 2));
         setActivePlans([]);
-        setSuspendedPlans([]);
+        setPausedPlans([]);
         setInProgressPlans([]);
         setLoading(false);
         return;
@@ -113,7 +113,7 @@ export function PolicyProviderDashboard() {
       if (!memberCoverPlans || memberCoverPlans.length === 0) {
         console.log('No member cover plans found');
         setActivePlans([]);
-        setSuspendedPlans([]);
+        setPausedPlans([]);
         setInProgressPlans([]);
         setLoading(false);
         return;
@@ -167,7 +167,7 @@ export function PolicyProviderDashboard() {
           status: mcp.status,
           active_from: mcp.active_from,
           active_to: mcp.active_to,
-          suspended_at: mcp.suspended_at,
+          paused_at: mcp.paused_at,
           linked_people_count: linkedPeople?.length || 0
         };
       }));
@@ -176,13 +176,13 @@ export function PolicyProviderDashboard() {
 
       // Separate by status
       const activePlansData = plansWithLinkedPeople.filter(p => p.status === 'active');
-      const suspendedPlansData = plansWithLinkedPeople.filter(p => p.status === 'suspended');
+      const pausedPlansData = plansWithLinkedPeople.filter(p => p.status === 'paused');
       const inProgressPlansData = plansWithLinkedPeople.filter(p => p.status === 'in_progress');
 
-      console.log('Separated plans:', { activePlansData, suspendedPlansData, inProgressPlansData });
+      console.log('Separated plans:', { activePlansData, pausedPlansData, inProgressPlansData });
 
       setActivePlans(activePlansData);
-      setSuspendedPlans(suspendedPlansData);
+      setPausedPlans(pausedPlansData);
       setInProgressPlans(inProgressPlansData);
     } catch (error) {
       console.error('Error loading cover plans:', error);
@@ -234,7 +234,7 @@ export function PolicyProviderDashboard() {
 
   const totalActivePremium = activePlans.reduce((sum, p) => sum + p.target_amount, 0);
   const totalActiveFunded = activePlans.reduce((sum, p) => sum + p.funded_amount, 0);
-  const totalSuspendedPremium = suspendedPlans.reduce((sum, p) => sum + p.target_amount, 0);
+  const totalPausedPremium = pausedPlans.reduce((sum, p) => sum + p.target_amount, 0);
   const totalInProgressPremium = inProgressPlans.reduce((sum, p) => sum + p.target_amount, 0);
   const totalInProgressFunded = inProgressPlans.reduce((sum, p) => sum + p.funded_amount, 0);
   const totalLinkedPeople = activePlans.reduce((sum, p) => sum + p.linked_people_count, 0);
@@ -251,7 +251,7 @@ export function PolicyProviderDashboard() {
     );
   }
 
-  const displayPlans = activeTab === 'active' ? activePlans : activeTab === 'suspended' ? suspendedPlans : inProgressPlans;
+  const displayPlans = activeTab === 'active' ? activePlans : activeTab === 'paused' ? pausedPlans : inProgressPlans;
 
   return (
     <div className="min-h-screen bg-[#f5f8fc]">
@@ -304,11 +304,11 @@ export function PolicyProviderDashboard() {
           <div className="bg-white border border-gray-200 rounded-xl p-6">
             <div className="flex items-center justify-between mb-3">
               <span className="material-symbols-outlined text-orange-600 text-2xl">pending</span>
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Suspended</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Paused</span>
             </div>
-            <p className="text-3xl font-black text-gray-900 mb-1">{suspendedPlans.length}</p>
+            <p className="text-3xl font-black text-gray-900 mb-1">{pausedPlans.length}</p>
             <p className="text-sm text-gray-600">Awaiting funding</p>
-            <p className="text-xs text-orange-600 font-bold mt-2">R{totalSuspendedPremium.toFixed(2)} premium</p>
+            <p className="text-xs text-orange-600 font-bold mt-2">R{totalPausedPremium.toFixed(2)} premium</p>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-xl p-6">
@@ -383,11 +383,11 @@ export function PolicyProviderDashboard() {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-purple-800">Total Members:</span>
-                <span className="text-lg font-bold text-purple-900">{activePlans.length + inProgressPlans.length + suspendedPlans.length}</span>
+                <span className="text-lg font-bold text-purple-900">{activePlans.length + inProgressPlans.length + pausedPlans.length}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-purple-800">Total Premium Value:</span>
-                <span className="text-lg font-bold text-purple-900">R{(totalActivePremium + totalInProgressPremium + totalSuspendedPremium).toFixed(2)}</span>
+                <span className="text-lg font-bold text-purple-900">R{(totalActivePremium + totalInProgressPremium + totalPausedPremium).toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-purple-800">Linked Dependants:</span>
@@ -449,17 +449,17 @@ export function PolicyProviderDashboard() {
               </span>
             </button>
             <button
-              onClick={() => setActiveTab('suspended')}
+              onClick={() => setActiveTab('paused')}
               className={`flex-1 px-6 py-4 text-sm font-bold transition-all ${
-                activeTab === 'suspended'
+                activeTab === 'paused'
                   ? 'border-b-2 text-gray-900'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
-              style={{ borderColor: activeTab === 'suspended' ? BLUE : 'transparent' }}
+              style={{ borderColor: activeTab === 'paused' ? BLUE : 'transparent' }}
             >
               <span className="flex items-center justify-center gap-2">
                 <span className="material-symbols-outlined text-lg">pending</span>
-                Suspended ({suspendedPlans.length})
+                Paused ({pausedPlans.length})
               </span>
             </button>
           </div>
@@ -467,7 +467,7 @@ export function PolicyProviderDashboard() {
           {/* Table Header */}
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
             <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">
-              {activeTab === 'active' ? 'Active' : activeTab === 'in_progress' ? 'In Progress' : 'Suspended'} Cover Plans
+              {activeTab === 'active' ? 'Active' : activeTab === 'in_progress' ? 'In Progress' : 'Paused'} Cover Plans
             </h3>
             <button
               onClick={() => loadCoverPlans()}
@@ -527,7 +527,7 @@ export function PolicyProviderDashboard() {
                           <span className={`size-1.5 rounded-full ${
                             plan.status === 'active' ? 'bg-green-600' : plan.status === 'in_progress' ? 'bg-blue-600' : 'bg-orange-600'
                           }`}></span>
-                          {plan.status === 'active' ? 'Active' : plan.status === 'in_progress' ? 'In Progress' : 'Suspended'}
+                          {plan.status === 'active' ? 'Active' : plan.status === 'in_progress' ? 'In Progress' : 'Paused'}
                         </span>
                       </td>
                       <td className="px-4 py-4">
@@ -538,7 +538,7 @@ export function PolicyProviderDashboard() {
                           </div>
                         ) : (
                           <div className="text-xs text-gray-600">
-                            <p>Suspended: {plan.suspended_at ? new Date(plan.suspended_at).toLocaleDateString() : 'N/A'}</p>
+                            <p>Paused: {plan.paused_at ? new Date(plan.paused_at).toLocaleDateString() : 'N/A'}</p>
                           </div>
                         )}
                       </td>

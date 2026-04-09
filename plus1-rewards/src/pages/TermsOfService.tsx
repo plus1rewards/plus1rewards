@@ -63,7 +63,7 @@ export default function TermsOfService() {
                 <li>Cover plans are funded through cashback rewards and optional top-ups</li>
                 <li>Plans become Active when the monthly target amount is reached</li>
                 <li>Plans must maintain the target amount every 30 days to remain Active</li>
-                <li>Plans become Suspended if funding falls below the target amount</li>
+                <li>Plans become Paused if funding falls below the target amount</li>
                 <li>Multiple cover plans are funded in creation order</li>
               </ul>
             </section>

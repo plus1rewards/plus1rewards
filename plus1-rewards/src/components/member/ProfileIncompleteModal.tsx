@@ -74,13 +74,13 @@ export default function ProfileIncompleteModal({
               </div>
               <div>
                 <h2 className="text-2xl font-black mb-1">
-                  {isSuspended ? 'Plan Suspended!' : isCritical95 ? 'URGENT: Complete Now!' : 'Action Needed!'}
+                  {isSuspended ? 'Plan PAUSED!' : isCritical95 ? 'URGENT: Complete Now!' : 'Action Needed!'}
                 </h2>
                 <p className="text-white/90 text-sm font-medium">
                   {isSuspended 
                     ? 'Your plan reached 100% but profile is incomplete'
                     : isCritical95
-                    ? 'Your policy will be SUSPENDED at 100% if incomplete'
+                    ? 'Your policy will be PAUSED at 100% if incomplete'
                     : 'Your cover plan is almost ready!'
                   }
                 </p>
@@ -122,9 +122,9 @@ export default function ProfileIncompleteModal({
               <div>
                 <p className={`${isSuspended ? 'text-red-900' : isCritical95 ? 'text-red-900 font-black' : 'text-yellow-900'} font-bold mb-2`}>
                   {isSuspended
-                    ? '⏸️ Your cover plan has been suspended because it reached 100% with incomplete profile information.'
+                    ? '⏸️ Your cover plan has been PAUSED because it reached 100% with incomplete profile information.'
                     : isCritical95
-                    ? '🚨 CRITICAL: Your policy will be AUTOMATICALLY SUSPENDED at 100% if you do not complete your profile NOW!'
+                    ? '🚨 CRITICAL: Your policy will be AUTOMATICALLY PAUSED at 100% if you do not complete your profile NOW!'
                     : '⚠️ Your cover plan is at 90%+ completion. Please complete your dashboard now!'
                   }
                 </p>
@@ -132,7 +132,7 @@ export default function ProfileIncompleteModal({
                   {isSuspended
                     ? 'Complete your profile information to change your plan status to pending. Once complete, you can proceed with Day1Health verification.'
                     : isCritical95
-                    ? 'You are at 95%+ completion. At 100%, your entire policy will be suspended if your profile is incomplete. Complete your information immediately to avoid suspension.'
+                    ? 'You are at 95%+ completion. At 100%, your entire policy will be PAUSED if your profile is incomplete. Complete your information immediately to avoid being paused.'
                     : 'To ensure smooth activation when you reach 100%, please fill in your details now.'
                   }
                 </p>

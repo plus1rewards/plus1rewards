@@ -8,7 +8,7 @@ import { supabaseAdmin } from '../../../lib/supabase';
 export default function ProvidersPage() {
   const navigate = useNavigate();
   const [providers, setProviders] = useState<any[]>([]);
-  const [stats, setStats] = useState({ total: 0, active: 0, pending: 0, exports: 0 });
+  const [stats, setStats] = useState({ total: 0, active: 0, pending: 0 });
   const [loading, setLoading] = useState(true);
   const [selectedProvider, setSelectedProvider] = useState<any>(null);
   const [providerDetails, setProviderDetails] = useState<any>(null);
@@ -26,7 +26,7 @@ export default function ProvidersPage() {
       const active = data?.filter(p => p.status === 'active').length || 0;
       const pending = data?.filter(p => p.status === 'pending').length || 0;
 
-      setStats({ total, active, pending, exports: 0 });
+      setStats({ total, active, pending });
       setProviders(data || []);
     } catch (error) {
       console.error('Error fetching providers:', error);
@@ -63,17 +63,9 @@ export default function ProvidersPage() {
         })
       );
 
-      // Fetch exports
-      const { data: exports } = await supabaseAdmin
-        .from('insurer_exports')
-        .select('*')
-        .eq('insurer_id', provider.id)
-        .order('created_at', { ascending: false });
-
       setProviderDetails({
         provider,
-        coverPlans: plansWithCounts,
-        exports: exports || []
+        coverPlans: plansWithCounts
       });
     } catch (error) {
       console.error('Error fetching provider details:', error);
@@ -90,8 +82,7 @@ export default function ProvidersPage() {
   const statsData = [
     { icon: 'business', title: 'Total Providers', value: stats.total.toString(), change: '', description: 'All providers' },
     { icon: 'check_circle', title: 'Active', value: stats.active.toString(), change: '', description: 'With access' },
-    { icon: 'pending', title: 'Pending', value: stats.pending.toString(), change: '', description: 'Awaiting approval' },
-    { icon: 'upload_file', title: 'Exports', value: stats.exports.toString(), change: '', description: 'This month' }
+    { icon: 'pending', title: 'Pending', value: stats.pending.toString(), change: '', description: 'Awaiting approval' }
   ];
 
   return (
@@ -101,7 +92,7 @@ export default function ProvidersPage() {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 md:p-10 pb-6">
           <div>
             <h1 className="text-3xl font-black text-gray-900 tracking-tight">Providers Management</h1>
-            <p className="text-gray-600 mt-1">Manage medical cover provider access and exports</p>
+            <p className="text-gray-600 mt-1">Manage medical cover provider access</p>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => fetchData()} className="flex items-center gap-2 px-5 py-2.5 font-bold rounded-lg border border-[#1a558b] bg-white text-[#1a558b] hover:bg-[#1a558b] hover:text-white transition-all text-sm">
@@ -146,7 +137,6 @@ export default function ProvidersPage() {
                       <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Provider</th>
                       <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Company</th>
                       <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Status</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Last Export</th>
                       <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Actions</th>
                     </tr>
                   </thead>
@@ -170,9 +160,6 @@ export default function ProvidersPage() {
                           </span>
                         </td>
                         <td className="px-4 py-4">
-                          <span className="text-xs text-gray-600">Never</span>
-                        </td>
-                        <td className="px-4 py-4">
                           <div className="flex items-center gap-2">
                             <button 
                               onClick={() => handleViewProvider(provider)}
@@ -180,9 +167,6 @@ export default function ProvidersPage() {
                               title="View Details"
                             >
                               <span className="material-symbols-outlined text-sm">visibility</span>
-                            </button>
-                            <button className="p-2 text-gray-600 hover:text-blue-600 transition-colors rounded-lg bg-gray-100 hover:bg-blue-50" title="Create Export">
-                              <span className="material-symbols-outlined text-sm">upload_file</span>
                             </button>
                           </div>
                         </td>
@@ -201,7 +185,6 @@ export default function ProvidersPage() {
               <ul className="text-xs text-blue-800 space-y-1">
                 <li>• Providers can log in to view active cover plans</li>
                 <li>• Access to approved member data for processing</li>
-                <li>• Export functionality for monthly batches</li>
                 <li>• View-only access (no editing capabilities)</li>
               </ul>
             </div>
@@ -312,54 +295,6 @@ export default function ProvidersPage() {
                   ) : (
                     <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
                       <p className="text-gray-600">No cover plans found</p>
-                    </div>
-                  )}
-                </section>
-
-                {/* Export History */}
-                <section>
-                  <h3 className="text-lg font-bold text-[#1a558b] mb-4 flex items-center gap-2">
-                    <span className="material-symbols-outlined">upload_file</span>
-                    Export History ({providerDetails.exports.length})
-                  </h3>
-                  {providerDetails.exports.length > 0 ? (
-                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                      <table className="w-full">
-                        <thead className="bg-[#1a558b]/10">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Export Month</th>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Total Plans</th>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Total Value</th>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Status</th>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Exported At</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {providerDetails.exports.map((exp: any) => (
-                            <tr key={exp.id} className="hover:bg-gray-50">
-                              <td className="px-4 py-3 text-sm text-gray-900">{exp.export_month}</td>
-                              <td className="px-4 py-3 text-sm text-gray-900">{exp.total_cover_plans}</td>
-                              <td className="px-4 py-3 text-sm text-[#1a558b] font-bold">R{parseFloat(exp.total_value || 0).toFixed(2)}</td>
-                              <td className="px-4 py-3">
-                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                                  exp.status === 'completed' ? 'bg-green-500/20 text-green-700' : 
-                                  exp.status === 'pending' ? 'bg-yellow-500/20 text-yellow-700' :
-                                  'bg-red-500/20 text-red-700'
-                                }`}>
-                                  {exp.status}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
-                                {exp.exported_at ? new Date(exp.exported_at).toLocaleString() : 'Not exported'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
-                      <p className="text-gray-600">No exports yet</p>
                     </div>
                   )}
                 </section>
