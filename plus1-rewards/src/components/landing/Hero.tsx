@@ -10,29 +10,29 @@ export default function Hero() {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
+        staggerChildren: 0.05,
+        delayChildren: 0.1,
       },
     },
   }
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0, y: 10 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.8 },
+      transition: { duration: 0.4 },
     },
   }
 
   const textVariants = {
-    hidden: { opacity: 0, x: -30 },
+    hidden: { opacity: 0, x: -15 },
     visible: (i: number) => ({
       opacity: 1,
       x: 0,
       transition: {
-        duration: 0.8,
-        delay: i * 0.1,
+        duration: 0.4,
+        delay: i * 0.05,
       },
     }),
   }
@@ -45,9 +45,9 @@ export default function Hero() {
       {/* Right image panel - hidden on mobile, visible on larger screens */}
       <motion.div 
         className="hidden md:block absolute top-0 right-0 w-[52%] h-full z-0 overflow-hidden rounded-bl-[80px]"
-        initial={{ opacity: 0, x: 100 }}
+        initial={{ opacity: 0, x: 50 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 1, ease: "easeOut", delay: 0.3 }}
+        transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
       >
         <img
           alt="Diverse South African community interaction"
@@ -56,6 +56,7 @@ export default function Hero() {
           width="1920"
           height="1080"
           fetchpriority="high"
+          loading="eager"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-[#f5f8fc] via-[#f5f8fc]/20 to-transparent" />
       </motion.div>
@@ -64,9 +65,9 @@ export default function Hero() {
         {/* Mobile hero title - visible only on mobile, above image */}
         <motion.h1 
           className="md:hidden text-3xl font-black text-gray-900 mb-4"
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.1 }}
+          transition={{ duration: 0.4, delay: 0.05 }}
         >
           Medi Cover for All.
         </motion.h1>
@@ -74,9 +75,9 @@ export default function Hero() {
         {/* Mobile hero image - visible only on mobile */}
         <motion.div 
           className="md:hidden w-full mb-6 rounded-2xl overflow-hidden"
-          initial={{ opacity: 0, scale: 0.9 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
         >
           <img
             alt="Diverse South African community interaction"
@@ -85,6 +86,7 @@ export default function Hero() {
             width="800"
             height="600"
             fetchpriority="high"
+            loading="eager"
           />
         </motion.div>
 
@@ -278,15 +280,15 @@ export default function Hero() {
               <motion.div 
                 key={item} 
                 className="flex items-center gap-2 text-xs md:text-sm text-gray-500"
-                initial={{ opacity: 0, x: -10 }}
+                initial={{ opacity: 0, x: -5 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.6 + i * 0.1, duration: 0.6 }}
+                transition={{ delay: 0.3 + i * 0.05, duration: 0.3 }}
               >
                 <motion.span 
                   className="material-symbols-outlined text-sm md:text-base" 
                   style={{ color: BLUE }}
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ delay: 0.8 + i * 0.1, duration: 0.6, repeat: Infinity, repeatDelay: 2 }}
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ delay: 0.4 + i * 0.05, duration: 0.4, repeat: Infinity, repeatDelay: 3 }}
                 >
                   check_circle
                 </motion.span>
@@ -299,9 +301,9 @@ export default function Hero() {
 
       {/* Value Bar as part of Hero */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.8 }}
+        transition={{ duration: 0.4, delay: 0.4 }}
       >
         <FeaturesSectionWithHoverEffects />
       </motion.div>
