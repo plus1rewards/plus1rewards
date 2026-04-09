@@ -471,6 +471,8 @@ export default function Roles() {
                   alt="Day1Health" 
                   className="w-auto object-contain mx-auto"
                   style={{ height: '70px' }}
+                  width="77"
+                  height="70"
                 />
               </div>
               <h3 className="text-xl font-black text-gray-900 mb-2">Day1Health</h3>
@@ -491,6 +493,8 @@ export default function Roles() {
                   alt="Plus1 Rewards" 
                   className="w-auto object-contain mx-auto"
                   style={{ height: '70px' }}
+                  width="482"
+                  height="187"
                 />
               </div>
               <h3 className="text-xl font-black text-gray-900 mb-2">Plus1 Rewards</h3>

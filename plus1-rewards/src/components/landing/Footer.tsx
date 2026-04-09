@@ -15,6 +15,8 @@ export default function Footer() {
                   alt="+1 Rewards" 
                   className="w-auto object-contain hover:opacity-80 transition-opacity"
                   style={{ height: '74px' }}
+                  width="509"
+                  height="197"
                 />
               </a>
             </div>

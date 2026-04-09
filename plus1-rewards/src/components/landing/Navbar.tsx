@@ -29,16 +29,21 @@ export default function Navbar() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <a href="/" className="cursor-pointer">
+          <motion.a 
+            href="/" 
+            className="cursor-pointer"
+            whileHover={{ scale: 1.05, rotate: [0, -5, 5, 0] }}
+            transition={{ duration: 0.3 }}
+          >
             <motion.img 
               src="/logo.png" 
               alt="+1 Rewards" 
               className="w-auto object-contain"
               style={{ height: '60px' }}
-              whileHover={{ scale: 1.05, rotate: [0, -5, 5, 0] }}
-              transition={{ duration: 0.3 }}
+              width="413"
+              height="160"
             />
-          </a>
+          </motion.a>
         </motion.div>
 
         {/* Desktop Nav */}
@@ -140,6 +145,8 @@ export default function Navbar() {
                   alt="+1 Rewards" 
                   className="w-auto object-contain hover:opacity-80 transition-opacity"
                   style={{ height: '50px' }}
+                  width="344"
+                  height="133"
                 />
               </a>
             </motion.div>
