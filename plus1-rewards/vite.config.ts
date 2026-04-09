@@ -13,13 +13,6 @@ export default defineConfig({
       buffer: 'buffer',
     },
   },
-  optimizeDeps: {
-    esbuildOptions: {
-      define: {
-        global: 'globalThis'
-      }
-    }
-  },
   server: {
     port: 5174,
     host: true,
@@ -37,14 +30,29 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        manualChunks: {
+        manualChunks(id) {
           // Vendor chunks for better caching
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'framer-motion': ['framer-motion'],
-          'supabase': ['@supabase/supabase-js'],
-          'ui-vendor': ['lucide-react', '@tabler/icons-react'],
-          'query': ['@tanstack/react-query'],
-          'map': ['leaflet', 'react-leaflet'],
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+              return 'react-vendor'
+            }
+            if (id.includes('framer-motion')) {
+              return 'framer-motion'
+            }
+            if (id.includes('@supabase')) {
+              return 'supabase'
+            }
+            if (id.includes('lucide-react') || id.includes('@tabler/icons-react')) {
+              return 'ui-vendor'
+            }
+            if (id.includes('@tanstack/react-query')) {
+              return 'query'
+            }
+            if (id.includes('leaflet') || id.includes('react-leaflet')) {
+              return 'map'
+            }
+            return 'vendor'
+          }
         },
         // Optimize chunk file names
         chunkFileNames: 'assets/js/[name]-[hash].js',

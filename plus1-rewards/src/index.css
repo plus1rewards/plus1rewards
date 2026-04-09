@@ -2,6 +2,8 @@
 @import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+@import "leaflet/dist/leaflet.css";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -70,7 +72,7 @@ body {
   background-color: #102216 !important;
 }
 
-.dark\:bg-\[#0a160e\] {
+.dark-bg-0a160e {
   background-color: #0a160e !important;
 }
 
@@ -960,12 +962,6 @@ input.member-input-override:-webkit-autofill:active {
 /* ========================================
    FindPartner Page Styles
    ======================================== */
-
-/* Import Plus Jakarta Sans font for FindPartner page */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
-
-/* Import Leaflet CSS */
-@import "leaflet/dist/leaflet.css";
 
 /* FindPartner specific theme variables - Dark Navy Blue Theme */
 :root {
