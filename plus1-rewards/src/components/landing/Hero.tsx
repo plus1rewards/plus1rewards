@@ -53,6 +53,9 @@ export default function Hero() {
           alt="Diverse South African community interaction"
           className="w-full h-full object-cover"
           src="/background hero section.png"
+          width="1920"
+          height="1080"
+          fetchpriority="high"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-[#f5f8fc] via-[#f5f8fc]/20 to-transparent" />
       </motion.div>
@@ -79,6 +82,9 @@ export default function Hero() {
             alt="Diverse South African community interaction"
             className="w-full h-48 object-cover"
             src="/background hero section.png"
+            width="800"
+            height="600"
+            fetchpriority="high"
           />
         </motion.div>
 

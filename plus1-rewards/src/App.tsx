@@ -1,69 +1,71 @@
 // plus1-rewards/src/App.tsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import LoadingPage from './components/LoadingPage'
+
+// Critical routes - loaded immediately
 import Landing from './pages/Landing'
 import MemberLogin from './pages/MemberLogin'
 import MemberRegister from './pages/MemberRegister'
-import PartnerLogin from './pages/PartnerLogin'
-import PartnerRegister from './pages/PartnerRegister'
-import AgentLogin from './pages/AgentLogin'
-import AgentRegister from './pages/AgentRegister'
-import PolicyProviderLogin from './pages/PolicyProviderLogin'
-import AdminLogin from './pages/AdminLogin'
-import Dashboard from './components/dashboard/Dashboard'
-import MembersPage from './components/dashboard/pages/MembersPage'
-import PartnersPage from './components/dashboard/pages/PartnersPage'
-import AgentsPage from './components/dashboard/pages/AgentsPage'
-import TransactionsPage from './components/dashboard/pages/TransactionsPage'
-import ApprovalsPage from './components/dashboard/pages/ApprovalsPage'
-import CoverPlansPage from './components/dashboard/pages/CoverPlansPage'
-import NotificationsPage from './components/dashboard/pages/NotificationsPage'
-import InvoicesPage from './components/dashboard/pages/InvoicesPage'
-import CommissionsPage from './components/dashboard/pages/CommissionsPage'
-import DisputesPage from './components/dashboard/pages/DisputesPage'
-import TopUpsPage from './components/dashboard/pages/TopUpsPage'
-import ProvidersPage from './components/dashboard/pages/ProvidersPage'
 
-
-import SettingsPage from './components/dashboard/pages/SettingsPage'
-import AdminChatDashboard from './components/dashboard/pages/AdminChatDashboard'
-import { default as MemberDashboard } from './pages/DashboardNew'
-import MemberCoverPlans from './pages/MemberCoverPlans'
-import MemberTransactions from './pages/MemberTransactions'
-import MemberTopUp from './pages/MemberTopUp'
-import MemberSupport from './pages/MemberSupport'
-import MemberChat from './pages/MemberChat'
-import AddDependant from './pages/AddDependant'
-import SponsorSomeone from './pages/SponsorSomeone'
-import PartnerDashboard from './components/partner/PartnerDashboard'
-import TransactionHistory from './components/partner/pages/TransactionHistory'
-import PartnerTransactionDetail from './components/partner/PartnerTransactionDetail'
-import MonthlyInvoice from './components/partner/pages/MonthlyInvoice'
-import PartnerShopProfile from './components/partner/PartnerShopProfile'
-import PartnerSupport from './pages/PartnerSupport'
-import PartnerProcessTransaction from './components/partner/PartnerProcessTransaction'
-import QuickTransaction from './components/partner/pages/QuickTransaction'
-import PartnerMemberRegistration from './pages/PartnerMemberRegistration'
-import PartnerSales from './pages/PartnerSales'
-import PartnerSalesTerminal from './pages/PartnerSalesTerminal'
-import { AgentDashboard } from './pages/AgentDashboard'
-import { AgentAddShop } from './pages/AgentAddPartner'
-import { AgentCommission } from './pages/AgentCommission'
-import { AgentSupport } from './pages/AgentSupport'
-import { AgentProfile } from './pages/AgentProfile'
-import { AgentShopDetail } from './pages/AgentShopDetail'
-import { PolicyProviderDashboard } from './pages/PolicyProviderDashboard'
-import { MemberScanPartner } from './pages/MemberScanPartner'
-import { MemberPolicySelector } from './pages/MemberPolicySelector'
-import MemberPolicies from './pages/MemberPolicies'
-import { MemberHistory } from './pages/MemberHistory'
-import { MemberQR } from './pages/MemberQR'
-import { MemberFindPartners } from './pages/MemberFindPartners'
-import FindPartner from './pages/FindPartner'
-import ProtectedPolicyProviderRoute from './components/ProtectedPolicyProviderRoute'
-import TermsOfService from './pages/TermsOfService'
-import PrivacyPolicy from './pages/PrivacyPolicy'
+// Lazy load all other routes for code splitting
+const PartnerLogin = lazy(() => import('./pages/PartnerLogin'))
+const PartnerRegister = lazy(() => import('./pages/PartnerRegister'))
+const AgentLogin = lazy(() => import('./pages/AgentLogin'))
+const AgentRegister = lazy(() => import('./pages/AgentRegister'))
+const PolicyProviderLogin = lazy(() => import('./pages/PolicyProviderLogin'))
+const AdminLogin = lazy(() => import('./pages/AdminLogin'))
+const Dashboard = lazy(() => import('./components/dashboard/Dashboard'))
+const MembersPage = lazy(() => import('./components/dashboard/pages/MembersPage'))
+const PartnersPage = lazy(() => import('./components/dashboard/pages/PartnersPage'))
+const AgentsPage = lazy(() => import('./components/dashboard/pages/AgentsPage'))
+const TransactionsPage = lazy(() => import('./components/dashboard/pages/TransactionsPage'))
+const ApprovalsPage = lazy(() => import('./components/dashboard/pages/ApprovalsPage'))
+const CoverPlansPage = lazy(() => import('./components/dashboard/pages/CoverPlansPage'))
+const NotificationsPage = lazy(() => import('./components/dashboard/pages/NotificationsPage'))
+const InvoicesPage = lazy(() => import('./components/dashboard/pages/InvoicesPage'))
+const CommissionsPage = lazy(() => import('./components/dashboard/pages/CommissionsPage'))
+const DisputesPage = lazy(() => import('./components/dashboard/pages/DisputesPage'))
+const TopUpsPage = lazy(() => import('./components/dashboard/pages/TopUpsPage'))
+const ProvidersPage = lazy(() => import('./components/dashboard/pages/ProvidersPage'))
+const SettingsPage = lazy(() => import('./components/dashboard/pages/SettingsPage'))
+const AdminChatDashboard = lazy(() => import('./components/dashboard/pages/AdminChatDashboard'))
+const MemberDashboard = lazy(() => import('./pages/DashboardNew'))
+const MemberCoverPlans = lazy(() => import('./pages/MemberCoverPlans'))
+const MemberTransactions = lazy(() => import('./pages/MemberTransactions'))
+const MemberTopUp = lazy(() => import('./pages/MemberTopUp'))
+const MemberSupport = lazy(() => import('./pages/MemberSupport'))
+const MemberChat = lazy(() => import('./pages/MemberChat'))
+const AddDependant = lazy(() => import('./pages/AddDependant'))
+const SponsorSomeone = lazy(() => import('./pages/SponsorSomeone'))
+const PartnerDashboard = lazy(() => import('./components/partner/PartnerDashboard'))
+const TransactionHistory = lazy(() => import('./components/partner/pages/TransactionHistory'))
+const PartnerTransactionDetail = lazy(() => import('./components/partner/PartnerTransactionDetail'))
+const MonthlyInvoice = lazy(() => import('./components/partner/pages/MonthlyInvoice'))
+const PartnerShopProfile = lazy(() => import('./components/partner/PartnerShopProfile'))
+const PartnerSupport = lazy(() => import('./pages/PartnerSupport'))
+const PartnerProcessTransaction = lazy(() => import('./components/partner/PartnerProcessTransaction'))
+const QuickTransaction = lazy(() => import('./components/partner/pages/QuickTransaction'))
+const PartnerMemberRegistration = lazy(() => import('./pages/PartnerMemberRegistration'))
+const PartnerSales = lazy(() => import('./pages/PartnerSales'))
+const PartnerSalesTerminal = lazy(() => import('./pages/PartnerSalesTerminal'))
+const AgentDashboard = lazy(() => import('./pages/AgentDashboard').then(m => ({ default: m.AgentDashboard })))
+const AgentAddShop = lazy(() => import('./pages/AgentAddPartner').then(m => ({ default: m.AgentAddShop })))
+const AgentCommission = lazy(() => import('./pages/AgentCommission').then(m => ({ default: m.AgentCommission })))
+const AgentSupport = lazy(() => import('./pages/AgentSupport').then(m => ({ default: m.AgentSupport })))
+const AgentProfile = lazy(() => import('./pages/AgentProfile').then(m => ({ default: m.AgentProfile })))
+const AgentShopDetail = lazy(() => import('./pages/AgentShopDetail').then(m => ({ default: m.AgentShopDetail })))
+const PolicyProviderDashboard = lazy(() => import('./pages/PolicyProviderDashboard').then(m => ({ default: m.PolicyProviderDashboard })))
+const MemberScanPartner = lazy(() => import('./pages/MemberScanPartner').then(m => ({ default: m.MemberScanPartner })))
+const MemberPolicySelector = lazy(() => import('./pages/MemberPolicySelector').then(m => ({ default: m.MemberPolicySelector })))
+const MemberPolicies = lazy(() => import('./pages/MemberPolicies'))
+const MemberHistory = lazy(() => import('./pages/MemberHistory').then(m => ({ default: m.MemberHistory })))
+const MemberQR = lazy(() => import('./pages/MemberQR').then(m => ({ default: m.MemberQR })))
+const MemberFindPartners = lazy(() => import('./pages/MemberFindPartners').then(m => ({ default: m.MemberFindPartners })))
+const FindPartner = lazy(() => import('./pages/FindPartner'))
+const ProtectedPolicyProviderRoute = lazy(() => import('./components/ProtectedPolicyProviderRoute'))
+const TermsOfService = lazy(() => import('./pages/TermsOfService'))
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(() => {
@@ -77,7 +79,7 @@ export default function App() {
       const timer = setTimeout(() => {
         setIsLoading(false);
         sessionStorage.setItem('plus1_app_loaded', 'true');
-      }, 2500);
+      }, 1200); // Reduced from 2500ms to 1200ms
 
       return () => clearTimeout(timer);
     }
@@ -112,6 +114,7 @@ export default function App() {
       <Router>
         {isLoading && <LoadingPage />}
         {!isLoading && (
+          <Suspense fallback={<LoadingPage />}>
           <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
@@ -183,6 +186,7 @@ export default function App() {
             </ProtectedPolicyProviderRoute>
           } />
         </Routes>
+          </Suspense>
         )}
       </Router>
     </div>

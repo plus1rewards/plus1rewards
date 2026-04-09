@@ -2,14 +2,17 @@
 import { motion } from 'framer-motion'
 import Navbar from '../components/landing/Navbar'
 import Hero from '../components/landing/Hero'
-import HowItWorks from '../components/landing/HowItWorks'
-import CoverStatus from '../components/landing/CoverStatus'
-import PartnerCarousel from '../components/landing/PartnerCarousel'
-import Roles from '../components/landing/Roles'
-import OfflineFeature from '../components/landing/OfflineFeature'
-import FAQ from '../components/landing/FAQ'
-import Footer from '../components/landing/Footer'
+import { lazy, Suspense } from 'react'
 import SEO from '../components/SEO'
+
+// Lazy load below-the-fold components
+const HowItWorks = lazy(() => import('../components/landing/HowItWorks'))
+const CoverStatus = lazy(() => import('../components/landing/CoverStatus'))
+const PartnerCarousel = lazy(() => import('../components/landing/PartnerCarousel'))
+const Roles = lazy(() => import('../components/landing/Roles'))
+const OfflineFeature = lazy(() => import('../components/landing/OfflineFeature'))
+const FAQ = lazy(() => import('../components/landing/FAQ'))
+const Footer = lazy(() => import('../components/landing/Footer'))
 
 export default function Landing() {
   const pageVariants = {
@@ -17,19 +20,19 @@ export default function Landing() {
     animate: { 
       opacity: 1,
       transition: {
-        duration: 0.5,
-        staggerChildren: 0.15
+        duration: 0.3,
+        staggerChildren: 0.1
       }
     }
   }
 
   const sectionVariants = {
-    initial: { opacity: 0, y: 60 },
+    initial: { opacity: 0, y: 30 },
     animate: { 
       opacity: 1, 
       y: 0,
       transition: {
-        duration: 0.8,
+        duration: 0.5,
         ease: [0.25, 0.46, 0.45, 0.94]
       }
     }
@@ -50,27 +53,29 @@ export default function Landing() {
       />
       <Navbar />
       <Hero />
-      <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-100px" }}>
-        <HowItWorks />
-      </motion.div>
-      <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-100px" }}>
-        <CoverStatus />
-      </motion.div>
-      <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-100px" }}>
-        <PartnerCarousel />
-      </motion.div>
-      <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-100px" }}>
-        <Roles />
-      </motion.div>
-      <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-100px" }}>
-        <OfflineFeature />
-      </motion.div>
-      <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-100px" }}>
-        <FAQ />
-      </motion.div>
-      <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-100px" }}>
-        <Footer />
-      </motion.div>
+      <Suspense fallback={<div className="h-20" />}>
+        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }}>
+          <HowItWorks />
+        </motion.div>
+        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }}>
+          <CoverStatus />
+        </motion.div>
+        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }}>
+          <PartnerCarousel />
+        </motion.div>
+        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }}>
+          <Roles />
+        </motion.div>
+        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }}>
+          <OfflineFeature />
+        </motion.div>
+        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }}>
+          <FAQ />
+        </motion.div>
+        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }}>
+          <Footer />
+        </motion.div>
+      </Suspense>
     </motion.div>
   )
 }
