@@ -17,6 +17,7 @@ interface Member {
   email?: string;
   qr_code: string;
   status: string;
+  role?: string;
   sa_id?: string;
   date_of_birth?: string;
   address_line_1?: string;
@@ -137,7 +138,7 @@ const DashboardNew: React.FC = () => {
       // Fetch member data
       const { data: memberData, error: memberError } = await supabase
         .from('members')
-        .select('id, first_name, last_name, cell_phone, email, qr_code, status, sa_id, address_line_1, city, postal_code')
+        .select('id, first_name, last_name, cell_phone, email, qr_code, status, role, sa_id, address_line_1, city, postal_code')
         .eq('id', sessionMemberData.id)
         .single();
 
@@ -154,6 +155,7 @@ const DashboardNew: React.FC = () => {
         email: memberData.email,
         qr_code: memberData.qr_code,
         status: memberData.status,
+        role: memberData.role,
         sa_id: memberData.sa_id,
         address_line_1: memberData.address_line_1,
         city: memberData.city,
@@ -892,43 +894,45 @@ const DashboardNew: React.FC = () => {
 
 
             {/* Recent Transactions */}
-            <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-sm font-bold uppercase tracking-[0.1em] text-gray-500">
-                  Recent Rewards History
-                </h3>
-                <button className="text-blue-600 text-xs font-bold hover:underline">View Statement</button>
-              </div>
-              <div className="space-y-3">
-                {recentTransactions.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500">No recent transactions</p>
-                  </div>
-                ) : (
-                  recentTransactions.map((tx, index) => (
-                    <div key={tx.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg transition-colors hover:bg-blue-100">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                          <span className="material-symbols-outlined text-blue-600">
-                            {index === 0 ? 'shopping_cart' : index === 1 ? 'medication' : 'coffee'}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="font-bold text-sm text-gray-900">{tx.partners?.shop_name || 'Partner Store'}</p>
-                          <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">
-                            {formatDate(tx.created_at)} • CASHBACK REWARD
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-extrabold text-sm text-green-600">+R{tx.member_amount.toFixed(2)}</p>
-                        <p className="text-[10px] text-gray-500">Cashback</p>
-                      </div>
+            {member?.role !== 'sponsored_member' && (
+              <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-sm font-bold uppercase tracking-[0.1em] text-gray-500">
+                    Recent Rewards History
+                  </h3>
+                  <button className="text-blue-600 text-xs font-bold hover:underline">View Statement</button>
+                </div>
+                <div className="space-y-3">
+                  {recentTransactions.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">No recent transactions</p>
                     </div>
-                  ))
-                )}
+                  ) : (
+                    recentTransactions.map((tx, index) => (
+                      <div key={tx.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg transition-colors hover:bg-blue-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-blue-600">
+                              {index === 0 ? 'shopping_cart' : index === 1 ? 'medication' : 'coffee'}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm text-gray-900">{tx.partners?.shop_name || 'Partner Store'}</p>
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">
+                              {formatDate(tx.created_at)} • CASHBACK REWARD
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-extrabold text-sm text-green-600">+R{tx.member_amount.toFixed(2)}</p>
+                          <p className="text-[10px] text-gray-500">Cashback</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
 
@@ -1062,14 +1066,16 @@ const DashboardNew: React.FC = () => {
                 </span>
                 <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-center text-gray-900">My Cover Plans</span>
               </button>
-              <button 
-                onClick={() => navigate('/member/transactions')}
-                className="bg-blue-50 p-4 rounded-lg flex flex-col items-center justify-center gap-2 hover:bg-blue-100 transition-colors group border border-blue-100">
-                <span className="material-symbols-outlined text-blue-600 group-hover:scale-110 transition-transform">
-                  history
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-center text-gray-900">View All Transactions</span>
-              </button>
+              {member?.role !== 'sponsored_member' && (
+                <button 
+                  onClick={() => navigate('/member/transactions')}
+                  className="bg-blue-50 p-4 rounded-lg flex flex-col items-center justify-center gap-2 hover:bg-blue-100 transition-colors group border border-blue-100">
+                  <span className="material-symbols-outlined text-blue-600 group-hover:scale-110 transition-transform">
+                    history
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-center text-gray-900">View All Transactions</span>
+                </button>
+              )}
               <button 
                 onClick={() => navigate('/member/top-up')}
                 className="bg-blue-50 p-4 rounded-lg flex flex-col items-center justify-center gap-2 hover:bg-blue-100 transition-colors group border border-blue-100">

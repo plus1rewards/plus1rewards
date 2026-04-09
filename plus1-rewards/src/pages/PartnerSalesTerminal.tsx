@@ -127,7 +127,7 @@ export default function PartnerSalesTerminal() {
     try {
       const { data, error: memberError } = await supabase
         .from('members')
-        .select('id, first_name, last_name, cell_phone, status')
+        .select('id, first_name, last_name, cell_phone, status, role')
         .eq('cell_phone', phoneNumber)
         .single();
 
@@ -140,6 +140,14 @@ export default function PartnerSalesTerminal() {
 
       if (data.status !== 'active') {
         setError('Member account is not active');
+        setLoading(false);
+        setActiveField('phone');
+        return;
+      }
+
+      // Prevent transactions for sponsored members
+      if (data.role === 'sponsored_member') {
+        setError('This is a sponsored member. Only the sponsor can earn cashback, not the sponsored member.');
         setLoading(false);
         setActiveField('phone');
         return;
@@ -331,6 +339,11 @@ export default function PartnerSalesTerminal() {
               amount: remainingAmount,
               balance_after: newOverflow
             });
+
+          // Check if this member sponsors anyone and reactivate suspended plans if possible
+          await supabase.rpc('reactivate_suspended_sponsored_plans', {
+            p_sponsor_id: member.id
+          });
         }
       }
 

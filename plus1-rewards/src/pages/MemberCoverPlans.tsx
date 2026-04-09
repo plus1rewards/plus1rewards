@@ -53,6 +53,8 @@ export default function MemberCoverPlans() {
   const [linkedPeopleByPlan, setLinkedPeopleByPlan] = useState<Record<string, LinkedPerson[]>>({});
   const [expandedPlans, setExpandedPlans] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [selectedPlanForDetails, setSelectedPlanForDetails] = useState<MemberCoverPlan | null>(null);
+  const [detailsMemberData, setDetailsMemberData] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -186,6 +188,25 @@ export default function MemberCoverPlans() {
       ...prev,
       [planId]: !prev[planId]
     }));
+  };
+
+  const handleViewDetails = async (plan: MemberCoverPlan) => {
+    setSelectedPlanForDetails(plan);
+    
+    // Fetch full member details
+    const memberId = plan.member_id;
+    const { data: memberDetails } = await supabase
+      .from('members')
+      .select('*')
+      .eq('id', memberId)
+      .single();
+    
+    setDetailsMemberData(memberDetails);
+  };
+
+  const closeDetailsModal = () => {
+    setSelectedPlanForDetails(null);
+    setDetailsMemberData(null);
   };
 
   if (loading) {
@@ -386,12 +407,174 @@ export default function MemberCoverPlans() {
                         )}
                       </div>
                     )}
+
+                    {/* View Details Button */}
+                    <div className="pt-3 border-t border-gray-200">
+                      <button
+                        onClick={() => handleViewDetails(plan)}
+                        className="w-full flex items-center justify-center gap-2 bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-sm">visibility</span>
+                        <span>{isSponsored ? 'View Sponsored Member' : 'View Main Member'}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
         )}
+
+      {/* Member Details Modal */}
+      {selectedPlanForDetails && detailsMemberData && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closeDetailsModal}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-[#1a558b] to-blue-700 px-6 py-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                  <span className="material-symbols-outlined text-white text-2xl">person</span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Member Details</h2>
+                  <p className="text-sm text-blue-100">Read-only information</p>
+                </div>
+              </div>
+              <button
+                onClick={closeDetailsModal}
+                className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-4">
+              {/* Personal Information */}
+              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#1a558b]">badge</span>
+                  Personal Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase">First Name</label>
+                    <p className="text-gray-900 font-medium">{detailsMemberData.first_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase">Last Name</label>
+                    <p className="text-gray-900 font-medium">{detailsMemberData.last_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase">Cell Phone</label>
+                    <p className="text-gray-900 font-medium">{detailsMemberData.cell_phone || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase">Email</label>
+                    <p className="text-gray-900 font-medium break-all">{detailsMemberData.email || 'N/A'}</p>
+                  </div>
+                  {detailsMemberData.sa_id && (
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase">SA ID Number</label>
+                      <p className="text-gray-900 font-medium">{detailsMemberData.sa_id}</p>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase">Status</label>
+                    <p className={`font-bold ${detailsMemberData.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
+                      {detailsMemberData.status?.toUpperCase() || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cover Plan Information */}
+              <div className="bg-blue-50 rounded-xl p-4 space-y-3">
+                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#1a558b]">health_and_safety</span>
+                  Cover Plan Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase">Plan Name</label>
+                    <p className="text-gray-900 font-medium">{selectedPlanForDetails.cover_plans.plan_name}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase">Monthly Target</label>
+                    <p className="text-gray-900 font-medium">R{selectedPlanForDetails.target_amount.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase">Funded Amount</label>
+                    <p className="text-gray-900 font-medium">R{selectedPlanForDetails.funded_amount.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase">Plan Status</label>
+                    <p className={`font-bold ${
+                      selectedPlanForDetails.status === 'active' ? 'text-green-600' :
+                      selectedPlanForDetails.status === 'in_progress' ? 'text-blue-600' :
+                      'text-red-600'
+                    }`}>
+                      {selectedPlanForDetails.status.toUpperCase()}
+                    </p>
+                  </div>
+                  {selectedPlanForDetails.active_from && (
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase">Active From</label>
+                      <p className="text-gray-900 font-medium">
+                        {new Date(selectedPlanForDetails.active_from).toLocaleDateString('en-ZA')}
+                      </p>
+                    </div>
+                  )}
+                  {selectedPlanForDetails.active_to && (
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase">Active Until</label>
+                      <p className="text-gray-900 font-medium">
+                        {new Date(selectedPlanForDetails.active_to).toLocaleDateString('en-ZA')}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* QR Code */}
+              {detailsMemberData.qr_code && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-3">
+                    <span className="material-symbols-outlined text-[#1a558b]">qr_code</span>
+                    QR Code
+                  </h3>
+                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 inline-block">
+                    <p className="text-sm font-mono text-gray-700">{detailsMemberData.qr_code}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Sponsorship Info */}
+              {selectedPlanForDetails.sponsored_by && (
+                <div className="bg-green-50 rounded-xl p-4">
+                  <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-green-600">volunteer_activism</span>
+                    Sponsorship Information
+                  </h3>
+                  <p className="text-sm text-gray-700 mt-2">
+                    This plan is sponsored by another member
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={closeDetailsModal}
+                className="bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-6 py-2 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </MemberLayout>
   );
 }

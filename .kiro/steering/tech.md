@@ -96,13 +96,20 @@ import.meta.env.VITE_SUPABASE_URL
 
 **IMPORTANT**: Do NOT manually check database files or guess database structure.
 
+### Supabase Project Configuration
+
+- **Project ID**: `gcbmlxdxwakkubpldype`
+- **Project Name**: plus1
+- **Region**: eu-west-1
+- **Database Host**: db.gcbmlxdxwakkubpldype.supabase.co
+
 To inspect the database, use Kiro Powers:
 
 ```
 kiroPowers action="activate" powerName="supabase-hosted"
 ```
 
-Then use available tools:
+Then use available tools with project_id `gcbmlxdxwakkubpldype`:
 - `execute_sql` - Run SQL queries to check data
 - `list_tables` - View all tables and schema
 - `get_project` - Check project details

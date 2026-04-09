@@ -143,7 +143,7 @@ export default function PartnerSales() {
     try {
       const { data, error } = await supabase
         .from('members')
-        .select('id, first_name, last_name, phone, status')
+        .select('id, first_name, last_name, phone, status, role')
         .eq('phone', phoneNumber)
         .single();
 
@@ -154,6 +154,12 @@ export default function PartnerSales() {
 
       if (data.status !== 'active') {
         setError('Member account is not active');
+        return;
+      }
+
+      // Prevent transactions for sponsored members
+      if (data.role === 'sponsored_member') {
+        setError('This is a sponsored member. Only the sponsor can earn cashback, not the sponsored member.');
         return;
       }
 
@@ -178,7 +184,7 @@ export default function PartnerSales() {
     try {
       const { data, error } = await supabase
         .from('members')
-        .select('id, first_name, last_name, phone, status')
+        .select('id, first_name, last_name, phone, status, role')
         .eq('qr_code', qrCode)
         .single();
 
@@ -189,6 +195,12 @@ export default function PartnerSales() {
 
       if (data.status !== 'active') {
         setError('Member account is not active');
+        return;
+      }
+
+      // Prevent transactions for sponsored members
+      if (data.role === 'sponsored_member') {
+        setError('This is a sponsored member. Only the sponsor can earn cashback, not the sponsored member.');
         return;
       }
 
@@ -329,6 +341,11 @@ export default function PartnerSales() {
               });
 
             remainingAmount = 0;
+
+            // Check if this member sponsors anyone and reactivate suspended plans if possible
+            await supabase.rpc('reactivate_suspended_sponsored_plans', {
+              p_sponsor_id: member.id
+            });
           }
         }
       }

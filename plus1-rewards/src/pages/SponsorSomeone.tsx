@@ -16,26 +16,67 @@ interface MemberCoverPlan {
   status: string;
 }
 
+interface CoverPlan {
+  id: string;
+  plan_name: string;
+  monthly_target_amount: number;
+}
+
 const SponsorSomeone: React.FC = () => {
   const navigate = useNavigate();
   const { notification, showSuccess, showError, showWarning, hideNotification } = useNotification();
   
   const [sponsor, setSponsor] = useState<Member | null>(null);
   const [sponsorCoverPlan, setSponsorCoverPlan] = useState<MemberCoverPlan | null>(null);
+  const [availablePlans, setAvailablePlans] = useState<CoverPlan[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
   // Form fields
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [cellPhone, setCellPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [saId, setSaId] = useState('');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
+  const [phoneExists, setPhoneExists] = useState(false);
+  const [checkingPhone, setCheckingPhone] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Check phone number in real-time
+  useEffect(() => {
+    const checkPhoneExists = async () => {
+      const cleanPhone = cellPhone.replace(/\D/g, '');
+      
+      if (cleanPhone.length !== 10) {
+        setPhoneExists(false);
+        return;
+      }
+
+      setCheckingPhone(true);
+      
+      try {
+        const { data } = await supabase
+          .from('members')
+          .select('id, first_name, last_name')
+          .eq('cell_phone', cleanPhone)
+          .maybeSingle();
+
+        setPhoneExists(!!data);
+      } catch (error) {
+        console.error('Error checking phone:', error);
+      } finally {
+        setCheckingPhone(false);
+      }
+    };
+
+    const timeoutId = setTimeout(checkPhoneExists, 500);
+    return () => clearTimeout(timeoutId);
+  }, [cellPhone]);
 
   const loadData = async () => {
     try {
@@ -81,6 +122,21 @@ const SponsorSomeone: React.FC = () => {
       
       setSponsorCoverPlan(coverPlanData as any);
 
+      // Load available cover plans (exclude Comprehensive)
+      const { data: plansData, error: plansError } = await supabase
+        .from('cover_plans')
+        .select('id, plan_name, monthly_target_amount')
+        .eq('status', 'active')
+        .not('plan_name', 'ilike', '%Comprehensive%')
+        .order('monthly_target_amount', { ascending: true });
+
+      if (plansError) {
+        console.error('Error loading plans:', plansError);
+      } else if (plansData && plansData.length > 0) {
+        setAvailablePlans(plansData);
+        setSelectedPlanId(plansData[0].id); // Default to first plan
+      }
+
     } catch (error) {
       console.error('Error loading data:', error);
       showError('Load Error', 'Failed to load data. Please try again.', 3000);
@@ -90,8 +146,37 @@ const SponsorSomeone: React.FC = () => {
   };
 
   const validateForm = () => {
-    if (!fullName.trim()) {
-      showWarning('Validation Error', 'Please enter the full name.', 3000);
+    if (!selectedPlanId) {
+      showWarning('Validation Error', 'Please select a cover plan.', 3000);
+      return false;
+    }
+
+    if (!firstName.trim()) {
+      showWarning('Validation Error', 'Please enter the first name.', 3000);
+      return false;
+    }
+
+    if (!lastName.trim()) {
+      showWarning('Validation Error', 'Please enter the last name.', 3000);
+      return false;
+    }
+
+    if (!dateOfBirth) {
+      showWarning('Validation Error', 'Please enter the date of birth.', 3000);
+      return false;
+    }
+
+    // Validate age (must be 18+)
+    const birthDate = new Date(dateOfBirth);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    if (age < 18) {
+      showWarning('Validation Error', 'Member must be at least 18 years old.', 3000);
       return false;
     }
 
@@ -101,13 +186,8 @@ const SponsorSomeone: React.FC = () => {
       return false;
     }
 
-    if (email && !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      showWarning('Validation Error', 'Please enter a valid email address.', 3000);
-      return false;
-    }
-
-    if (saId && saId.length !== 13) {
-      showWarning('Validation Error', 'SA ID must be 13 digits.', 3000);
+    if (phoneExists) {
+      showError('Phone Already Registered', 'This phone number is already registered in the system. Please use a different number.', 5000);
       return false;
     }
 
@@ -149,36 +229,43 @@ const SponsorSomeone: React.FC = () => {
         return;
       }
 
-      // Create new member
+      // Create new member with role 'sponsored_member'
       const { data: newMember, error: memberError } = await supabase
         .from('members')
         .insert({
-          full_name: fullName,
+          first_name: firstName,
+          last_name: lastName,
+          date_of_birth: dateOfBirth,
           cell_phone: cleanPhone,
-          email: email || `${cleanPhone}@plus1rewards.local`,
-          sa_id: saId || null,
+          email: `${cleanPhone}@plus1rewards.local`,
+          sa_id: null,
           pin_code: pin,
           qr_code: qrCode,
-          status: 'active'
+          status: 'active',
+          role: 'sponsored_member'
         })
         .select()
         .single();
 
       if (memberError) throw memberError;
 
-      // Get default R390 plan
-      const { data: defaultPlan } = await supabase
-        .from('cover_plans')
-        .select('id')
-        .eq('monthly_target_amount', 390)
-        .eq('status', 'active')
-        .single();
+      // Get selected plan details
+      const selectedPlan = availablePlans.find(p => p.id === selectedPlanId);
+      if (!selectedPlan) {
+        throw new Error('Selected plan not found');
+      }
 
-      if (!defaultPlan) {
-        throw new Error('Default R390 plan not found');
+      const planAmount = selectedPlan.monthly_target_amount;
+
+      // Check if sponsor has enough overflow for selected plan
+      if (Number(sponsorCoverPlan.overflow_balance) < planAmount) {
+        showError('Insufficient Overflow', `You need at least R${planAmount} overflow to sponsor this plan.`, 3000);
+        setSubmitting(false);
+        return;
       }
 
       // Create active cover plan for sponsored member
+      // Status is 'paused' because plan is 100% funded but profile is incomplete
       const activeFrom = new Date();
       const activeTo = new Date(activeFrom.getTime() + 30 * 24 * 60 * 60 * 1000);
 
@@ -186,12 +273,12 @@ const SponsorSomeone: React.FC = () => {
         .from('member_cover_plans')
         .insert({
           member_id: newMember.id,
-          cover_plan_id: defaultPlan.id,
-          creation_order: 1,
-          target_amount: 390,
-          funded_amount: 390,
+          cover_plan_id: selectedPlanId,
+          creation_order: 2,
+          target_amount: planAmount,
+          funded_amount: planAmount,
           overflow_balance: 0,
-          status: 'active',
+          status: 'paused',
           active_from: activeFrom.toISOString(),
           active_to: activeTo.toISOString(),
           sponsored_by: sponsor.id
@@ -201,8 +288,8 @@ const SponsorSomeone: React.FC = () => {
 
       if (planError) throw planError;
 
-      // Deduct R390 from sponsor's overflow
-      const newOverflow = Number(sponsorCoverPlan.overflow_balance) - 390;
+      // Deduct plan amount from sponsor's overflow
+      const newOverflow = Number(sponsorCoverPlan.overflow_balance) - planAmount;
       
       const { error: updateError } = await supabase
         .from('member_cover_plans')
@@ -218,7 +305,7 @@ const SponsorSomeone: React.FC = () => {
           member_id: sponsor.id,
           member_cover_plan_id: sponsorCoverPlan.id,
           entry_type: 'sponsorship',
-          amount: -390,
+          amount: -planAmount,
           balance_after: newOverflow
         });
 
@@ -229,13 +316,13 @@ const SponsorSomeone: React.FC = () => {
           member_id: newMember.id,
           member_cover_plan_id: newCoverPlan.id,
           entry_type: 'sponsored_activation',
-          amount: 390,
-          balance_after: 390
+          amount: planAmount,
+          balance_after: planAmount
         });
 
       showSuccess(
         'Sponsorship Complete!',
-        `Successfully sponsored ${fullName}. Their plan is now active!`,
+        `Successfully sponsored ${firstName} ${lastName} with ${selectedPlan.plan_name}. Their plan is now active!`,
         5000
       );
 
@@ -300,7 +387,7 @@ const SponsorSomeone: React.FC = () => {
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">Sponsor a Cover Plan</h2>
               <p className="text-sm text-gray-700 mb-2">
-                You're about to sponsor someone's medical cover plan. R390 will be deducted from your overflow balance to activate their plan for 30 days.
+                You're about to sponsor someone's medical cover plan. Select a plan below and the amount will be deducted from your overflow balance to activate their plan for 30 days.
               </p>
               <p className="text-sm text-gray-700">
                 <span className="font-bold">Your overflow:</span> R{Number(sponsorCoverPlan?.overflow_balance || 0).toFixed(2)}
@@ -324,22 +411,88 @@ const SponsorSomeone: React.FC = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            {/* Full Name */}
+            {/* Cover Plan Selection */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">
-                Full Name <span className="text-red-500">*</span>
+                Select Cover Plan <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">health_and_safety</span>
+                <select
+                  value={selectedPlanId}
+                  onChange={(e) => setSelectedPlanId(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all appearance-none bg-white"
+                  disabled={submitting}
+                >
+                  <option value="">Choose a plan...</option>
+                  {availablePlans.map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.plan_name} - R{plan.monthly_target_amount}
+                    </option>
+                  ))}
+                </select>
+                <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
+              </div>
+              {selectedPlanId && (
+                <p className="text-xs text-gray-600 mt-2">
+                  R{availablePlans.find(p => p.id === selectedPlanId)?.monthly_target_amount} will be deducted from your overflow
+                </p>
+              )}
+            </div>
+
+            {/* First Name */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                First Name <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">person</span>
                 <input
                   type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Enter full name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Enter first name"
                   className="w-full pl-11 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
                   disabled={submitting}
                 />
               </div>
+            </div>
+
+            {/* Last Name */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Last Name <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">person</span>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Enter last name"
+                  className="w-full pl-11 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+
+            {/* Date of Birth */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Date of Birth <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">cake</span>
+                <input
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+                  className="w-full pl-11 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                  disabled={submitting}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Member must be at least 18 years old</p>
             </div>
 
             {/* Cell Phone */}
@@ -355,47 +508,37 @@ const SponsorSomeone: React.FC = () => {
                   onChange={(e) => setCellPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   placeholder="10-digit cell phone"
                   maxLength={10}
-                  className="w-full pl-11 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                  className={`w-full pl-11 pr-12 py-3 border-2 rounded-xl focus:ring-2 outline-none transition-all ${
+                    phoneExists 
+                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                      : cellPhone.length === 10 && !checkingPhone
+                      ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
+                      : 'border-gray-300 focus:ring-green-500 focus:border-green-500'
+                  }`}
                   disabled={submitting}
                 />
+                {cellPhone.length === 10 && (
+                  <span className={`material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 ${
+                    checkingPhone ? 'text-gray-400 animate-spin' : phoneExists ? 'text-red-500' : 'text-green-500'
+                  }`}>
+                    {checkingPhone ? 'progress_activity' : phoneExists ? 'cancel' : 'check_circle'}
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-gray-500 mt-2">{cellPhone.length}/10 digits</p>
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                Email (Optional)
-              </label>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">email</span>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@example.com"
-                  className="w-full pl-11 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
-                  disabled={submitting}
-                />
-              </div>
-            </div>
-
-            {/* SA ID */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                SA ID Number (Optional)
-              </label>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">badge</span>
-                <input
-                  type="text"
-                  value={saId}
-                  onChange={(e) => setSaId(e.target.value.replace(/\D/g, '').slice(0, 13))}
-                  placeholder="13-digit ID number"
-                  maxLength={13}
-                  className="w-full pl-11 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
-                  disabled={submitting}
-                />
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-xs text-gray-500">{cellPhone.length}/10 digits</p>
+                {phoneExists && cellPhone.length === 10 && (
+                  <p className="text-xs text-red-600 font-bold flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">error</span>
+                    Phone number already registered
+                  </p>
+                )}
+                {!phoneExists && cellPhone.length === 10 && !checkingPhone && (
+                  <p className="text-xs text-green-600 font-bold flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">check_circle</span>
+                    Available
+                  </p>
+                )}
               </div>
             </div>
 
@@ -456,17 +599,26 @@ const SponsorSomeone: React.FC = () => {
               <button
                 type="submit"
                 className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold rounded-xl hover:from-green-700 hover:to-green-800 transition-all disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
-                disabled={submitting}
+                disabled={submitting || !selectedPlanId || phoneExists || checkingPhone}
               >
                 {submitting ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                     <span>Sponsoring...</span>
                   </>
+                ) : phoneExists ? (
+                  <>
+                    <span className="material-symbols-outlined">error</span>
+                    <span>Phone Already Registered</span>
+                  </>
                 ) : (
                   <>
                     <span className="material-symbols-outlined">volunteer_activism</span>
-                    <span>Sponsor for R390</span>
+                    <span>
+                      {selectedPlanId 
+                        ? `Sponsor for R${availablePlans.find(p => p.id === selectedPlanId)?.monthly_target_amount || 0}`
+                        : 'Select a Plan'}
+                    </span>
                   </>
                 )}
               </button>
