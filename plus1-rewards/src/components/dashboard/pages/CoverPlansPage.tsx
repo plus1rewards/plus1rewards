@@ -369,13 +369,30 @@ export default function CoverPlansPage() {
                               </button>
                               <button
                                 onClick={() => {
-                                  const amount = prompt('Enter manual funding amount (R):');
+                                  // Step 1: Verify PIN
+                                  const pin = prompt('Enter admin PIN to authorize manual funding:');
+                                  if (!pin) {
+                                    return; // User cancelled
+                                  }
+                                  
+                                  if (pin !== '201555') {
+                                    alert('❌ Invalid PIN. Manual funding authorization denied.');
+                                    return;
+                                  }
+                                  
+                                  // Step 2: Get funding amount
+                                  const amount = prompt('✅ PIN verified. Enter manual funding amount (R):');
                                   if (amount && !isNaN(parseFloat(amount))) {
-                                    handleManualFunding(plan.id, parseFloat(amount));
+                                    const fundingAmount = parseFloat(amount);
+                                    if (fundingAmount <= 0) {
+                                      alert('Please enter a valid positive amount.');
+                                      return;
+                                    }
+                                    handleManualFunding(plan.id, fundingAmount);
                                   }
                                 }}
                                 className="p-2 text-gray-600 hover:text-green-600 transition-colors rounded-lg bg-gray-100 hover:bg-green-50"
-                                title="Add Manual Funding"
+                                title="Add Manual Funding (PIN Required)"
                               >
                                 <span className="material-symbols-outlined text-sm">add_circle</span>
                               </button>
