@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { getSession, clearSession } from '../lib/session';
 import MemberLayout from '../components/member/MemberLayout';
-import MemberChatWidget from '../components/member/MemberChatWidget';
+import MemberChat from './MemberChat';
 
 interface Member {
   id: string;
@@ -251,10 +251,7 @@ export default function MemberSupport() {
               Get instant answers to your questions!
             </p>
             <button
-              onClick={() => {
-                console.log('🚀 Opening chat widget');
-                setShowChat(true);
-              }}
+              onClick={() => setShowChat(true)}
               className="bg-white hover:bg-gray-50 text-[#1a558b] font-bold px-8 py-4 rounded-full transition-all shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 inline-flex items-center gap-2"
             >
               <span className="material-symbols-outlined">chat</span>
@@ -451,19 +448,20 @@ export default function MemberSupport() {
         </div>
       </div>
 
-      {/* Chat Widget */}
+      {/* Full-screen chat overlay - same UI as admin chat */}
       {showChat && (
-        <>
-          {console.log('💬 Rendering MemberChatWidget, showChat:', showChat)}
-          <MemberChatWidget 
-            isOpen={showChat} 
-            onClose={() => {
-              console.log('❌ Closing chat widget');
-              setShowChat(false);
-            }}
-            memberName={member?.name?.split(' ')[0] || 'there'}
-          />
-        </>
+        <div className="fixed inset-0 z-50 bg-white">
+          <div className="absolute top-3 right-3 z-10">
+            <button
+              onClick={() => setShowChat(false)}
+              className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+              title="Close chat"
+            >
+              <span className="material-symbols-outlined text-gray-600 text-lg">close</span>
+            </button>
+          </div>
+          <MemberChat onClose={() => setShowChat(false)} />
+        </div>
       )}
     </MemberLayout>
   );

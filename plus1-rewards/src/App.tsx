@@ -41,7 +41,7 @@ const SponsorSomeone = lazy(() => import('./pages/SponsorSomeone'))
 const PartnerDashboard = lazy(() => import('./components/partner/PartnerDashboard'))
 const TransactionHistory = lazy(() => import('./components/partner/pages/TransactionHistory'))
 const PartnerTransactionDetail = lazy(() => import('./components/partner/PartnerTransactionDetail'))
-const MonthlyInvoice = lazy(() => import('./components/partner/pages/MonthlyInvoice'))
+const PartnerStatement = lazy(() => import('./pages/PartnerStatement'))
 const PartnerShopProfile = lazy(() => import('./components/partner/PartnerShopProfile'))
 const PartnerSupport = lazy(() => import('./pages/PartnerSupport'))
 const PartnerProcessTransaction = lazy(() => import('./components/partner/PartnerProcessTransaction'))
@@ -171,7 +171,7 @@ export default function App() {
           <Route path="/partner/sales-terminal" element={<PartnerSalesTerminal />} />
           <Route path="/partner/transaction-history" element={<TransactionHistory />} />
           <Route path="/partner/transaction/:transactionId" element={<PartnerTransactionDetail />} />
-          <Route path="/partner/monthly-invoice" element={<MonthlyInvoice />} />
+          <Route path="/partner/statement" element={<PartnerStatement />} />
           <Route path="/partner/profile" element={<PartnerShopProfile />} />
           <Route path="/partner/support" element={<PartnerSupport />} />
           <Route path="/agent/dashboard" element={<AgentDashboard />} />

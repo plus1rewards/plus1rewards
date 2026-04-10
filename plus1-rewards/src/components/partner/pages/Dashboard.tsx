@@ -313,11 +313,11 @@ export default function Dashboard() {
             </button>
 
             <button
-              onClick={() => navigate('/partner/monthly-invoice')}
-              className="bg-white hover:bg-gray-50 border-2 border-gray-200 text-gray-900 font-semibold py-3 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 text-xs"
+              onClick={() => navigate('/partner/statement')}
+              className="bg-white hover:bg-gray-50 border-2 border-[#1a568b] text-[#1a568b] font-semibold py-3 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 text-xs"
             >
-              <span className="material-symbols-outlined text-lg">description</span>
-              View Invoices
+              <span className="material-symbols-outlined text-lg">analytics</span>
+              My Statement
             </button>
           </div>
 

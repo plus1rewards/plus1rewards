@@ -49,7 +49,7 @@ interface ChatConversation {
   updated_at: string;
 }
 
-export default function MemberChat() {
+export default function MemberChat({ onClose }: { onClose?: () => void } = {}) {
   const navigate = useNavigate();
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -458,7 +458,7 @@ export default function MemberChat() {
       <header className="h-16 flex items-center justify-between px-6 border-b border-gray-200 bg-white/80 backdrop-blur-md z-10">
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => navigate('/member/dashboard')}
+            onClick={() => onClose ? onClose() : navigate('/member/dashboard')}
             className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-600" />
