@@ -1,5 +1,6 @@
 // plus1-rewards/src/components/dashboard/Topbar.tsx
 import { useNavigate } from 'react-router-dom';
+import { adminAuth } from '../../lib/adminAuth';
 
 interface TopbarProps {
   onRefresh?: () => void;
@@ -9,7 +10,10 @@ export default function Topbar({ onRefresh }: TopbarProps) {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    navigate('/');
+    // Clear admin session
+    adminAuth.logout();
+    // Redirect to login page
+    navigate('/admin/login', { replace: true });
   };
 
   const handleRefresh = () => {

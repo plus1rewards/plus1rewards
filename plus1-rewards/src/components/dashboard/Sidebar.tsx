@@ -316,6 +316,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             )}
           </a>
           
+          <a className={getLinkClasses('/admin/chat')} href="/admin/chat">
+            <span className="material-symbols-outlined">chat</span>
+            <span className={getTextClasses('/admin/chat')}>Member Chat</span>
+          </a>
+          
           <a className={getLinkClasses('/admin/settings')} href="/admin/settings">
             <span className="material-symbols-outlined">settings</span>
             <span className={getTextClasses('/admin/settings')}>Settings / Config</span>
@@ -471,6 +476,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 {pendingCounts.topUps}
               </span>
             )}
+          </a>
+          
+          <a className={getLinkClasses('/admin/chat')} href="/admin/chat" onClick={handleLinkClick}>
+            <span className="material-symbols-outlined">chat</span>
+            <span className={getTextClasses('/admin/chat')}>Member Chat</span>
           </a>
           
           <a className={getLinkClasses('/admin/settings')} href="/admin/settings" onClick={handleLinkClick}>

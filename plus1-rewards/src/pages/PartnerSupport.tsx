@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import PartnerChat from './PartnerChat';
 
 interface Partner {
   id: string;
@@ -18,6 +19,7 @@ export default function PartnerSupport() {
   const [disputeType, setDisputeType] = useState('other');
   const [description, setDescription] = useState('');
   const [transactionId, setTransactionId] = useState('');
+  const [showChat, setShowChat] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
@@ -242,6 +244,16 @@ export default function PartnerSupport() {
           <p className="text-gray-600 mb-6">
             Our admin team is here to help you with any questions or issues.
           </p>
+
+          {/* Live Chat Button */}
+          <button
+            onClick={() => setShowChat(true)}
+            className="w-full bg-[#1a568b] hover:bg-[#1a568b]/90 text-white font-bold py-4 px-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-sm mb-6 shadow-lg"
+          >
+            <span className="material-symbols-outlined">chat</span>
+            Start Live Chat
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+          </button>
           
           <div className="bg-gray-50 rounded-xl p-6 text-left space-y-4">
             <div className="flex items-center gap-4">

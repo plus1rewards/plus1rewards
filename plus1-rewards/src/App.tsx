@@ -64,6 +64,7 @@ const MemberQR = lazy(() => import('./pages/MemberQR').then(m => ({ default: m.M
 const MemberFindPartners = lazy(() => import('./pages/MemberFindPartners').then(m => ({ default: m.MemberFindPartners })))
 const FindPartner = lazy(() => import('./pages/FindPartner'))
 const ProtectedPolicyProviderRoute = lazy(() => import('./components/ProtectedPolicyProviderRoute'))
+const ProtectedAdminRoute = lazy(() => import('./components/ProtectedAdminRoute'))
 const TermsOfService = lazy(() => import('./pages/TermsOfService'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 
@@ -133,21 +134,81 @@ export default function App() {
           <Route path="/agent/register" element={<AgentRegister />} />
           <Route path="/provider/login" element={<PolicyProviderLogin />} />
           <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={<Dashboard />} />
-          <Route path="/admin/approvals" element={<ApprovalsPage />} />
-          <Route path="/admin/members" element={<MembersPage />} />
-          <Route path="/admin/cover-plans" element={<CoverPlansPage />} />
-          <Route path="/admin/notifications" element={<NotificationsPage />} />
-          <Route path="/admin/partners" element={<PartnersPage />} />
-          <Route path="/admin/invoices" element={<InvoicesPage />} />
-          <Route path="/admin/agents" element={<AgentsPage />} />
-          <Route path="/admin/commissions" element={<CommissionsPage />} />
-          <Route path="/admin/providers" element={<ProvidersPage />} />
-          <Route path="/admin/transactions" element={<TransactionsPage />} />
-          <Route path="/admin/disputes" element={<DisputesPage />} />
-          <Route path="/admin/top-ups" element={<TopUpsPage />} />
-          <Route path="/admin/settings" element={<SettingsPage />} />
-          <Route path="/admin/chat" element={<AdminChatDashboard />} />
+          <Route path="/admin/dashboard" element={
+            <ProtectedAdminRoute>
+              <Dashboard />
+            </ProtectedAdminRoute>
+          } />
+          <Route path="/admin/approvals" element={
+            <ProtectedAdminRoute>
+              <ApprovalsPage />
+            </ProtectedAdminRoute>
+          } />
+          <Route path="/admin/members" element={
+            <ProtectedAdminRoute>
+              <MembersPage />
+            </ProtectedAdminRoute>
+          } />
+          <Route path="/admin/cover-plans" element={
+            <ProtectedAdminRoute>
+              <CoverPlansPage />
+            </ProtectedAdminRoute>
+          } />
+          <Route path="/admin/notifications" element={
+            <ProtectedAdminRoute>
+              <NotificationsPage />
+            </ProtectedAdminRoute>
+          } />
+          <Route path="/admin/partners" element={
+            <ProtectedAdminRoute>
+              <PartnersPage />
+            </ProtectedAdminRoute>
+          } />
+          <Route path="/admin/invoices" element={
+            <ProtectedAdminRoute>
+              <InvoicesPage />
+            </ProtectedAdminRoute>
+          } />
+          <Route path="/admin/agents" element={
+            <ProtectedAdminRoute>
+              <AgentsPage />
+            </ProtectedAdminRoute>
+          } />
+          <Route path="/admin/commissions" element={
+            <ProtectedAdminRoute>
+              <CommissionsPage />
+            </ProtectedAdminRoute>
+          } />
+          <Route path="/admin/providers" element={
+            <ProtectedAdminRoute>
+              <ProvidersPage />
+            </ProtectedAdminRoute>
+          } />
+          <Route path="/admin/transactions" element={
+            <ProtectedAdminRoute>
+              <TransactionsPage />
+            </ProtectedAdminRoute>
+          } />
+          <Route path="/admin/disputes" element={
+            <ProtectedAdminRoute>
+              <DisputesPage />
+            </ProtectedAdminRoute>
+          } />
+          <Route path="/admin/top-ups" element={
+            <ProtectedAdminRoute>
+              <TopUpsPage />
+            </ProtectedAdminRoute>
+          } />
+          <Route path="/admin/settings" element={
+            <ProtectedAdminRoute>
+              <SettingsPage />
+            </ProtectedAdminRoute>
+          } />
+          <Route path="/admin/chat" element={
+            <ProtectedAdminRoute>
+              <AdminChatDashboard />
+            </ProtectedAdminRoute>
+          } />
           <Route path="/member/dashboard" element={<MemberDashboard />} />
           <Route path="/member/chat" element={<MemberChat />} />
           <Route path="/member/cover-plans" element={<MemberCoverPlans />} />

@@ -9,7 +9,9 @@ import PlatformStatus from './PlatformStatus';
 import QuickActions from './QuickActions';
 import Footer from './Footer';
 import AdminNotifications from '../admin/AdminNotifications';
+import SessionTimeoutWarning from '../admin/SessionTimeoutWarning';
 import { supabaseAdmin } from '../../lib/supabase';
+import { setupAdminActivityMonitor } from '../../lib/adminAuth';
 
 export default function Dashboard() {
   const statsCardsRef = useRef<StatsCardsRef>(null);
@@ -25,6 +27,11 @@ export default function Dashboard() {
     amountFunded: number;
     target: number;
   }>>([]);
+
+  // Set up activity monitoring for session extension
+  useEffect(() => {
+    setupAdminActivityMonitor();
+  }, []);
 
   const handleRefresh = () => {
     if (statsCardsRef.current) {
@@ -114,6 +121,7 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
+      <SessionTimeoutWarning />
       <main className="flex-1 overflow-y-auto bg-[#f5f8fc] p-4 md:p-6 lg:p-10">
         <Topbar onRefresh={handleRefresh} />
         
