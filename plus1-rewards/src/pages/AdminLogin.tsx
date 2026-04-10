@@ -145,10 +145,6 @@ export default function AdminLogin() {
             This system is restricted to authorized +1 Rewards administrators. All access attempts are logged and monitored.
           </p>
         </div>
-
-        <p className="text-center text-sm text-gray-500 pt-2">
-          Need admin access? <a className="text-blue-600 font-semibold hover:underline" href="#">Contact IT Support</a>
-        </p>
       </div>
     </AuthLayout>
   );
