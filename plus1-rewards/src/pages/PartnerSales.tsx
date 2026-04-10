@@ -293,16 +293,21 @@ export default function PartnerSales() {
           
           // Determine status based on funding and profile completeness
           let newStatus = 'in_progress';
+          let updateData: any = {
+            funded_amount: newFundedAmount,
+            status: newStatus
+          };
+          
           if (newFundedAmount >= plan.target_amount) {
+            // When plan reaches 100%, it goes to PENDING (not active)
+            // Day1Health will change it to active after verification
             newStatus = isProfileComplete ? 'pending' : 'paused';
+            updateData.status = newStatus;
           }
 
           await supabase
             .from('member_cover_plans')
-            .update({
-              funded_amount: newFundedAmount,
-              status: newStatus
-            })
+            .update(updateData)
             .eq('id', plan.id);
 
           await supabase
@@ -342,8 +347,8 @@ export default function PartnerSales() {
 
             remainingAmount = 0;
 
-            // Check if this member sponsors anyone and reactivate suspended plans if possible
-            await supabase.rpc('reactivate_suspended_sponsored_plans', {
+            // Check if this member sponsors anyone and reactivate paused plans if possible
+            await supabase.rpc('reactivate_paused_sponsored_plans', {
               p_sponsor_id: member.id
             });
           }

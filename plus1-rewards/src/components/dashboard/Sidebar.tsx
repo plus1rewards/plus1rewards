@@ -1,7 +1,7 @@
 // plus1-rewards/src/components/dashboard/Sidebar.tsx
 import { useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { supabaseAdmin } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -60,28 +60,28 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       const lastTopUpsVisit = lastVisitTimes['/admin/top-ups'] || 0;
 
       // Count pending partners created after last visit
-      const { count: partnersCount } = await supabaseAdmin
+      const { count: partnersCount } = await supabase
         .from('partners')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending')
         .gte('created_at', new Date(lastApprovalsVisit).toISOString());
 
       // Count pending agents created after last visit
-      const { count: agentsCount } = await supabaseAdmin
+      const { count: agentsCount } = await supabase
         .from('agents')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending')
         .gte('created_at', new Date(lastApprovalsVisit).toISOString());
 
       // Count pending providers created after last visit
-      const { count: providersCount } = await supabaseAdmin
+      const { count: providersCount } = await supabase
         .from('insurers')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending')
         .gte('created_at', new Date(lastApprovalsVisit).toISOString());
 
       // Count open disputes created after last visit
-      const { count: disputesCount } = await supabaseAdmin
+      const { count: disputesCount } = await supabase
         .from('disputes')
         .select('*', { count: 'exact', head: true })
         .in('status', ['open', 'investigating'])
@@ -90,7 +90,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       // Count top-ups created after last visit
       let topUpsCount = 0;
       try {
-        const { count } = await supabaseAdmin
+        const { count } = await supabase
           .from('top_ups')
           .select('*', { count: 'exact', head: true })
           .gte('created_at', new Date(lastTopUpsVisit).toISOString());
@@ -100,47 +100,47 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       }
 
       // Count pending/incomplete members (status = pending or incomplete profiles)
-      const { count: pendingMembersCount } = await supabaseAdmin
+      const { count: pendingMembersCount } = await supabase
         .from('members')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
 
       // Count in-progress cover plans
-      const { count: inProgressCoverPlansCount } = await supabaseAdmin
+      const { count: inProgressCoverPlansCount } = await supabase
         .from('member_cover_plans')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'in_progress');
 
       // Count all active partners (for Partners tab)
-      const { count: allPartnersCount } = await supabaseAdmin
+      const { count: allPartnersCount } = await supabase
         .from('partners')
         .select('*', { count: 'exact', head: true });
 
       // Count overdue invoices
-      const { count: overdueInvoicesCount } = await supabaseAdmin
+      const { count: overdueInvoicesCount } = await supabase
         .from('partner_invoices')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'overdue');
 
       // Count all active agents (for Agents tab)
-      const { count: allAgentsCount } = await supabaseAdmin
+      const { count: allAgentsCount } = await supabase
         .from('agents')
         .select('*', { count: 'exact', head: true });
 
       // Count unpaid commissions
-      const { count: unpaidCommissionsCount } = await supabaseAdmin
+      const { count: unpaidCommissionsCount } = await supabase
         .from('agent_commissions')
         .select('*', { count: 'exact', head: true })
         .eq('payout_status', 'pending');
 
       // Count all providers
-      const { count: allProvidersCount } = await supabaseAdmin
+      const { count: allProvidersCount } = await supabase
         .from('insurers')
         .select('*', { count: 'exact', head: true });
 
       // Count today's transactions
       const today = new Date().toISOString().split('T')[0];
-      const { count: todayTransactionsCount } = await supabaseAdmin
+      const { count: todayTransactionsCount } = await supabase
         .from('transactions')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', today);

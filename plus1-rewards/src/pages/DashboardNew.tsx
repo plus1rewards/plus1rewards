@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseAdmin } from '../lib/supabase';
 import { getSession, clearSession } from '../lib/session';
 import { encodeMemberQR } from '../lib/config';
 import QRCode from 'qrcode';
@@ -50,6 +50,13 @@ interface Transaction {
   };
 }
 
+interface WalletEntry {
+  id: string;
+  amount: number;
+  entry_type: string;
+  created_at: string;
+}
+
 interface LinkedPerson {
   id: string;
   full_name: string;
@@ -74,6 +81,7 @@ const DashboardNew: React.FC = () => {
   const [member, setMember] = useState<Member | null>(null);
   const [mainCoverPlan, setMainCoverPlan] = useState<MemberCoverPlan | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [walletEntries, setWalletEntries] = useState<WalletEntry[]>([]);
   const [linkedPeople, setLinkedPeople] = useState<LinkedPerson[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -90,13 +98,57 @@ const DashboardNew: React.FC = () => {
   const [showPlanSelection, setShowPlanSelection] = useState(false);
   const [canChangePlan, setCanChangePlan] = useState(true);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradePlanInfo, setUpgradePlanInfo] = useState<{cost: number, currentPlan: string, newPlan: string} | null>(null);
   const [showPendingVerification, setShowPendingVerification] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<string>('');
 
 
   // Debug: Log when showProfileIncomplete changes
   useEffect(() => {
     console.log('📢 showProfileIncomplete changed:', showProfileIncomplete, 'missingFields:', missingFields);
   }, [showProfileIncomplete, missingFields]);
+
+  // Countdown timer for active plans
+  useEffect(() => {
+    console.log('🕐 Countdown timer check:', {
+      hasPlan: !!mainCoverPlan,
+      status: mainCoverPlan?.status,
+      active_to: mainCoverPlan?.active_to
+    });
+
+    if (!mainCoverPlan || mainCoverPlan.status !== 'active' || !mainCoverPlan.active_to) {
+      setTimeRemaining('');
+      return;
+    }
+
+    const updateCountdown = () => {
+      const now = new Date().getTime();
+      const endTime = new Date(mainCoverPlan.active_to).getTime();
+      const distance = endTime - now;
+
+      console.log('⏱️ Countdown update:', { now, endTime, distance });
+
+      // Show time even if negative (expired)
+      const absDistance = Math.abs(distance);
+      const days = Math.floor(absDistance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((absDistance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((absDistance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((absDistance % (1000 * 60)) / 1000);
+
+      const timeString = distance < 0 
+        ? `Expired ${days}d ${hours}h ${minutes}m ${seconds}s ago`
+        : `${days}d ${hours}h ${minutes}m ${seconds}s`;
+      
+      console.log('⏱️ Time remaining:', timeString);
+      setTimeRemaining(timeString);
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, [mainCoverPlan]);
 
   const generateQRCode = async (qrCode: string, phone: string) => {
     const qrValue = encodeMemberQR(qrCode, phone);
@@ -225,6 +277,19 @@ const DashboardNew: React.FC = () => {
         setRecentTransactions(txData as any);
       }
 
+      // Get wallet entries for lifetime earnings calculation (use admin client to bypass RLS)
+      const { data: walletData } = await supabaseAdmin
+        .from('cover_plan_wallet_entries')
+        .select('id, amount, entry_type, created_at')
+        .eq('member_id', memberData.id)
+        .order('created_at', { ascending: false});
+
+      console.log('💳 Wallet entries loaded:', walletData);
+
+      if (walletData) {
+        setWalletEntries(walletData as any);
+      }
+
       // Get linked people (dependants)
       const { data: linkedData } = await supabase
         .from('linked_people')
@@ -272,7 +337,12 @@ const DashboardNew: React.FC = () => {
   const targetAmount = mainCoverPlan ? Number(mainCoverPlan.target_amount) : 0;
   const fundedAmount = mainCoverPlan ? Number(mainCoverPlan.funded_amount) : 0;
   const overflowBalance = mainCoverPlan ? Number(mainCoverPlan.overflow_balance) : 0;
-  const totalCashbackEarned = fundedAmount + overflowBalance;
+  
+  // Calculate total lifetime earned from wallet entries (sum of all positive amounts)
+  const totalCashbackEarned = walletEntries
+    .filter(entry => Number(entry.amount) > 0)
+    .reduce((sum, entry) => sum + Number(entry.amount), 0);
+  
   const progressPercent = mainCoverPlan 
     ? Math.min((fundedAmount / targetAmount) * 100, 100)
     : 0;
@@ -505,8 +575,9 @@ const DashboardNew: React.FC = () => {
         }
       }
       // If profile is complete and plan was paused, change to pending for Day1Health verification
-      else if (isProfileComplete && mainCoverPlan.status === 'paused' && progressPercent >= 100) {
-        console.log('✅ Profile complete - changing paused plan to pending for verification');
+      // BUT ONLY if it's never been active before (first time reaching 100%)
+      else if (isProfileComplete && mainCoverPlan.status === 'paused' && progressPercent >= 100 && !mainCoverPlan.active_from) {
+        console.log('✅ Profile complete - changing paused plan to pending for verification (first time)');
         const { error: updateError } = await supabase
           .from('member_cover_plans')
           .update({ status: 'pending' })
@@ -561,30 +632,61 @@ const DashboardNew: React.FC = () => {
     const currentTarget = Number(mainCoverPlan.target_amount);
     const currentOverflow = Number(mainCoverPlan.overflow_balance);
     
-    let nextTarget = 0;
     let upgradeCost = 0;
-    let nextPlanId = '';
+    let currentPlanName = '';
+    let newPlanName = 'Comprehensive - Value Plus - Single';
     
     if (currentTarget === 390) {
-      nextTarget = 665;
       upgradeCost = 275;
-      // Get the R665 plan ID
-      const { data: nextPlan } = await supabase
-        .from('cover_plans')
-        .select('id')
-        .eq('monthly_target_amount', 665)
-        .eq('status', 'active')
-        .single();
-      
-      if (!nextPlan) {
-        showError('Upgrade Error', 'R665 plan not found. Please contact support.', 3000);
-        return;
-      }
-      nextPlanId = nextPlan.id;
+      currentPlanName = 'Hospital - Value - Single';
+    } else if (currentTarget === 385) {
+      upgradeCost = 280;
+      currentPlanName = 'Day to Day Single';
+    } else if (currentTarget === 665) {
+      showWarning(
+        'Already on Comprehensive Plan', 
+        `You are already on the Comprehensive plan (R665/month). This is the highest plan available.`,
+        4000
+      );
+      return;
     } else {
       showWarning('Maximum Plan Reached', 'You are already on the highest plan!', 3000);
       return;
     }
+
+    // Show upgrade modal with plan info
+    setUpgradePlanInfo({
+      cost: upgradeCost,
+      currentPlan: currentPlanName,
+      newPlan: newPlanName
+    });
+    setShowUpgradeModal(true);
+  };
+
+  const confirmUpgrade = async () => {
+    if (!mainCoverPlan || !upgradePlanInfo) return;
+
+    const currentTarget = Number(mainCoverPlan.target_amount);
+    const currentOverflow = Number(mainCoverPlan.overflow_balance);
+    const upgradeCost = upgradePlanInfo.cost;
+    
+    let nextTarget = 665;
+    let nextPlanId = '';
+
+    // Get the R665 plan ID
+    const { data: nextPlan } = await supabase
+      .from('cover_plans')
+      .select('id')
+      .eq('monthly_target_amount', 665)
+      .eq('status', 'active')
+      .single();
+    
+    if (!nextPlan) {
+      showError('Upgrade Error', 'R665 plan not found. Please contact support.', 3000);
+      return;
+    }
+    nextPlanId = nextPlan.id;
+
 
     if (currentOverflow < upgradeCost) {
       showError(
@@ -592,12 +694,14 @@ const DashboardNew: React.FC = () => {
         `You need R${upgradeCost.toFixed(2)} to upgrade. You have R${currentOverflow.toFixed(2)}.`,
         3000
       );
+      setShowUpgradeModal(false);
       return;
     }
 
     try {
       const newOverflow = currentOverflow - upgradeCost;
       
+      // Update member_cover_plans table
       const { error } = await supabase
         .from('member_cover_plans')
         .update({ 
@@ -613,6 +717,18 @@ const DashboardNew: React.FC = () => {
 
       if (error) throw error;
 
+      // Update members table with new plan name and price
+      const { error: memberError } = await supabase
+        .from('members')
+        .update({
+          cover_plan_name: 'Comprehensive - Value Plus - Single',
+          cover_plan_price: 665
+        })
+        .eq('id', member!.id);
+
+      if (memberError) throw memberError;
+
+      // Create wallet entry
       await supabase
         .from('cover_plan_wallet_entries')
         .insert({
@@ -624,6 +740,7 @@ const DashboardNew: React.FC = () => {
         });
 
       setShowUpgradePrompt(false);
+      setShowUpgradeModal(false);
       sessionStorage.removeItem('last_upgrade_prompt_overflow');
       loadDashboardData();
       
@@ -683,7 +800,35 @@ const DashboardNew: React.FC = () => {
       setIsEditingProfile(false);
 
       showSuccess('Profile Updated', 'Profile updated successfully!', 3000);
-      loadDashboardData();
+      
+      // Reload dashboard data
+      await loadDashboardData();
+      
+      // After reload, check if paused plan should become pending
+      if (mainCoverPlan?.status === 'paused') {
+        const isProfileComplete = 
+          email && 
+          !email.includes('@plus1rewards.local') && 
+          member.sa_id && 
+          member.address_line_1;
+        
+        const progressPercent = mainCoverPlan 
+          ? Math.min((Number(mainCoverPlan.funded_amount) / Number(mainCoverPlan.target_amount)) * 100, 100)
+          : 0;
+        
+        if (isProfileComplete && progressPercent >= 100 && !mainCoverPlan.active_from) {
+          // Profile now complete, change paused to pending
+          const { error: updateError } = await supabase
+            .from('member_cover_plans')
+            .update({ status: 'pending' })
+            .eq('id', mainCoverPlan.id);
+          
+          if (!updateError) {
+            // Reload again to show pending status
+            await loadDashboardData();
+          }
+        }
+      }
     } catch (error: any) {
       console.error('Error updating profile:', error);
       setIsEditingProfile(false);
@@ -1001,6 +1146,20 @@ const DashboardNew: React.FC = () => {
                         View Verification Steps →
                       </button>
                     </div>
+                  </div>
+                )}
+                {mainCoverPlan?.status === 'active' && timeRemaining && (
+                  <div className="bg-green-50 border-2 border-green-300 rounded-lg p-3 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="material-symbols-outlined text-green-600 text-xl">schedule</span>
+                      <p className="text-sm font-black text-green-700">TIME REMAINING</p>
+                    </div>
+                    <p className="text-2xl font-black text-green-800 tracking-tight">
+                      {timeRemaining}
+                    </p>
+                    <p className="text-xs text-green-700 font-semibold mt-1">
+                      Until renewal check
+                    </p>
                   </div>
                 )}
                 <div className="flex justify-between items-end">
@@ -1432,6 +1591,124 @@ const DashboardNew: React.FC = () => {
           memberPhone={member.phone}
           onClose={() => setShowPendingVerification(false)}
         />
+      )}
+
+      {/* Upgrade Plan Modal */}
+      {showUpgradeModal && upgradePlanInfo && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Upgrade to Comprehensive Plan</h2>
+                <button
+                  onClick={() => setShowUpgradeModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              {/* Plan Info */}
+              <div className="space-y-4 mb-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-bold text-lg text-blue-900 mb-2">Comprehensive - Value Plus - Single</h3>
+                  <p className="text-blue-800 mb-2">Price: R665.00/month</p>
+                  <p className="text-sm text-blue-700">Upgrade Cost: R{upgradePlanInfo.cost.toFixed(2)}</p>
+                </div>
+
+                {/* Cover Details */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-bold text-gray-900 mb-3">What's Included:</h4>
+                  <ul className="space-y-2 text-sm text-gray-700">
+                    <li className="flex items-start gap-2">
+                      <span className="material-symbols-outlined text-green-600 text-lg">check_circle</span>
+                      <span><strong>Private Managed Doctor Visits</strong> - 5 visits per member per annum</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="material-symbols-outlined text-green-600 text-lg">check_circle</span>
+                      <span><strong>Acute/Chronic Medication</strong> - According to Day1 Health formulary</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="material-symbols-outlined text-green-600 text-lg">check_circle</span>
+                      <span><strong>Dentistry / Optometry</strong> - Basic treatment & eye tests</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="material-symbols-outlined text-green-600 text-lg">check_circle</span>
+                      <span><strong>Private Hospital Benefits</strong> - Up to R57,000 for 21 days</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="material-symbols-outlined text-green-600 text-lg">check_circle</span>
+                      <span><strong>Accident/Trauma Benefit</strong> - Up to R150,000 per member</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="material-symbols-outlined text-green-600 text-lg">check_circle</span>
+                      <span><strong>24 Hour Emergency Ambulance</strong> - Immediate cover</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="material-symbols-outlined text-green-600 text-lg">check_circle</span>
+                      <span><strong>Maternity Benefit</strong> - Up to R20,000 (12 month waiting period)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="material-symbols-outlined text-green-600 text-lg">check_circle</span>
+                      <span><strong>Family Funeral Benefit</strong> - Up to R20,000 principal member</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* View Brochure Button */}
+                <a
+                  href="/Comprehensive Value Plus Plan.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <span className="material-symbols-outlined">description</span>
+                  <span className="font-semibold">View Full Brochure</span>
+                </a>
+              </div>
+
+              {/* Upgrade Summary */}
+              <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-gray-700">Current Plan:</span>
+                  <span className="font-semibold text-gray-900">{upgradePlanInfo.currentPlan}</span>
+                </div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-gray-700">New Plan:</span>
+                  <span className="font-semibold text-gray-900">{upgradePlanInfo.newPlan}</span>
+                </div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-gray-700">Upgrade Cost:</span>
+                  <span className="font-bold text-blue-600">R{upgradePlanInfo.cost.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700">Your Overflow Balance:</span>
+                  <span className="font-bold text-green-600">R{Number(mainCoverPlan?.overflow_balance || 0).toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowUpgradeModal(false)}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmUpgrade}
+                  disabled={Number(mainCoverPlan?.overflow_balance || 0) < upgradePlanInfo.cost}
+                  className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {Number(mainCoverPlan?.overflow_balance || 0) < upgradePlanInfo.cost 
+                    ? 'Insufficient Overflow' 
+                    : 'Confirm Upgrade'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

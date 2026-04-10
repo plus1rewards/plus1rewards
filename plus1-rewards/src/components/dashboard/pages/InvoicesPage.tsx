@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../DashboardLayout';
 import StatCard from '../components/StatCard';
 import { supabaseAdmin } from '../../../lib/supabase';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function InvoicesPage() {
   const navigate = useNavigate();
@@ -92,59 +94,170 @@ export default function InvoicesPage() {
     }
   };
 
-  const handleSendTestEmail = async (emailType: 'due' | 'overdue' | 'payment_received' | 'suspended' | 'reactivated') => {
+  // Shared: build filled HTML from template + data
+  const buildStatementHtml = async (partnerId: string, invoiceMonth: string) => {
+    const [year, month] = invoiceMonth.split('-');
+    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1).toISOString();
+    const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59).toISOString();
+
+    const [{ data: partner }, { data: invoice }, { data: transactions }] = await Promise.all([
+      supabaseAdmin.from('partners').select('id, shop_name, email, cell_phone, address, contact_person').eq('id', partnerId).single(),
+      supabaseAdmin.from('partner_invoices').select('*').eq('partner_id', partnerId).eq('invoice_month', invoiceMonth).maybeSingle(),
+      supabaseAdmin.from('transactions').select('purchase_amount, cashback_percent, member_amount, agent_amount, system_amount, created_at, transaction_time, members(cell_phone)').eq('partner_id', partnerId).eq('status', 'completed').gte('created_at', startDate).lte('created_at', endDate).order('created_at', { ascending: true }),
+    ]);
+
+    if (!partner) throw new Error('Partner not found');
+
+    const fmt = (v: number) => v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const maskPhone = (p: string) => { const d = p.replace(/\D/g, ''); return d.length === 10 ? `+27 ${d[1]}** *** ${d.slice(7)}` : '***'; };
+
+    const txList = (transactions || []).map((t: any) => ({ ...t, member_phone: t.members?.cell_phone || '' }));
+    const totalSales = txList.reduce((s: number, t: any) => s + parseFloat(t.purchase_amount), 0);
+    const memberRewards = txList.reduce((s: number, t: any) => s + parseFloat(t.member_amount), 0);
+    const agentCommission = txList.reduce((s: number, t: any) => s + parseFloat(t.agent_amount), 0);
+    const platformFee = txList.reduce((s: number, t: any) => s + parseFloat(t.system_amount), 0);
+    const totalCashback = memberRewards + agentCommission + platformFee;
+    const totalDue = invoice ? parseFloat(invoice.total_amount) : totalCashback;
+    const dueDate = invoice ? new Date(invoice.due_date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+    const issueDate = new Date().toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' });
+    const ref = `PLUS1-${partner.shop_name.replace(/\s+/g, '').toUpperCase().substring(0, 8)}-${invoiceMonth}`;
+
+    const rows = txList.length === 0
+      ? `<tr><td colspan="9" style="padding:15px; text-align:center; color:#999; font-size:12px;">No transactions this period</td></tr>`
+      : txList.map((t: any, i: number) => {
+          const bg = i % 2 === 0 ? '#ffffff' : '#f9fafb';
+          const date = new Date(t.created_at).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' });
+          const time = t.transaction_time ? t.transaction_time.substring(0, 5) : new Date(t.created_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+          const total = parseFloat(t.member_amount) + parseFloat(t.agent_amount) + parseFloat(t.system_amount);
+          return `<tr style="background:${bg};">
+            <td style="padding:8px; border-bottom:1px solid #f0f0f0; font-size:12px;">${date}</td>
+            <td style="padding:8px; border-bottom:1px solid #f0f0f0; font-size:12px;">${time}</td>
+            <td style="padding:8px; border-bottom:1px solid #f0f0f0; font-size:12px;">${maskPhone(t.member_phone)}</td>
+            <td style="padding:8px; border-bottom:1px solid #f0f0f0; font-size:12px;" align="right">R ${fmt(parseFloat(t.purchase_amount))}</td>
+            <td style="padding:8px; border-bottom:1px solid #f0f0f0; font-size:12px;" align="right">${t.cashback_percent}%</td>
+            <td style="padding:8px; border-bottom:1px solid #f0f0f0; font-size:12px;" align="right">R ${fmt(parseFloat(t.member_amount))}</td>
+            <td style="padding:8px; border-bottom:1px solid #f0f0f0; font-size:12px;" align="right">R ${fmt(parseFloat(t.agent_amount))}</td>
+            <td style="padding:8px; border-bottom:1px solid #f0f0f0; font-size:12px;" align="right">R ${fmt(parseFloat(t.system_amount))}</td>
+            <td style="padding:8px; border-bottom:1px solid #f0f0f0; font-size:12px; color:#16a34a; font-weight:bold;" align="right">R ${fmt(total)}</td>
+          </tr>`;
+        }).join('');
+
+    const templateRes = await fetch('/statement.html');
+    if (!templateRes.ok) throw new Error('Could not load statement template');
+    let html = await templateRes.text();
+
+    const vars: Record<string, string> = {
+      Month_Year: invoiceMonth, Statement_Reference: ref,
+      Responsible_Person_Name: partner.contact_person || partner.shop_name,
+      Business_Name: partner.shop_name, Issue_Date: issueDate, Due_Date: dueDate,
+      Total_Sales: fmt(totalSales), Total_Cashback: fmt(totalCashback),
+      Member_Rewards: fmt(memberRewards), Agent_Commission: fmt(agentCommission),
+      Platform_Fee: fmt(platformFee), Total_Amount_Due: fmt(totalDue),
+      Transaction_Rows: rows,
+      Bank_Name: 'FNB', Account_Holder: 'Plus1 Rewards (Pty) Ltd',
+      Account_Number: '62XXXXXXXXXX', Branch_Code: '250655',
+    };
+
+    html = html.replace(/\{\{\{(\w+)\}\}\}/g, (_, key) => vars[key] ?? '');
+    return { html, partner, totalDue: fmt(totalDue), dueDate, ref, invoiceMonth };
+  };
+
+  // Render HTML in hidden div → html2canvas → jsPDF → base64
+  const generatePdfBase64 = async (html: string): Promise<string> => {
+    const container = document.createElement('div');
+    container.style.cssText = 'position:fixed; left:-9999px; top:0; width:794px; background:#f4f4f4;';
+    container.innerHTML = html;
+    document.body.appendChild(container);
+
+    try {
+      const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#f4f4f4' });
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgH = (canvas.height * pageW) / canvas.width;
+
+      let yPos = 0;
+      let remaining = imgH;
+      while (remaining > 0) {
+        if (yPos > 0) pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, -yPos, pageW, imgH);
+        yPos += pageH;
+        remaining -= pageH;
+      }
+
+      return pdf.output('datauristring').split(',')[1];
+    } finally {
+      document.body.removeChild(container);
+    }
+  };
+
+  const handleSendTestPdfStatement = async () => {
     setSendingTestEmail(true);
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const resendApiKey = import.meta.env.VITE_RESEND_API_KEY;
 
+      const response = await fetch(`${supabaseUrl}/functions/v1/process-partner-invoices`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          testPartnerId: '4f04b3a3-2ba3-48e9-bf2a-0db036a4d576',
+          invoiceMonth: new Date().toISOString().slice(0, 7),
+          overrideEmail: 'theodt.bmm@gmail.com',
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed');
+      alert(`2 emails sent to theodt.bmm@gmail.com\n\nStatus: ${data.results?.[0]?.status}`);
+      setShowTestEmailModal(false);
+    } catch (error) {
+      alert(`Failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSendingTestEmail(false);
+    }
+  };
+
+  const handleSendTestEmail = async (emailType: 'due' | 'overdue' | 'payment_received' | 'suspended' | 'reactivated') => {
+    // These legacy template tests use the Growithus partner's real email
+    setSendingTestEmail(true);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+      // Trigger via process-partner-invoices so it uses the partner's real email
       const templateMap = {
         due: 'partner-invoice-due',
         overdue: 'partner-invoice-overdue',
         payment_received: 'partner-payment-received',
         suspended: 'partner-suspended',
-        reactivated: 'partner-reactivated', // Create this template in Resend
+        reactivated: 'partner-reactivated',
       };
 
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/send-statement-email`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+      const response = await fetch(`${supabaseUrl}/functions/v1/send-statement-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // Partner email fetched server-side from DB - no hardcoded address
+          partnerEmail: invoices.find(i => i.partners?.email)?.partners?.email || '',
+          templateId: templateMap[emailType],
+          resendApiKey: import.meta.env.VITE_RESEND_API_KEY,
+          variables: {
+            Month_Year: new Date().toISOString().slice(0, 7),
+            Issue_Date: new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
+            Due_Date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
+            Responsible_Person_Name: 'Partner',
+            Total_Amount: 'R0.00',
           },
-          body: JSON.stringify({
-            partnerEmail: 'theodt.bmm@gmail.com',
-            templateId: templateMap[emailType],
-            variables: {
-              Month_Year: '2026-03',
-              Issue_Date: new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
-              Due_Date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
-              Responsible_Person_Name: 'Test Partner',
-              Total_sales: 'R15,420.00',
-              Total_Cashback: 'R771.00',
-              Member_cashback_percentage: '5%',
-              Member_Rewards: 'R755.00',
-              System_Reward: 'R8.00',
-              Agent_commision: 'R8.00',
-              Total_Amount: 'R771.00',
-            },
-            resendApiKey: resendApiKey,
-          }),
-        }
-      );
+        }),
+      });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to send test email');
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send test email');
-      }
-
-      alert(`Test email (${emailType}) sent successfully to theodt.bmm@gmail.com`);
+      alert(`Test email (${emailType}) sent to partner's registered email`);
       setShowTestEmailModal(false);
       setTestEmailType(null);
     } catch (error) {
-      console.error('Error sending test email:', error);
       alert(`Failed to send test email: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setSendingTestEmail(false);
@@ -152,70 +265,38 @@ export default function InvoicesPage() {
   };
 
   const handleSendStatement = async () => {
-    if (!selectedPartner) {
-      alert('Please select a partner');
-      return;
-    }
-
+    if (!selectedPartner) { alert('Please select a partner'); return; }
     setSendingEmail(true);
     try {
-      // Fetch transactions for this partner in the statement month
-      const [year, month] = selectedPartner.invoice_month.split('-');
-      const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-      const endDate = new Date(parseInt(year), parseInt(month), 0);
+      const { html, partner, totalDue, dueDate, ref } = await buildStatementHtml(
+        selectedPartner.partner_id,
+        selectedPartner.invoice_month
+      );
 
-      const { data: transactions } = await supabaseAdmin
-        .from('transactions')
-        .select('purchase_amount, member_amount, system_amount, agent_amount')
-        .eq('partner_id', selectedPartner.partner_id)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
-
-      // Calculate totals
-      const totalSales = transactions?.reduce((sum, t) => sum + (parseFloat(t.purchase_amount) || 0), 0) || 0;
-      const memberRewards = transactions?.reduce((sum, t) => sum + (parseFloat(t.member_amount) || 0), 0) || 0;
-      const systemReward = transactions?.reduce((sum, t) => sum + (parseFloat(t.system_amount) || 0), 0) || 0;
-      const agentCommission = transactions?.reduce((sum, t) => sum + (parseFloat(t.agent_amount) || 0), 0) || 0;
-      const totalAmount = parseFloat(selectedPartner.total_amount);
-      const cashbackPercent = totalSales > 0 ? ((totalAmount / totalSales) * 100).toFixed(1) : '0';
+      const pdfBase64 = await generatePdfBase64(html);
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const resendApiKey = import.meta.env.VITE_RESEND_API_KEY;
-      
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/send-statement-email`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            partnerEmail: selectedPartner.partners?.email,
-            variables: {
-              Month_Year: selectedPartner.invoice_month,
-              Issue_Date: new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
-              Due_Date: new Date(selectedPartner.due_date).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
-              Responsible_Person_Name: selectedPartner.partners?.shop_name || 'Partner',
-              Total_sales: `R${totalSales.toFixed(2)}`,
-              Total_Cashback: `R${totalAmount.toFixed(2)}`,
-              Member_cashback_percentage: `${cashbackPercent}%`,
-              Member_Rewards: `R${memberRewards.toFixed(2)}`,
-              System_Reward: `R${systemReward.toFixed(2)}`,
-              Agent_commision: `R${agentCommission.toFixed(2)}`,
-              Total_Amount: `R${totalAmount.toFixed(2)}`,
-            },
-            resendApiKey: resendApiKey,
-          }),
-        }
-      );
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/send-statement-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          partnerEmail: selectedPartner.partners?.email,
+          templateId: 'statement',
+          resendApiKey,
+          pdfBase64,
+          pdfFilename: `Plus1-Statement-${selectedPartner.invoice_month}.pdf`,
+          partnerName: partner.shop_name,
+          totalDue, dueDate, ref,
+          invoiceMonth: selectedPartner.invoice_month,
+        }),
+      });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to send email');
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send email');
-      }
-
-      alert(`Statement sent successfully to ${selectedPartner.partners?.email}`);
+      alert(`Statement sent to ${selectedPartner.partners?.email}`);
       setShowSendModal(false);
       setSelectedPartner(null);
     } catch (error) {
@@ -280,7 +361,7 @@ export default function InvoicesPage() {
             <button
               onClick={() => setShowTestEmailModal(true)}
               className="flex items-center gap-2 px-5 py-2.5 font-bold rounded-lg border border-orange-500 bg-white text-orange-500 hover:bg-orange-500 hover:text-white transition-all text-sm"
-              title="Send test emails to theodt.bmm@gmail.com"
+              title="Send test emails to partner's registered email"
             >
               <span className="material-symbols-outlined text-lg">mail</span>
               Test Emails
@@ -699,7 +780,18 @@ export default function InvoicesPage() {
 
           {/* Modal Content */}
           <div className="px-6 py-6 space-y-3">
-            <p className="text-sm text-gray-600 mb-4">Send test emails to theodt.bmm@gmail.com</p>
+            <p className="text-sm text-gray-600 mb-4">Sends to the partner's registered email address</p>
+
+            <button
+              onClick={handleSendTestPdfStatement}
+              disabled={sendingTestEmail}
+              className="w-full px-4 py-3 bg-[#1a568b] border border-[#1a568b] text-white rounded-lg hover:opacity-90 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
+              {sendingTestEmail ? 'Sending...' : 'Send 2 Statement Emails (Test)'}
+            </button>
+
+            <hr className="border-gray-200"/>
 
             <button
               onClick={() => handleSendTestEmail('due')}

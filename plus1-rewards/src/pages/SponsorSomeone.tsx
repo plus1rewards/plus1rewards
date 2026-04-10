@@ -264,10 +264,9 @@ const SponsorSomeone: React.FC = () => {
         return;
       }
 
-      // Create active cover plan for sponsored member
+      // Create paused cover plan for sponsored member
       // Status is 'paused' because plan is 100% funded but profile is incomplete
-      const activeFrom = new Date();
-      const activeTo = new Date(activeFrom.getTime() + 30 * 24 * 60 * 60 * 1000);
+      // Do NOT set active_from/active_to - those get set when Day1Health activates it
 
       const { data: newCoverPlan, error: planError } = await supabase
         .from('member_cover_plans')
@@ -279,8 +278,6 @@ const SponsorSomeone: React.FC = () => {
           funded_amount: planAmount,
           overflow_balance: 0,
           status: 'paused',
-          active_from: activeFrom.toISOString(),
-          active_to: activeTo.toISOString(),
           sponsored_by: sponsor.id
         })
         .select()

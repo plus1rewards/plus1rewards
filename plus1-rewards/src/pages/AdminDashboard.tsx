@@ -540,6 +540,59 @@ export function AdminDashboard() {
           {/* Incomplete Profile Alerts */}
           <IncompleteProfileAlerts />
 
+          {/* TEST BUTTON - Expire Plans */}
+          <div style={{ marginBottom: '1rem' }}>
+            <button
+              onClick={async () => {
+                if (!confirm('⚠️ This will set all active/pending plans to expire (30 days in the past). Continue?')) return;
+                try {
+                  const { error } = await supabaseAdmin
+                    .from('member_cover_plans')
+                    .update({ active_to: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() })
+                    .in('status', ['active', 'pending'])
+                    .not('active_to', 'is', null);
+                  
+                  if (error) throw error;
+                  
+                  alert('✅ All active/pending plans set to expire! Now run the renewal function to test.');
+                  loadComprehensiveData();
+                } catch (err) {
+                  console.error(err);
+                  alert('❌ Failed to expire plans: ' + err.message);
+                }
+              }}
+              style={{
+                background: '#dc2626',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '1rem 1.5rem',
+                fontSize: '0.95rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                transition: 'all 0.2s',
+                boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)'
+              }}
+              onMouseOver={e => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.4)';
+              }}
+              onMouseOut={e => {
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(220, 38, 38, 0.3)';
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '1.5rem' }}>science</span>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: '1rem', fontWeight: 700 }}>🧪 TEST: Expire All Plans</div>
+                <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>Set active/pending plans to 30 days past for testing renewal</div>
+              </div>
+            </button>
+          </div>
+
           {/* Navigation Tabs */}
           <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '2px solid var(--gray-border)', paddingBottom: '0.5rem' }}>
             {[

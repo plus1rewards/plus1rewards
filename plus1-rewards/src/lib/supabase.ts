@@ -9,7 +9,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-// Regular client for public/member/shop operations
+// Regular client for all operations (RLS enforced)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
@@ -20,5 +20,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Admin client with service role for admin operations (bypasses RLS)
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRole || supabaseAnonKey);
+// Admin client with service role (bypasses RLS)
+// WARNING: Only use in admin-protected routes
+export const supabaseAdmin = supabaseServiceRole 
+  ? createClient(supabaseUrl, supabaseServiceRole, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
+    })
+  : supabase; // Fallback to regular client if service role not available

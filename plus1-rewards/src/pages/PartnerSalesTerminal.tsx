@@ -127,7 +127,7 @@ export default function PartnerSalesTerminal() {
     try {
       const { data, error: memberError } = await supabase
         .from('members')
-        .select('id, first_name, last_name, cell_phone, status, role')
+        .select('id, first_name, last_name, cell_phone, status, role, email, sa_id, address_line_1')
         .eq('cell_phone', phoneNumber)
         .single();
 
@@ -160,11 +160,36 @@ export default function PartnerSalesTerminal() {
         .eq('member_id', data.id)
         .eq('status', 'paused');
 
+      console.log('🔍 Paused plans check:', { pausedPlans, planError });
+
       if (!planError && pausedPlans && pausedPlans.length > 0) {
-        setError('Member policy is PAUSED. Member needs to complete their profile information (email, ID number, address) in the +1 Rewards app before transactions can continue. Please ask them to update their information.');
-        setLoading(false);
-        setActiveField('phone');
-        return;
+        // Check if profile is complete to determine the reason for pause
+        const isProfileComplete = 
+          data.email && 
+          !data.email.includes('@plus1rewards.local') && 
+          data.sa_id && 
+          data.address_line_1;
+
+        console.log('🔍 Profile check:', {
+          email: data.email,
+          hasEmail: !!data.email,
+          notPlusRewards: !data.email?.includes('@plus1rewards.local'),
+          sa_id: data.sa_id,
+          address: data.address_line_1,
+          isProfileComplete
+        });
+
+        if (!isProfileComplete) {
+          // Profile incomplete - BLOCK transaction
+          console.log('❌ Blocking: Profile incomplete');
+          setError('Member policy is PAUSED. Member needs to complete their profile information (email, ID number, address) in the +1 Rewards app before transactions can continue. Please ask them to update their information.');
+          setLoading(false);
+          setActiveField('phone');
+          return;
+        }
+        // If profile is complete but paused (insufficient funds), ALLOW transaction to continue
+        // They need to earn cashback to reactivate their plan
+        console.log('✅ Allowing: Profile complete, paused due to insufficient funds');
       }
 
       setMember(data);
@@ -256,16 +281,21 @@ export default function PartnerSalesTerminal() {
           
           // Determine status based on funding and profile completeness
           let newStatus = 'in_progress';
+          let updateData: any = {
+            funded_amount: newFundedAmount,
+            status: newStatus
+          };
+          
           if (newFundedAmount >= plan.target_amount) {
+            // When plan reaches 100%, it goes to PENDING (not active)
+            // Day1Health will change it to active after verification
             newStatus = isProfileComplete ? 'pending' : 'paused';
+            updateData.status = newStatus;
           }
 
           await supabase
             .from('member_cover_plans')
-            .update({
-              funded_amount: newFundedAmount,
-              status: newStatus
-            })
+            .update(updateData)
             .eq('id', plan.id);
 
           await supabase
@@ -310,6 +340,7 @@ export default function PartnerSalesTerminal() {
 
       // Handle overflow for active plans (if any remaining amount)
       if (remainingAmount > 0) {
+        // First try to find active plans
         const { data: activePlans } = await supabase
           .from('member_cover_plans')
           .select('id, overflow_balance')
@@ -318,30 +349,107 @@ export default function PartnerSalesTerminal() {
           .order('creation_order', { ascending: true })
           .limit(1);
 
-        if (activePlans && activePlans.length > 0) {
-          const activePlan = activePlans[0];
-          const newOverflow = (activePlan.overflow_balance || 0) + remainingAmount;
+        // If no active plans, check for paused plans with complete profile
+        let targetPlan = activePlans && activePlans.length > 0 ? activePlans[0] : null;
+        
+        if (!targetPlan) {
+          // Check if member has complete profile
+          const { data: memberData } = await supabase
+            .from('members')
+            .select('email, sa_id, address_line_1')
+            .eq('id', member.id)
+            .single();
+          
+          const isProfileComplete = 
+            memberData?.email && 
+            !memberData.email.includes('@plus1rewards.local') && 
+            memberData.sa_id && 
+            memberData.address_line_1;
+          
+          if (isProfileComplete) {
+            // Profile complete, allow overflow to paused plans
+            const { data: pausedPlans } = await supabase
+              .from('member_cover_plans')
+              .select('id, overflow_balance')
+              .eq('member_id', member.id)
+              .eq('status', 'paused')
+              .order('creation_order', { ascending: true })
+              .limit(1);
+            
+            if (pausedPlans && pausedPlans.length > 0) {
+              targetPlan = pausedPlans[0];
+            }
+          }
+        }
+
+        if (targetPlan) {
+          const newOverflow = (targetPlan.overflow_balance || 0) + remainingAmount;
+
+          // Get the plan's target amount and current status
+          const { data: planData } = await supabase
+            .from('member_cover_plans')
+            .select('target_amount, status')
+            .eq('id', targetPlan.id)
+            .single();
+
+          const updateData: any = {
+            overflow_balance: newOverflow
+          };
+
+          // If plan is paused and now has enough overflow, check if we should reactivate
+          if (planData?.status === 'paused' && newOverflow >= planData.target_amount) {
+            // Check if profile is complete
+            const { data: memberData } = await supabase
+              .from('members')
+              .select('email, sa_id, address_line_1')
+              .eq('id', member.id)
+              .single();
+            
+            const isProfileComplete = 
+              memberData?.email && 
+              !memberData.email.includes('@plus1rewards.local') && 
+              memberData.sa_id && 
+              memberData.address_line_1;
+
+            // Only reactivate if profile is complete (paused due to insufficient funds, not incomplete profile)
+            if (isProfileComplete) {
+              updateData.status = 'active';
+              updateData.active_from = new Date().toISOString();
+              updateData.active_to = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+              updateData.overflow_balance = newOverflow - planData.target_amount;
+
+              // Create wallet entry for reactivation
+              await supabase
+                .from('cover_plan_wallet_entries')
+                .insert({
+                  member_id: member.id,
+                  member_cover_plan_id: targetPlan.id,
+                  transaction_id: transaction.id,
+                  entry_type: 'plan_reactivated',
+                  amount: planData.target_amount,
+                  balance_after: planData.target_amount
+                });
+            }
+          }
 
           await supabase
             .from('member_cover_plans')
-            .update({
-              overflow_balance: newOverflow
-            })
-            .eq('id', activePlan.id);
+            .update(updateData)
+            .eq('id', targetPlan.id);
 
           await supabase
             .from('cover_plan_wallet_entries')
             .insert({
               member_id: member.id,
-              member_cover_plan_id: activePlan.id,
+              member_cover_plan_id: targetPlan.id,
               transaction_id: transaction.id,
               entry_type: 'overflow_added',
               amount: remainingAmount,
               balance_after: newOverflow
             });
 
-          // Check if this member sponsors anyone and reactivate suspended plans if possible
-          await supabase.rpc('reactivate_suspended_sponsored_plans', {
+          // Check if this member sponsors anyone and reactivate paused plans if possible
+          await supabase.rpc('reactivate_paused_sponsored_plans', {
             p_sponsor_id: member.id
           });
         }
@@ -472,9 +580,28 @@ export default function PartnerSalesTerminal() {
                     }`}
                     onClick={() => setActiveField('phone')}
                   >
-                    <div className="flex items-center gap-2 mb-2">
-                      <User className="w-4 h-4 text-blue-600" />
-                      <label className="text-sm font-semibold text-gray-700">Member Cell Phone</label>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-blue-600" />
+                        <label className="text-sm font-semibold text-gray-700">Member Cell Phone</label>
+                      </div>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            const text = await navigator.clipboard.readText();
+                            const cleaned = text.replace(/\D/g, '').slice(0, 10);
+                            setPhoneNumber(cleaned);
+                            setActiveField('phone');
+                          } catch (err) {
+                            console.error('Failed to paste:', err);
+                          }
+                        }}
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-sm">content_paste</span>
+                        Paste
+                      </button>
                     </div>
                     <div className="text-3xl font-mono font-bold text-gray-900 tracking-wider">
                       {phoneNumber || '0XX XXX XXXX'}

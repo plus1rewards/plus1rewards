@@ -187,14 +187,14 @@ When sponsoring someone:
 ### Sponsorship Renewal (30-Day Cycle)
 After 30 days, sponsored plans need renewal:
 - System checks if sponsor has enough overflow
-- **If YES:** Deduct from sponsor's overflow, renew for 30 days
-- **If NO:** Sponsored plan status → 'suspended', waits for sponsor overflow
-- When sponsor earns overflow: Automatically reactivate suspended sponsored plans
-- Oldest suspended plans reactivated first
+- **If YES:** Deduct from sponsor's overflow, set to 'active' for 30 days
+- **If NO:** Sponsored plan status → 'paused', waits for sponsor overflow
+- When sponsor earns overflow: Automatically reactivate paused sponsored plans
+- Oldest paused plans reactivated first
 
 **Database Functions:**
-- `renew_sponsored_plans()` - Daily cron job to check expired sponsored plans
-- `reactivate_suspended_sponsored_plans(sponsor_id)` - Called after sponsor earns cashback
+- `renew_sponsored_plans()` - Daily cron job (2 AM) to check expired sponsored plans
+- `reactivate_paused_sponsored_plans(sponsor_id)` - Called after sponsor earns cashback
 
 ---
 

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Monthly Statement — Plus1 Rewards</title>
+</head>
+
+<body style="margin:0; padding:0; background:#f4f4f4; font-family:Arial, sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:30px 0;">
+<tr>
+<td align="center">
+
+<table width="640" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:8px; overflow:hidden; border:1px solid #e5e5e5;">
+
+<!-- HEADER -->
+<tr>
+<td style="background:#1a568b; padding:30px; text-align:center;">
+  <p style="margin:0; color:#a5d8ff; font-size:12px; letter-spacing:1px;">PLUS1 REWARDS</p>
+  <h1 style="margin:6px 0 0; color:#ffffff; font-size:22px;">Monthly Partner Statement</h1>
+  <p style="margin:6px 0 0; color:#dbeafe; font-size:13px;">
+    {{{Month_Year}}} &nbsp;·&nbsp; Ref: {{{Statement_Reference}}}
+  </p>
+</td>
+</tr>
+
+<!-- BODY -->
+<tr>
+<td style="padding:30px;">
+
+  <p style="font-size:15px; margin-top:0;">
+    Hi <strong>{{{Responsible_Person_Name}}}</strong>,
+  </p>
+
+  <p style="font-size:14px; color:#555;">
+    Here is your monthly statement for <strong>{{{Business_Name}}}</strong>.<br/>
+    Issued on <strong>{{{Issue_Date}}}</strong>. Please review the summary below and settle the outstanding balance by <strong>{{{Due_Date}}}</strong>.
+  </p>
+
+  <!-- SUMMARY BOX -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin:25px 0; border:1px solid #e0effe; border-radius:6px; overflow:hidden;">
+    <tr>
+      <td style="background:#f0f7ff; padding:12px 15px;">
+        <strong style="color:#1a568b; font-size:14px;">Statement Summary</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:15px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding:6px 0; color:#777; font-size:13px;">Total Sales</td>
+            <td align="right" style="font-size:13px;"><strong>R {{{Total_Sales}}}</strong></td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0; color:#777; font-size:13px;">Total Cashback Generated</td>
+            <td align="right" style="font-size:13px;">R {{{Total_Cashback}}}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0; color:#777; font-size:13px;">Member Rewards</td>
+            <td align="right" style="font-size:13px;">R {{{Member_Rewards}}}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0; color:#777; font-size:13px;">Agent Commission</td>
+            <td align="right" style="font-size:13px;">R {{{Agent_Commission}}}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0; color:#777; font-size:13px;">Platform Fee</td>
+            <td align="right" style="font-size:13px;">R {{{Platform_Fee}}}</td>
+          </tr>
+          <tr>
+            <td colspan="2"><hr style="border:none; border-top:1px solid #eee; margin:10px 0;"/></td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0; font-size:16px;"><strong>Total Amount Due</strong></td>
+            <td align="right" style="font-size:18px; color:#16a34a;"><strong>R {{{Total_Amount_Due}}}</strong></td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <!-- TRANSACTION TABLE -->
+  <p style="font-size:15px; font-weight:bold; margin-top:30px; margin-bottom:10px; color:#1a568b;">
+    Transaction Breakdown
+  </p>
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee; font-size:12px; border-collapse:collapse;">
+    <tr style="background:#f0f7ff; color:#1a568b; font-weight:bold;">
+      <td style="padding:9px 8px; border-bottom:1px solid #ddd;">Date</td>
+      <td style="padding:9px 8px; border-bottom:1px solid #ddd;">Time</td>
+      <td style="padding:9px 8px; border-bottom:1px solid #ddd;">Member</td>
+      <td style="padding:9px 8px; border-bottom:1px solid #ddd;" align="right">Purchase</td>
+      <td style="padding:9px 8px; border-bottom:1px solid #ddd;" align="right">Rate</td>
+      <td style="padding:9px 8px; border-bottom:1px solid #ddd;" align="right">Member</td>
+      <td style="padding:9px 8px; border-bottom:1px solid #ddd;" align="right">Agent</td>
+      <td style="padding:9px 8px; border-bottom:1px solid #ddd;" align="right">System</td>
+      <td style="padding:9px 8px; border-bottom:1px solid #ddd;" align="right">Total</td>
+    </tr>
+    {{{Transaction_Rows}}}
+  </table>
+
+  <!-- PAYMENT DETAILS -->
+  <p style="margin-top:30px; font-size:15px; font-weight:bold; color:#1a568b; margin-bottom:10px;">
+    Payment Details
+  </p>
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e0effe; border-radius:6px; overflow:hidden; font-size:13px;">
+    <tr style="background:#f9fafb;">
+      <td style="padding:10px 15px; color:#777; width:40%;">Bank Name</td>
+      <td style="padding:10px 15px;"><strong>{{{Bank_Name}}}</strong></td>
+    </tr>
+    <tr>
+      <td style="padding:10px 15px; color:#777;">Account Holder</td>
+      <td style="padding:10px 15px;">{{{Account_Holder}}}</td>
+    </tr>
+    <tr style="background:#f9fafb;">
+      <td style="padding:10px 15px; color:#777;">Account Number</td>
+      <td style="padding:10px 15px;"><strong>{{{Account_Number}}}</strong></td>
+    </tr>
+    <tr>
+      <td style="padding:10px 15px; color:#777;">Branch Code</td>
+      <td style="padding:10px 15px;">{{{Branch_Code}}}</td>
+    </tr>
+    <tr style="background:#f9fafb;">
+      <td style="padding:10px 15px; color:#777;">Payment Reference</td>
+      <td style="padding:10px 15px;"><strong style="color:#1a568b;">{{{Statement_Reference}}}</strong></td>
+    </tr>
+  </table>
+
+  <!-- WARNING NOTE -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px; border:1px solid #fcd34d; border-radius:6px; background:#fffbeb;">
+    <tr>
+      <td style="padding:12px 15px; font-size:12px; color:#92400e;">
+        ⚠️ Payment must be received by <strong>{{{Due_Date}}}</strong> to avoid account suspension.
+        Late payments may result in your store being suspended from the Plus1 Rewards platform.
+        For queries contact <strong>support@plus1rewards.co.za</strong>
+      </td>
+    </tr>
+  </table>
+
+</td>
+</tr>
+
+<!-- FOOTER -->
+<tr>
+  <td style="background:#f0f7ff; padding:20px; font-size:11px; color:#777; text-align:center; border-top:1px solid #e0effe;">
+    Statement for <strong>{{{Business_Name}}}</strong> &nbsp;·&nbsp; Ref: {{{Statement_Reference}}} &nbsp;·&nbsp; {{{Month_Year}}}<br/>
+    © Plus1 Rewards · support@plus1rewards.co.za
+  </td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>
