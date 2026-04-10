@@ -1,262 +1,196 @@
 // plus1-rewards/src/lib/adminAuth.ts
-// Secure admin authentication with pattern lock
+// Secure server-side admin authentication with pattern lock
+
+import { supabase } from './supabase';
 
 interface AdminSession {
+  sessionToken: string;
   phone: string;
-  authenticated: boolean;
-  timestamp: number;
-  expiresAt: number;
+  expiresAt: string;
 }
 
-// Admin credentials from environment variables
-const ADMIN_PHONE = import.meta.env.VITE_ADMIN_PHONE || '0714329190';
-const ADMIN_PATTERN_HASH = import.meta.env.VITE_ADMIN_PATTERN_HASH || 'ee38deb99fce50c62cf18117865e0a96cd8fb6cd24b23d03f5b0e69aee36476a';
-const ADMIN_PATTERN_SALT = import.meta.env.VITE_ADMIN_PATTERN_SALT || '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d';
+// Storage key
+const ADMIN_SESSION_KEY = 'plus1_admin_session_v2';
 const ADMIN_GRID_SIZE = 4;
 
-// Session duration: 2 hours
-const SESSION_DURATION = 2 * 60 * 60 * 1000;
+// Get Edge Function URL
+const EDGE_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-auth`;
 
-// Storage keys
-const ADMIN_SESSION_KEY = 'plus1_admin_session';
-const ADMIN_SESSION_ENCRYPTED = 'plus1_admin_auth';
-
-// Simple encryption for session storage (basic obfuscation)
-function encryptSession(data: string): string {
-  return btoa(encodeURIComponent(data));
-}
-
-function decryptSession(encrypted: string): string | null {
-  try {
-    return decodeURIComponent(atob(encrypted));
-  } catch {
-    return null;
-  }
-}
-
-// Hash password (simple hash for client-side, in production use proper backend auth)
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + 'plus1_salt_key');
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Pattern hashing using PBKDF2
-async function hashPattern(canonical: string, salt: string): Promise<string> {
-  const encoder = new TextEncoder();
-  
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(canonical),
-    'PBKDF2',
-    false,
-    ['deriveBits']
-  );
-
-  const hashBuffer = await crypto.subtle.deriveBits(
-    {
-      name: 'PBKDF2',
-      salt: encoder.encode(salt),
-      iterations: 100000,
-      hash: 'SHA-256'
-    },
-    keyMaterial,
-    256
-  );
-
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function generateCanonicalPattern(sequence: number[], gridSize: number = 4): string {
-  return `g${gridSize}:${sequence.join('-')}`;
+// Get client IP and user agent
+function getClientInfo() {
+  return {
+    userAgent: navigator.userAgent,
+    // IP will be detected server-side from request headers
+  };
 }
 
 export const adminAuth = {
-  // Authenticate admin user with pattern
+  // Authenticate admin user with pattern - calls Edge Function
   async loginWithPattern(phone: string, pattern: number[], rememberMe: boolean = false): Promise<{ success: boolean; error?: string }> {
     try {
-      // Validate phone
-      if (phone !== ADMIN_PHONE) {
-        return { success: false, error: 'Invalid credentials' };
+      const clientInfo = getClientInfo();
+
+      const response = await fetch(`${EDGE_FUNCTION_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({
+          phone,
+          pattern,
+          gridSize: ADMIN_GRID_SIZE,
+          userAgent: clientInfo.userAgent
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        return { success: false, error: data.error || 'Authentication failed' };
       }
 
-      // Validate pattern
-      const canonical = generateCanonicalPattern(pattern, ADMIN_GRID_SIZE);
-      const hashedPattern = await hashPattern(canonical, ADMIN_PATTERN_SALT);
-
-      if (hashedPattern !== ADMIN_PATTERN_HASH) {
-        return { success: false, error: 'Invalid pattern' };
-      }
-
-      // Create session
+      // Store session token securely
       const session: AdminSession = {
-        phone,
-        authenticated: true,
-        timestamp: Date.now(),
-        expiresAt: Date.now() + SESSION_DURATION
+        sessionToken: data.sessionToken,
+        phone: data.phone,
+        expiresAt: data.expiresAt
       };
 
-      // Store session
-      const sessionData = JSON.stringify(session);
-      const encrypted = encryptSession(sessionData);
-      
-      if (rememberMe) {
-        localStorage.setItem(ADMIN_SESSION_KEY, encrypted);
-        localStorage.setItem(ADMIN_SESSION_ENCRYPTED, await hashPassword(phone + canonical));
-      } else {
-        sessionStorage.setItem(ADMIN_SESSION_KEY, encrypted);
-        sessionStorage.setItem(ADMIN_SESSION_ENCRYPTED, await hashPassword(phone + canonical));
-      }
+      const storage = rememberMe ? localStorage : sessionStorage;
+      storage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
 
       return { success: true };
     } catch (error) {
       console.error('Admin login error:', error);
-      return { success: false, error: 'Authentication failed' };
+      return { success: false, error: 'Network error. Please try again.' };
     }
   },
 
-  // Check if admin is authenticated
-  isAuthenticated(): boolean {
+  // Check if admin is authenticated - verifies with server
+  async isAuthenticated(): Promise<boolean> {
     try {
-      const encrypted = localStorage.getItem(ADMIN_SESSION_KEY) || sessionStorage.getItem(ADMIN_SESSION_KEY);
-      
-      if (!encrypted) {
+      const session = this.getStoredSession();
+      if (!session) {
         return false;
       }
 
-      const decrypted = decryptSession(encrypted);
-      if (!decrypted) {
-        return false;
-      }
-
-      const session: AdminSession = JSON.parse(decrypted);
-
-      // Check if session is expired
-      if (Date.now() > session.expiresAt) {
+      // Check if session expired locally first
+      if (new Date(session.expiresAt) < new Date()) {
         this.logout();
         return false;
       }
 
-      // Check if session is valid
-      if (!session.authenticated || session.phone !== ADMIN_PHONE) {
+      // Verify with server
+      const clientInfo = getClientInfo();
+      const response = await fetch(`${EDGE_FUNCTION_URL}/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({
+          sessionToken: session.sessionToken,
+          userAgent: clientInfo.userAgent
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.valid) {
         this.logout();
         return false;
       }
+
+      // Update session expiry
+      session.expiresAt = data.expiresAt;
+      const storage = localStorage.getItem(ADMIN_SESSION_KEY) ? localStorage : sessionStorage;
+      storage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
 
       return true;
     } catch (error) {
       console.error('Session validation error:', error);
-      this.logout();
       return false;
     }
   },
 
-  // Get current admin session
-  getSession(): AdminSession | null {
+  // Synchronous check for local session (use for initial render)
+  isAuthenticatedSync(): boolean {
+    const session = this.getStoredSession();
+    if (!session) {
+      return false;
+    }
+    return new Date(session.expiresAt) > new Date();
+  },
+
+  // Get stored session
+  getStoredSession(): AdminSession | null {
     try {
-      const encrypted = localStorage.getItem(ADMIN_SESSION_KEY) || sessionStorage.getItem(ADMIN_SESSION_KEY);
-      
-      if (!encrypted) {
+      const sessionStr = localStorage.getItem(ADMIN_SESSION_KEY) || sessionStorage.getItem(ADMIN_SESSION_KEY);
+      if (!sessionStr) {
         return null;
       }
-
-      const decrypted = decryptSession(encrypted);
-      if (!decrypted) {
-        return null;
-      }
-
-      const session: AdminSession = JSON.parse(decrypted);
-
-      // Validate session
-      if (Date.now() > session.expiresAt || !session.authenticated) {
-        this.logout();
-        return null;
-      }
-
-      return session;
+      return JSON.parse(sessionStr);
     } catch (error) {
       console.error('Get session error:', error);
       return null;
     }
   },
 
-  // Logout admin
-  logout(): void {
-    localStorage.removeItem(ADMIN_SESSION_KEY);
-    localStorage.removeItem(ADMIN_SESSION_ENCRYPTED);
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
-    sessionStorage.removeItem(ADMIN_SESSION_ENCRYPTED);
-  },
-
-  // Extend session (refresh expiration)
-  extendSession(): boolean {
+  // Logout admin - calls Edge Function to invalidate server session
+  async logout(): Promise<void> {
     try {
-      const session = this.getSession();
-      if (!session) {
-        return false;
+      const session = this.getStoredSession();
+      if (session) {
+        await fetch(`${EDGE_FUNCTION_URL}/logout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+          },
+          body: JSON.stringify({
+            sessionToken: session.sessionToken
+          })
+        });
       }
-
-      // Extend expiration
-      session.expiresAt = Date.now() + SESSION_DURATION;
-
-      const sessionData = JSON.stringify(session);
-      const encrypted = encryptSession(sessionData);
-
-      // Update storage (check which storage was used)
-      if (localStorage.getItem(ADMIN_SESSION_KEY)) {
-        localStorage.setItem(ADMIN_SESSION_KEY, encrypted);
-      } else {
-        sessionStorage.setItem(ADMIN_SESSION_KEY, encrypted);
-      }
-
-      return true;
     } catch (error) {
-      console.error('Extend session error:', error);
-      return false;
+      console.error('Logout error:', error);
+    } finally {
+      localStorage.removeItem(ADMIN_SESSION_KEY);
+      sessionStorage.removeItem(ADMIN_SESSION_KEY);
     }
   },
 
   // Get time until session expires (in milliseconds)
   getTimeUntilExpiry(): number {
-    const session = this.getSession();
+    const session = this.getStoredSession();
     if (!session) {
       return 0;
     }
-    return Math.max(0, session.expiresAt - Date.now());
+    return Math.max(0, new Date(session.expiresAt).getTime() - Date.now());
   }
 };
 
-// Auto-extend session on activity
-let activityTimer: NodeJS.Timeout | null = null;
+// Auto-verify session periodically
+let verificationInterval: NodeJS.Timeout | null = null;
 
 export function setupAdminActivityMonitor() {
-  const extendOnActivity = () => {
-    if (adminAuth.isAuthenticated()) {
-      adminAuth.extendSession();
-    }
-  };
-
-  // Clear existing timer
-  if (activityTimer) {
-    clearTimeout(activityTimer);
+  // Clear existing interval
+  if (verificationInterval) {
+    clearInterval(verificationInterval);
   }
 
-  // Extend session on user activity
-  const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
-  
-  const throttledExtend = () => {
-    if (activityTimer) return;
-    
-    activityTimer = setTimeout(() => {
-      extendOnActivity();
-      activityTimer = null;
-    }, 60000); // Extend every minute of activity
-  };
+  // Verify session every 5 minutes
+  verificationInterval = setInterval(async () => {
+    if (adminAuth.isAuthenticatedSync()) {
+      await adminAuth.isAuthenticated();
+    }
+  }, 5 * 60 * 1000);
 
-  events.forEach(event => {
-    window.addEventListener(event, throttledExtend, { passive: true });
+  // Verify on visibility change
+  document.addEventListener('visibilitychange', async () => {
+    if (!document.hidden && adminAuth.isAuthenticatedSync()) {
+      await adminAuth.isAuthenticated();
+    }
   });
 }

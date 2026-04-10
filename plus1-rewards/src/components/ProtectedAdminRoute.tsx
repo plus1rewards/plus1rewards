@@ -13,23 +13,33 @@ export default function ProtectedAdminRoute({ children }: ProtectedAdminRoutePro
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Check authentication status
-    const checkAuth = () => {
-      const authenticated = adminAuth.isAuthenticated();
+    const checkAuth = async () => {
+      // Quick sync check first
+      if (!adminAuth.isAuthenticatedSync()) {
+        setIsAuthenticated(false);
+        setIsChecking(false);
+        return;
+      }
+
+      // Verify with server
+      const authenticated = await adminAuth.isAuthenticated();
       setIsAuthenticated(authenticated);
       setIsChecking(false);
     };
 
     checkAuth();
 
-    // Set up session expiry check
-    const interval = setInterval(() => {
-      const authenticated = adminAuth.isAuthenticated();
-      if (!authenticated && isAuthenticated) {
-        // Session expired, redirect to login
+    // Set up periodic verification
+    const interval = setInterval(async () => {
+      if (adminAuth.isAuthenticatedSync()) {
+        const authenticated = await adminAuth.isAuthenticated();
+        if (!authenticated && isAuthenticated) {
+          setIsAuthenticated(false);
+        }
+      } else {
         setIsAuthenticated(false);
       }
-    }, 30000); // Check every 30 seconds
+    }, 60000); // Check every minute
 
     return () => clearInterval(interval);
   }, [isAuthenticated]);
