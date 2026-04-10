@@ -122,6 +122,11 @@ export default function PartnerSupport() {
     }
   };
 
+  // If chat is open, show only the chat
+  if (showChat) {
+    return <PartnerChat onClose={() => setShowChat(false)} />;
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#f5f8fc]">

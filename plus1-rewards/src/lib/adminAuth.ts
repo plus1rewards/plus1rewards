@@ -1,5 +1,5 @@
 // plus1-rewards/src/lib/adminAuth.ts
-// Secure admin authentication without Supabase
+// Secure admin authentication with pattern lock
 
 interface AdminSession {
   phone: string;
@@ -8,9 +8,11 @@ interface AdminSession {
   expiresAt: number;
 }
 
-// Hardcoded admin credentials (in production, use environment variables)
-const ADMIN_PHONE = '0714329190';
-const ADMIN_PASSWORD = 'Plus1Admin@2026!Secure';
+// Admin credentials from environment variables
+const ADMIN_PHONE = import.meta.env.VITE_ADMIN_PHONE || '0714329190';
+const ADMIN_PATTERN_HASH = import.meta.env.VITE_ADMIN_PATTERN_HASH || 'ee38deb99fce50c62cf18117865e0a96cd8fb6cd24b23d03f5b0e69aee36476a';
+const ADMIN_PATTERN_SALT = import.meta.env.VITE_ADMIN_PATTERN_SALT || '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d';
+const ADMIN_GRID_SIZE = 4;
 
 // Session duration: 2 hours
 const SESSION_DURATION = 2 * 60 * 60 * 1000;
@@ -41,17 +43,52 @@ async function hashPassword(password: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Pattern hashing using PBKDF2
+async function hashPattern(canonical: string, salt: string): Promise<string> {
+  const encoder = new TextEncoder();
+  
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(canonical),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+
+  const hashBuffer = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: encoder.encode(salt),
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    256
+  );
+
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function generateCanonicalPattern(sequence: number[], gridSize: number = 4): string {
+  return `g${gridSize}:${sequence.join('-')}`;
+}
+
 export const adminAuth = {
-  // Authenticate admin user
-  async login(phone: string, password: string, rememberMe: boolean = false): Promise<{ success: boolean; error?: string }> {
+  // Authenticate admin user with pattern
+  async loginWithPattern(phone: string, pattern: number[], rememberMe: boolean = false): Promise<{ success: boolean; error?: string }> {
     try {
-      // Validate credentials
+      // Validate phone
       if (phone !== ADMIN_PHONE) {
         return { success: false, error: 'Invalid credentials' };
       }
 
-      if (password !== ADMIN_PASSWORD) {
-        return { success: false, error: 'Invalid credentials' };
+      // Validate pattern
+      const canonical = generateCanonicalPattern(pattern, ADMIN_GRID_SIZE);
+      const hashedPattern = await hashPattern(canonical, ADMIN_PATTERN_SALT);
+
+      if (hashedPattern !== ADMIN_PATTERN_HASH) {
+        return { success: false, error: 'Invalid pattern' };
       }
 
       // Create session
@@ -68,10 +105,10 @@ export const adminAuth = {
       
       if (rememberMe) {
         localStorage.setItem(ADMIN_SESSION_KEY, encrypted);
-        localStorage.setItem(ADMIN_SESSION_ENCRYPTED, await hashPassword(phone + password));
+        localStorage.setItem(ADMIN_SESSION_ENCRYPTED, await hashPassword(phone + canonical));
       } else {
         sessionStorage.setItem(ADMIN_SESSION_KEY, encrypted);
-        sessionStorage.setItem(ADMIN_SESSION_ENCRYPTED, await hashPassword(phone + password));
+        sessionStorage.setItem(ADMIN_SESSION_ENCRYPTED, await hashPassword(phone + canonical));
       }
 
       return { success: true };

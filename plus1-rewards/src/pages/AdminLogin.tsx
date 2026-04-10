@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { adminAuth } from '../lib/adminAuth';
 import AuthLayout from '../components/auth/AuthLayout';
 import { AuthInput, AuthButton, AuthDivider, AuthError } from '../components/auth/AuthComponents';
+import PatternLock from '../components/auth/PatternLock';
 
 const BLUE = '#1a558b';
 
@@ -11,11 +12,11 @@ export default function AdminLogin() {
   const navigate = useNavigate();
   const location = useLocation();
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPattern, setShowPattern] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [patternError, setPatternError] = useState('');
 
   // Check if already authenticated
   useEffect(() => {
@@ -25,33 +26,49 @@ export default function AdminLogin() {
     }
   }, [navigate, location]);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handlePhoneSubmit = (e: FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
 
-    try {
-      // Validate phone number format
-      const cleanPhone = phone.replace(/\s/g, '');
-      if (!/^0\d{9}$/.test(cleanPhone)) {
-        setError('Invalid phone number format. Must be 10 digits starting with 0.');
-        setLoading(false);
-        return;
-      }
+    // Validate phone number format
+    const cleanPhone = phone.replace(/\s/g, '');
+    if (!/^0\d{9}$/.test(cleanPhone)) {
+      setError('Invalid phone number format. Must be 10 digits starting with 0.');
+      return;
+    }
 
-      // Attempt login
-      const result = await adminAuth.login(cleanPhone, password, rememberMe);
+    // Show pattern lock
+    setShowPattern(true);
+  };
+
+  const handlePatternComplete = async (pattern: number[]) => {
+    if (pattern.length < 4) {
+      setPatternError('Pattern must connect at least 4 dots');
+      return;
+    }
+
+    setLoading(true);
+    setPatternError('');
+
+    try {
+      const cleanPhone = phone.replace(/\s/g, '');
+      
+      // Attempt login with pattern
+      const result = await adminAuth.loginWithPattern(cleanPhone, pattern, rememberMe);
 
       if (result.success) {
         // Successfully logged in, redirect to admin dashboard
         const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
         navigate(from, { replace: true });
       } else {
-        setError(result.error || 'Authentication failed. Please check your credentials.');
+        setPatternError(result.error || 'Invalid pattern. Please try again.');
+        // Reset after showing error
+        setTimeout(() => setPatternError(''), 2000);
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      setError('An unexpected error occurred. Please try again.');
+      setPatternError('An unexpected error occurred. Please try again.');
+      setTimeout(() => setPatternError(''), 2000);
     } finally {
       setLoading(false);
     }
@@ -77,62 +94,82 @@ export default function AdminLogin() {
 
         <AuthError message={error} />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <AuthInput
-            label="Administrator Phone Number"
-            icon="admin_panel_settings"
-            id="phone"
-            type="tel"
-            placeholder="0714329190"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-            maxLength={10}
-            required
-          />
+        {!showPattern ? (
+          <form onSubmit={handlePhoneSubmit} className="space-y-4">
+            <AuthInput
+              label="Administrator Phone Number"
+              icon="admin_panel_settings"
+              id="phone"
+              type="tel"
+              placeholder="0714329190"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+              maxLength={10}
+              required
+            />
 
-          <AuthInput
-            label="Password"
-            icon="lock"
-            id="password"
-            type={showPassword ? 'text' : 'password'}
-            placeholder="Enter your password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            suffix={
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-gray-400 hover:text-gray-600">
-                <span className="material-symbols-outlined text-xl">{showPassword ? 'visibility_off' : 'visibility'}</span>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <div className="checkbox-container">
+                  <input
+                    type="checkbox"
+                    id="admin-remember-cbx"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    style={{ display: 'none' }}
+                  />
+                  <label htmlFor="admin-remember-cbx" className="check">
+                    <svg width="18px" height="18px" viewBox="0 0 18 18">
+                      <path d="M1,9 L1,3.5 C1,2 2,1 3.5,1 L14.5,1 C16,1 17,2 17,3.5 L17,14.5 C17,16 16,17 14.5,17 L3.5,17 C2,17 1,16 1,14.5 L1,9 Z"></path>
+                      <polyline points="1 9 7 14 15 4"></polyline>
+                    </svg>
+                  </label>
+                </div>
+                Keep me signed in for 2 hours
+              </label>
+              <a href="#" className="text-sm font-semibold" style={{ color: BLUE }}>Contact IT</a>
+            </div>
+
+            <AuthButton type="submit" loading={loading} loadingText="Verifying...">
+              Continue
+              <span className="material-symbols-outlined text-base">arrow_forward</span>
+            </AuthButton>
+          </form>
+        ) : (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => {
+                  setShowPattern(false);
+                  setPatternError('');
+                }}
+                className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
+              >
+                <span className="material-symbols-outlined text-lg">arrow_back</span>
+                Back
               </button>
-            }
-          />
+              <p className="text-sm text-gray-600">Phone: {phone}</p>
+            </div>
 
-          <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-              <div className="checkbox-container">
-                <input
-                  type="checkbox"
-                  id="admin-remember-cbx"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  style={{ display: 'none' }}
-                />
-                <label htmlFor="admin-remember-cbx" className="check">
-                  <svg width="18px" height="18px" viewBox="0 0 18 18">
-                    <path d="M1,9 L1,3.5 C1,2 2,1 3.5,1 L14.5,1 C16,1 17,2 17,3.5 L17,14.5 C17,16 16,17 14.5,17 L3.5,17 C2,17 1,16 1,14.5 L1,9 Z"></path>
-                    <polyline points="1 9 7 14 15 4"></polyline>
-                  </svg>
-                </label>
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">Draw Your Pattern</h3>
+              <PatternLock
+                onPatternComplete={handlePatternComplete}
+                gridSize={4}
+                minDots={4}
+                disabled={loading}
+                error={patternError}
+              />
+            </div>
+
+            {loading && (
+              <div className="text-center">
+                <div className="inline-block w-6 h-6 border-3 border-green-600/30 border-t-green-600 rounded-full animate-spin"></div>
+                <p className="text-sm text-gray-600 mt-2">Verifying pattern...</p>
               </div>
-              Keep me signed in for 2 hours
-            </label>
-            <a href="#" className="text-sm font-semibold" style={{ color: BLUE }}>Contact IT</a>
+            )}
           </div>
-
-          <AuthButton type="submit" loading={loading} loadingText="Signing in...">
-            Access Admin Dashboard
-            <span className="material-symbols-outlined text-base">arrow_forward</span>
-          </AuthButton>
-        </form>
+        )}
 
         <AuthDivider label="Restricted Access" />
 

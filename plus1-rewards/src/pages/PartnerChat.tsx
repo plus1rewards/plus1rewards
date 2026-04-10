@@ -21,7 +21,8 @@ interface ChatMessage {
 
 interface ChatConversation {
   id: string;
-  member_id: string;
+  member_id?: string;
+  partner_id?: string;
   status: 'open' | 'closed';
   feedback_requested: boolean;
   created_at: string;
@@ -71,7 +72,12 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
   const getPartnerId = (): string | null => {
     const raw = localStorage.getItem('partnerSession') || sessionStorage.getItem('partnerSession');
     if (!raw) return null;
-    try { return JSON.parse(raw)?.id || null; } catch { return null; }
+    try { 
+      const session = JSON.parse(raw);
+      return session.partner?.id || session.user?.id || null; 
+    } catch { 
+      return null; 
+    }
   };
 
   const loadOrCreateConversation = async () => {
@@ -79,10 +85,11 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
       const partnerId = getPartnerId();
       if (!partnerId) { onClose ? onClose() : navigate('/partner/login'); return; }
 
+      // First, try to find an open conversation for this partner
       const { data: openConvo } = await supabase
         .from('chat_conversations')
         .select('*')
-        .eq('member_id', partnerId)
+        .eq('partner_id', partnerId)
         .eq('status', 'open')
         .order('created_at', { ascending: false })
         .limit(1)
@@ -91,12 +98,22 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
       if (openConvo) {
         setConversation(openConvo);
       } else {
+        // No open conversation found, create a new one
         const { data: newConvo, error } = await supabase
           .from('chat_conversations')
-          .insert([{ member_id: partnerId, status: 'open', feedback_requested: false }])
+          .insert([{ 
+            partner_id: partnerId,  // Use partner_id instead of member_id
+            status: 'open', 
+            feedback_requested: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }])
           .select()
           .single();
-        if (error) throw error;
+        if (error) {
+          console.error('Error creating conversation:', error);
+          throw error;
+        }
         setConversation(newConvo);
       }
     } catch (error) {
@@ -313,7 +330,40 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
         </div>
       ) : (
         <div className="p-4 bg-gray-50 border-t border-gray-100">
-          <p className="text-center text-sm text-gray-500">This conversation has been closed</p>
+          <div className="max-w-md mx-auto text-center space-y-3">
+            <p className="text-sm text-gray-500">This conversation has been closed</p>
+            <button
+              onClick={async () => {
+                const partnerId = getPartnerId();
+                if (!partnerId) return;
+                
+                try {
+                  const { data: newConvo, error } = await supabase
+                    .from('chat_conversations')
+                    .insert([{ 
+                      partner_id: partnerId,  // Use partner_id instead of member_id
+                      status: 'open', 
+                      feedback_requested: false,
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString()
+                    }])
+                    .select()
+                    .single();
+                  
+                  if (error) throw error;
+                  setConversation(newConvo);
+                  setMessages([]);
+                } catch (error) {
+                  console.error('Error creating new conversation:', error);
+                  alert('Failed to start new conversation. Please try again.');
+                }
+              }}
+              className="w-full bg-[#1a568b] hover:bg-[#1a568b]/90 text-white font-semibold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+            >
+              <MessageSquarePlus className="w-5 h-5" />
+              Start New Conversation
+            </button>
+          </div>
         </div>
       )}
 

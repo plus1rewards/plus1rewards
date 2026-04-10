@@ -318,7 +318,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           
           <a className={getLinkClasses('/admin/chat')} href="/admin/chat">
             <span className="material-symbols-outlined">chat</span>
-            <span className={getTextClasses('/admin/chat')}>Member Chat</span>
+            <span className={getTextClasses('/admin/chat')}>Admin Chat</span>
           </a>
           
           <a className={getLinkClasses('/admin/settings')} href="/admin/settings">
@@ -480,7 +480,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           
           <a className={getLinkClasses('/admin/chat')} href="/admin/chat" onClick={handleLinkClick}>
             <span className="material-symbols-outlined">chat</span>
-            <span className={getTextClasses('/admin/chat')}>Member Chat</span>
+            <span className={getTextClasses('/admin/chat')}>Admin Chat</span>
           </a>
           
           <a className={getLinkClasses('/admin/settings')} href="/admin/settings" onClick={handleLinkClick}>
