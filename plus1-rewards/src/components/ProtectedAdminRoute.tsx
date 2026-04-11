@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { adminAuth } from '../lib/adminAuth';
+import { securityMonitor } from '../lib/securityMonitor';
 
 interface ProtectedAdminRouteProps {
   children: React.ReactNode;
@@ -13,6 +14,9 @@ export default function ProtectedAdminRoute({ children }: ProtectedAdminRoutePro
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
+    // Initialize security monitoring
+    securityMonitor.init();
+
     const checkAuth = async () => {
       // Quick sync check first
       if (!adminAuth.isAuthenticatedSync()) {
@@ -41,7 +45,10 @@ export default function ProtectedAdminRoute({ children }: ProtectedAdminRoutePro
       }
     }, 60000); // Check every minute
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      securityMonitor.stop();
+    };
   }, [isAuthenticated]);
 
   // Show loading state while checking

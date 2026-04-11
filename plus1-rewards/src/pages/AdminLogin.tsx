@@ -5,6 +5,7 @@ import { adminAuth } from '../lib/adminAuth';
 import AuthLayout from '../components/auth/AuthLayout';
 import { AuthInput, AuthButton, AuthDivider, AuthError } from '../components/auth/AuthComponents';
 import PatternLock from '../components/auth/PatternLock';
+import SecurityAlert from '../components/SecurityAlert';
 
 const BLUE = '#1a558b';
 
@@ -75,17 +76,19 @@ export default function AdminLogin() {
   };
 
   return (
-    <AuthLayout
-      portalIcon="admin_panel_settings"
-      portalName="Admin Portal"
-      headline={<>Complete platform <span style={{ color: '#93c5fd' }}>control</span> center.</>}
-      subheadline="Manage all aspects of the +1 Rewards ecosystem from shops and agents to policy providers and system analytics."
-      stats={[
-        { value: 'All', label: 'System Access' },
-        { value: 'Real-time', label: 'Analytics' },
-        { value: 'Secure', label: 'Admin Panel' },
-      ]}
-    >
+    <>
+      <SecurityAlert />
+      <AuthLayout
+        portalIcon="admin_panel_settings"
+        portalName="Admin Portal"
+        headline={<>Complete platform <span style={{ color: '#93c5fd' }}>control</span> center.</>}
+        subheadline="Manage all aspects of the +1 Rewards ecosystem from shops and agents to policy providers and system analytics."
+        stats={[
+          { value: 'All', label: 'System Access' },
+          { value: 'Real-time', label: 'Analytics' },
+          { value: 'Secure', label: 'Admin Panel' },
+        ]}
+      >
       <div className="space-y-6">
         <div>
           <h2 className="text-2xl font-black text-gray-900">Administrator Login</h2>
@@ -184,5 +187,6 @@ export default function AdminLogin() {
         </div>
       </div>
     </AuthLayout>
+    </>
   );
 }
