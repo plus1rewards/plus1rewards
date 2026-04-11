@@ -50,7 +50,7 @@ export function LegalMemberTerms() {
               icon: '🏥', title: 'Day1 Health Policy',
               points: [
                 'You must select an active Day1 Health plan to receive policy top-ups from rewards.',
-                'Plans available: Day-to-Day (from R385/month), Hospital (from R390/month), Comprehensive (from R665/month), Senior (from R425/month).',
+                'Plans available: Day-to-Day (from R385/month), Hospital (from R390/month), Comprehensive - Value Plus (from R665/month), Senior (from R425/month).',
                 'Your policy activates ("Auto-Paid Benefit") once the monthly target amount is fully funded by rewards.',
                 'You may hold a maximum of 5 active policies simultaneously.',
                 'Plan changes take effect at the next billing cycle — no mid-cycle downgrades.',

@@ -15,7 +15,7 @@ const BLUE = '#1a558b';
 const FALLBACK_PLANS = [
   { id: 'p1', name: 'Day-to-Day Single', family: 'Single', variant: 'Day-to-Day', adults: 1, children: 0, monthly_target: 385, is_active: true },
   { id: 'p2', name: 'Hospital Single', family: 'Single', variant: 'Hospital', adults: 1, children: 0, monthly_target: 390, is_active: true },
-  { id: 'p3', name: 'Comprehensive Single', family: 'Single', variant: 'Comprehensive', adults: 1, children: 0, monthly_target: 665, is_active: true },
+  { id: 'p3', name: 'Comprehensive - Value Plus Single', family: 'Single', variant: 'Comprehensive - Value Plus', adults: 1, children: 0, monthly_target: 665, is_active: true },
   { id: 'p4', name: 'Day-to-Day Family', family: 'Family', variant: 'Day-to-Day', adults: 2, children: 2, monthly_target: 720, is_active: true },
 ];
 

@@ -21,10 +21,28 @@ export default function AdminLogin() {
 
   // Check if already authenticated
   useEffect(() => {
-    if (adminAuth.isAuthenticated()) {
-      const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
-      navigate(from, { replace: true });
-    }
+    let mounted = true;
+    
+    const checkAuth = async () => {
+      try {
+        // Use sync check first to avoid async issues
+        if (adminAuth.isAuthenticatedSync()) {
+          const isValid = await adminAuth.isAuthenticated();
+          if (isValid && mounted) {
+            const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
+            navigate(from, { replace: true });
+          }
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+      }
+    };
+    
+    checkAuth();
+    
+    return () => {
+      mounted = false;
+    };
   }, [navigate, location]);
 
   const handlePhoneSubmit = (e: FormEvent) => {

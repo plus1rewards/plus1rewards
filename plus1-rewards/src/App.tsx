@@ -1,6 +1,7 @@
 // plus1-rewards/src/App.tsx
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
 import LoadingPage from './components/LoadingPage'
 
 // Critical routes - loaded immediately
@@ -74,17 +75,10 @@ export default function App() {
     return !sessionStorage.getItem('plus1_app_loaded');
   });
 
-  useEffect(() => {
-    // Only run if loading is true
-    if (isLoading) {
-      const timer = setTimeout(() => {
-        setIsLoading(false);
-        sessionStorage.setItem('plus1_app_loaded', 'true');
-      }, 1200); // Reduced from 2500ms to 1200ms
-
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading]);
+  const handleLoadComplete = () => {
+    setIsLoading(false);
+    sessionStorage.setItem('plus1_app_loaded', 'true');
+  };
   
   // Sync session across storage when app loads or regains focus
   useEffect(() => {
@@ -113,7 +107,9 @@ export default function App() {
   return (
     <div className="min-h-screen w-full bg-white text-gray-900 antialiased font-display overflow-x-hidden">
       <Router>
-        {isLoading && <LoadingPage />}
+        <AnimatePresence mode="wait">
+          {isLoading && <LoadingPage key="loader" onLoadComplete={handleLoadComplete} />}
+        </AnimatePresence>
         {!isLoading && (
           <Suspense fallback={<LoadingPage />}>
           <Routes>

@@ -644,8 +644,8 @@ const DashboardNew: React.FC = () => {
       currentPlanName = 'Day to Day Single';
     } else if (currentTarget === 665) {
       showWarning(
-        'Already on Comprehensive Plan', 
-        `You are already on the Comprehensive plan (R665/month). This is the highest plan available.`,
+        'Already on Comprehensive - Value Plus Plan', 
+        `You are already on the Comprehensive - Value Plus plan (R665/month). This is the highest plan available.`,
         4000
       );
       return;
@@ -664,95 +664,8 @@ const DashboardNew: React.FC = () => {
   };
 
   const confirmUpgrade = async () => {
-    if (!mainCoverPlan || !upgradePlanInfo) return;
-
-    const currentTarget = Number(mainCoverPlan.target_amount);
-    const currentOverflow = Number(mainCoverPlan.overflow_balance);
-    const upgradeCost = upgradePlanInfo.cost;
-    
-    let nextTarget = 665;
-    let nextPlanId = '';
-
-    // Get the R665 plan ID
-    const { data: nextPlan } = await supabase
-      .from('cover_plans')
-      .select('id')
-      .eq('monthly_target_amount', 665)
-      .eq('status', 'active')
-      .single();
-    
-    if (!nextPlan) {
-      showError('Upgrade Error', 'R665 plan not found. Please contact support.', 3000);
-      return;
-    }
-    nextPlanId = nextPlan.id;
-
-
-    if (currentOverflow < upgradeCost) {
-      showError(
-        'Insufficient Overflow', 
-        `You need R${upgradeCost.toFixed(2)} to upgrade. You have R${currentOverflow.toFixed(2)}.`,
-        3000
-      );
-      setShowUpgradeModal(false);
-      return;
-    }
-
-    try {
-      const newOverflow = currentOverflow - upgradeCost;
-      
-      // Update member_cover_plans table
-      const { error } = await supabase
-        .from('member_cover_plans')
-        .update({ 
-          cover_plan_id: nextPlanId,
-          target_amount: nextTarget,
-          funded_amount: nextTarget,
-          overflow_balance: newOverflow,
-          status: 'active',
-          active_from: new Date().toISOString(),
-          active_to: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        })
-        .eq('id', mainCoverPlan.id);
-
-      if (error) throw error;
-
-      // Update members table with new plan name and price
-      const { error: memberError } = await supabase
-        .from('members')
-        .update({
-          cover_plan_name: 'Comprehensive - Value Plus - Single',
-          cover_plan_price: 665
-        })
-        .eq('id', member!.id);
-
-      if (memberError) throw memberError;
-
-      // Create wallet entry
-      await supabase
-        .from('cover_plan_wallet_entries')
-        .insert({
-          member_id: member!.id,
-          member_cover_plan_id: mainCoverPlan.id,
-          entry_type: 'overflow_moved',
-          amount: -upgradeCost,
-          balance_after: newOverflow
-        });
-
-      setShowUpgradePrompt(false);
-      setShowUpgradeModal(false);
-      sessionStorage.removeItem('last_upgrade_prompt_overflow');
-      loadDashboardData();
-      
-      showSuccess(
-        'Plan Upgraded Successfully!',
-        `Upgraded to R${nextTarget} plan! Remaining overflow: R${newOverflow.toFixed(2)}`,
-        3000
-      );
-    } catch (error) {
-      console.error('Error upgrading plan:', error);
-      showError('Upgrade Failed', 'Failed to upgrade plan. Please try again.', 3000);
-    }
+    // Redirect to Day1Health upgrade page instead of upgrading in database
+    window.location.href = 'https://www.day1main.com/plus1upgrade';
   };
 
   const handleDeclineUpgrade = () => {
@@ -1600,7 +1513,7 @@ const DashboardNew: React.FC = () => {
             <div className="p-6">
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Upgrade to Comprehensive Plan</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Upgrade to Comprehensive - Value Plus Plan</h2>
                 <button
                   onClick={() => setShowUpgradeModal(false)}
                   className="text-gray-400 hover:text-gray-600"

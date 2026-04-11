@@ -3,5 +3,6 @@
 .env
 /dist
 /plus1-rewards/dist
-/plus1-go/dist
 node_modules
+temp_docx
+image
