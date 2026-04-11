@@ -1,8 +1,0 @@
-/.vscode
-/documentation
-.env
-/dist
-/plus1-rewards/dist
-node_modules
-temp_docx
-image
