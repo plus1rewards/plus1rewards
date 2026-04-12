@@ -137,54 +137,52 @@ export default function PartnerLayout({ children }: PartnerLayoutProps) {
     <div className="relative flex min-h-screen w-full flex-col" style={{ backgroundColor: '#f5f8fc' }}>
       <div className="layout-container flex h-full grow flex-col w-full">
         {/* Shop Header */}
-        <header className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#1a558b]/10 rounded-lg flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[#1a558b] text-2xl">storefront</span>
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">{partner.name}</h1>
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="flex items-center gap-1">
-                      <span className={`material-symbols-outlined text-sm ${
-                        partner.status === 'active' ? 'text-green-600' : 'text-yellow-600'
-                      }`}>
-                        {partner.status === 'active' ? 'check_circle' : 'schedule'}
-                      </span>
-                      <span className="text-gray-600">
-                        Status: <span className="font-semibold text-gray-900">{partner.status?.toUpperCase()}</span>
-                      </span>
-                    </div>
-                    <span className="text-gray-300">•</span>
-                    <span className="text-gray-600">
-                      Cashback Rate: <span className="font-semibold text-gray-900">{partner.cashback_percent || partner.commission_rate}%</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => navigate('/partner/profile')}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#1a558b] hover:bg-[#143f66] text-white rounded-lg font-semibold transition-colors"
-                >
-                  <span className="material-symbols-outlined text-lg">store</span>
-                  <span className="hidden sm:inline">Shop Profile</span>
-                </button>
-                <button
-                  onClick={handleSignOut}
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition-all"
-                >
-                  Sign Out
-                </button>
+        <header
+          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+          }}
+        >
+          {/* Left: Logo */}
+          <div className="flex items-center gap-3">
+            <a href="/" className="hover:opacity-80 transition-opacity">
+              <img src="/logo.png" alt="+1 Rewards" className="h-10 w-auto object-contain" />
+            </a>
+            <div className="h-8 w-px bg-gray-300"></div>
+            <div className="w-4"></div>
+          </div>
+
+          {/* Right: Portal label, online badge, sign out, avatar */}
+          <div className="flex flex-1 justify-end items-center gap-6">
+            <div className="hidden md:flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-500">Partner Portal</span>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(26, 85, 139, 0.1)', border: '1px solid rgba(26, 85, 139, 0.2)' }}>
+                <span className="flex h-2 w-2 rounded-full bg-[#1a558b]"></span>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[#1a558b]">Online</span>
               </div>
             </div>
+            <button
+              onClick={handleSignOut}
+              className="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-9 px-4 text-sm font-bold transition-all hover:opacity-90 text-white bg-[#1a558b]"
+            >
+              Sign out
+            </button>
+            <div
+              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
+              style={{
+                backgroundImage: `url("https://ui-avatars.com/api/?name=${encodeURIComponent(partner.name || 'P')}&background=1a558b&color=ffffff&size=128&bold=true")`,
+                border: '2px solid rgba(26, 85, 139, 0.25)'
+              }}
+            ></div>
           </div>
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 md:px-8 md:py-8 space-y-6 md:space-y-8" style={{ paddingTop: '5rem' }}>
+        <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 py-6 md:px-8 md:py-8 space-y-6 md:space-y-8" style={{ paddingTop: '5rem' }}>
           {children}
         </main>
 

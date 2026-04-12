@@ -260,38 +260,54 @@ export function AgentDashboard() {
   return (
     <div className="min-h-screen bg-[#f5f8fc]">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="size-12 rounded-xl flex items-center justify-center text-white" style={{ backgroundColor: BLUE }}>
-              <span className="material-symbols-outlined text-2xl">assignment_ind</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-black text-gray-900">Agent Dashboard</h1>
-              <p className="text-sm text-gray-600">{agent?.name} {agent?.surname}</p>
+      <header
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4"
+        style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+        }}
+      >
+        {/* Left: Logo */}
+        <div className="flex items-center gap-3">
+          <a href="/" className="hover:opacity-80 transition-opacity">
+            <img src="/logo.png" alt="+1 Rewards" className="h-10 w-auto object-contain" />
+          </a>
+          <div className="h-8 w-px bg-gray-300"></div>
+          <div className="w-4"></div>
+        </div>
+
+        {/* Right: Portal label, online badge, sign out, avatar */}
+        <div className="flex flex-1 justify-end items-center gap-6">
+          <div className="hidden md:flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-500">Agent Portal</span>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(26, 85, 139, 0.1)', border: '1px solid rgba(26, 85, 139, 0.2)' }}>
+              <span className="flex h-2 w-2 rounded-full bg-[#1a558b]"></span>
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[#1a558b]">Online</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/agent/profile')}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-all text-sm font-semibold"
-            >
-              <span className="material-symbols-outlined text-lg">person</span>
-              Profile
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-all text-sm font-semibold"
-            >
-              <span className="material-symbols-outlined text-lg">logout</span>
-              Logout
-            </button>
-          </div>
+          <button
+            onClick={handleLogout}
+            className="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-9 px-4 text-sm font-bold transition-all hover:opacity-90 text-white bg-[#1a558b]"
+          >
+            Sign out
+          </button>
+          {agent && (
+            <div
+              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
+              style={{
+                backgroundImage: `url("https://ui-avatars.com/api/?name=${encodeURIComponent(`${agent.name} ${agent.surname}`)}&background=1a558b&color=ffffff&size=128&bold=true")`,
+                border: '2px solid rgba(26, 85, 139, 0.25)'
+              }}
+            ></div>
+          )}
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8" style={{ paddingTop: '5rem' }}>
         {/* Agent Profile Summary */}
         <div className="bg-gradient-to-br from-cyan-600 to-blue-700 rounded-xl p-6 text-white">
           <div className="flex items-center justify-between flex-wrap gap-4">

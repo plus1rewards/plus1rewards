@@ -4,7 +4,7 @@ import { supabase, supabaseAdmin } from '../lib/supabase';
 import { getSession, clearSession } from '../lib/session';
 import { encodeMemberQR } from '../lib/config';
 import QRCode from 'qrcode';
-import UpgradePromptModal from '../components/member/UpgradePromptModal';
+import DigitalPassCard from '../components/member/DigitalPassCard';
 import ProfileIncompleteModal from '../components/member/ProfileIncompleteModal';
 import PlanSelectionModal from '../components/member/PlanSelectionModal';
 import PendingVerificationModal from '../components/member/PendingVerificationModal';
@@ -124,7 +124,7 @@ const DashboardNew: React.FC = () => {
 
     const updateCountdown = () => {
       const now = new Date().getTime();
-      const endTime = new Date(mainCoverPlan.active_to).getTime();
+      const endTime = new Date(mainCoverPlan.active_to!).getTime();
       const distance = endTime - now;
 
       console.log('⏱️ Countdown update:', { now, endTime, distance });
@@ -630,7 +630,6 @@ const DashboardNew: React.FC = () => {
     if (!mainCoverPlan) return;
 
     const currentTarget = Number(mainCoverPlan.target_amount);
-    const currentOverflow = Number(mainCoverPlan.overflow_balance);
     
     let upgradeCost = 0;
     let currentPlanName = '';
@@ -778,36 +777,56 @@ const DashboardNew: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background-light text-gray-900">
-      {/* TopNavBar */}
-      <header className="fixed top-0 left-0 w-full flex justify-between items-center px-6 h-16 bg-slate-900 dark:bg-background-dark z-50 transition-all">
-        <div className="flex items-center gap-4">
-          {/* Logo */}
-          <img 
-            src="/logo.png" 
-            alt="Plus1 Rewards" 
-            className="h-8 w-auto"
-            onError={(e) => {
-              e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="40"><text x="10" y="25" fill="white" font-family="Arial" font-size="16" font-weight="bold">Plus1</text></svg>';
-            }}
-          />
-        </div>
+    <div className="relative flex min-h-screen w-full flex-col" style={{ backgroundColor: '#f5f8fc' }}>
+      <div className="layout-container flex h-full grow flex-col w-full">
+        {/* Header */}
+        <header
+          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+          }}
+        >
+          {/* Left: Logo */}
+          <div className="flex items-center gap-3">
+            <a href="/" className="hover:opacity-80 transition-opacity">
+              <img src="/logo.png" alt="+1 Rewards" className="h-10 w-auto object-contain" />
+            </a>
+            <div className="h-8 w-px bg-gray-300"></div>
+            <div className="w-4"></div>
+          </div>
 
-        <div className="flex items-center gap-3">
-          {/* Logout Button */}
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium"
-          >
-            <span className="material-symbols-outlined text-sm">logout</span>
-            <span>Logout</span>
-          </button>
-        </div>
-      </header>
+          {/* Right: Portal label, online badge, sign out, avatar */}
+          <div className="flex flex-1 justify-end items-center gap-6">
+            <div className="hidden md:flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-500">Member Portal</span>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(26, 85, 139, 0.1)', border: '1px solid rgba(26, 85, 139, 0.2)' }}>
+                <span className="flex h-2 w-2 rounded-full bg-[#1a558b]"></span>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[#1a558b]">Online</span>
+              </div>
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-9 px-4 text-sm font-bold transition-all hover:opacity-90 text-white bg-[#1a558b]"
+            >
+              Sign out
+            </button>
+            <div
+              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
+              style={{
+                backgroundImage: `url("https://ui-avatars.com/api/?name=${encodeURIComponent(member?.name || 'M')}&background=1a558b&color=ffffff&size=128&bold=true")`,
+                border: '2px solid rgba(26, 85, 139, 0.25)'
+              }}
+            ></div>
+          </div>
+        </header>
 
-      <main className="pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto">
+      <main className="pt-[50px] pb-20 px-4 md:px-8 max-w-7xl mx-auto">
         {/* Profile Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
           <div className="flex items-center gap-4">
             <div className="relative">
               {/* Profile Picture - placeholder if not available */}
@@ -834,31 +853,12 @@ const DashboardNew: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg flex items-center gap-4 shadow-sm border border-gray-200">
-            <button 
-              onClick={() => setShowQRModal(true)}
-              className="bg-white p-1 rounded-[4px] border border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
-            >
-              {qrDataUrl ? (
-                <img
-                  className="w-16 h-16"
-                  src={qrDataUrl}
-                  alt="QR Code"
-                />
-              ) : (
-                <div className="w-16 h-16 bg-gray-100 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-gray-400">qr_code</span>
-                </div>
-              )}
-            </button>
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.05em]">Membership ID</p>
-              <p className="text-sm font-bold text-gray-900">{member?.qr_code || 'N/A'}</p>
-              <span className="bg-gray-100 text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded-[4px]">
-                DIGITAL PASS
-              </span>
-            </div>
-          </div>
+          <DigitalPassCard
+            memberName={member?.name || ''}
+            qrCode={member?.qr_code || ''}
+            qrDataUrl={qrDataUrl}
+            onQRClick={() => setShowQRModal(true)}
+          />
         </div>
 
 
@@ -867,7 +867,7 @@ const DashboardNew: React.FC = () => {
           {/* Main Balance & Metrics */}
           <div className="md:col-span-8 flex flex-col gap-6">
             {/* Primary Balance Card */}
-            <div className="bg-blue-700 text-white p-8 rounded-lg relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+            <div className="bg-blue-700 text-white p-8 rounded-lg relative overflow-hidden flex flex-col justify-between min-h-[220px] -mt-[60px]">
               <div className="absolute top-0 right-0 p-8 opacity-10">
                 <span className="material-symbols-outlined text-8xl">account_balance_wallet</span>
               </div>
@@ -940,7 +940,7 @@ const DashboardNew: React.FC = () => {
                 </span>
               </button>
               <button 
-                onClick={() => navigate('/member/cover-plans')}
+                onClick={() => navigate('/member/view-plans')}
                 className="!bg-slate-600 !text-white p-4 rounded-lg text-left hover:scale-[0.98] transition-all flex flex-col justify-between min-h-[120px]"
               >
                 <span className="material-symbols-outlined text-2xl !text-white">list_alt</span>
@@ -1001,7 +1001,7 @@ const DashboardNew: React.FC = () => {
               mainCoverPlan?.status === 'paused' ? 'bg-orange-50 border-orange-300' : 
               mainCoverPlan?.status === 'pending' ? 'bg-yellow-50 border-yellow-300' : 
               'bg-white border-gray-200'
-            } border p-6 rounded-lg shadow-sm`}>
+            } border p-6 rounded-lg shadow-sm mt-[10px]`}>
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.1em]">
@@ -1138,16 +1138,6 @@ const DashboardNew: React.FC = () => {
                 </span>
                 <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-center text-gray-900">My Cover Plans</span>
               </button>
-              {member?.role !== 'sponsored_member' && (
-                <button 
-                  onClick={() => navigate('/member/transactions')}
-                  className="bg-blue-50 p-4 rounded-lg flex flex-col items-center justify-center gap-2 hover:bg-blue-100 transition-colors group border border-blue-100">
-                  <span className="material-symbols-outlined text-blue-600 group-hover:scale-110 transition-transform">
-                    history
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-center text-gray-900">View All Transactions</span>
-                </button>
-              )}
               <button 
                 onClick={() => navigate('/member/top-up')}
                 className="bg-blue-50 p-4 rounded-lg flex flex-col items-center justify-center gap-2 hover:bg-blue-100 transition-colors group border border-blue-100">
@@ -1447,8 +1437,8 @@ const DashboardNew: React.FC = () => {
         />
       )}
 
-      {/* Upgrade Prompt Modal */}
-      {showUpgradePrompt && mainCoverPlan && (
+      {/* Upgrade Prompt Modal - Commented out as component not found */}
+      {/* {showUpgradePrompt && mainCoverPlan && (
         <UpgradePromptModal
           currentPlanName={mainCoverPlan.cover_plans.plan_name}
           currentTarget={targetAmount}
@@ -1457,7 +1447,7 @@ const DashboardNew: React.FC = () => {
           onUpgrade={handleUpgrade}
           onDecline={handleDeclineUpgrade}
         />
-      )}
+      )} */}
 
       {/* Profile Incomplete Modal */}
       {showProfileIncomplete && member && (
@@ -1623,6 +1613,7 @@ const DashboardNew: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

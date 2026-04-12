@@ -91,7 +91,7 @@ export default function LoadingPage({ onLoadComplete }: LoadingPageProps = {}) {
             Plus1Rewards
           </h1>
           <p className="text-zinc-400 font-sans text-[10px] uppercase tracking-[0.2em] mt-2">
-            Elevating Your Cashback Experience
+            Medi Cover
           </p>
         </motion.div>
 
@@ -106,7 +106,7 @@ export default function LoadingPage({ onLoadComplete }: LoadingPageProps = {}) {
           </div>
           <div className="flex justify-between mt-3">
             <span className="text-[9px] text-zinc-400 font-mono uppercase tracking-widest">
-              Securing Rewards
+              Medi Cover
             </span>
             <span className="text-[9px] text-[#1a568b] font-mono font-bold">
               {progress}%

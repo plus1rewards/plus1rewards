@@ -54,10 +54,10 @@ export default function ProtectedAdminRoute({ children }: ProtectedAdminRoutePro
   // Show loading state while checking
   if (isChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background-dark">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-slate-400">Verifying access...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1a568b] mx-auto mb-4"></div>
+          <p className="text-[#1a568b] font-medium">Verifying access...</p>
         </div>
       </div>
     );

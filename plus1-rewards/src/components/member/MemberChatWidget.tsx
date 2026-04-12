@@ -453,3 +453,4 @@ export default function MemberChatWidget({ isOpen, onClose, memberName = 'there'
     </div>
   );
 }
+

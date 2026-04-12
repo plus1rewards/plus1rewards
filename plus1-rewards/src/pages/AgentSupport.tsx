@@ -1,278 +1,366 @@
-// plus1-rewards/src/pages/AgentSupport.tsx
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Notification, useNotification } from '../components/Notification';
-import { supabase } from '../lib/supabase';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  ArrowLeft, MessageCircle, Mail, Phone, Clock, Info,
+  Receipt, FileText, UserPlus, HelpCircle, ChevronRight
+} from "lucide-react";
+import { motion } from "framer-motion";
+import { supabase } from "../lib/supabase";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Textarea } from "../components/ui/textarea";
+import { Badge } from "../components/ui/badge";
+import { Select, SelectContent, SelectItem } from "../components/ui/select";
+import SendButton from "../components/ui/SendButton";
 
-const BLUE = '#1a558b';
+interface Agent {
+  id: string;
+  name: string;
+  surname: string;
+  phone: string;
+  email: string;
+}
 
-export function AgentSupport() {
+export default function AgentSupport() {
   const navigate = useNavigate();
-  const [agent, setAgent] = useState<any>(null);
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
-  const [requestType, setRequestType] = useState('general');
-  const { notification, showSuccess, showError, hideNotification } = useNotification();
+  const [agent, setAgent] = useState<Agent | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [issueType, setIssueType] = useState("commission_query");
+  const [transactionId, setTransactionId] = useState("");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
-  useEffect(() => {
-    const agentDataStr = sessionStorage.getItem('currentAgent') || localStorage.getItem('currentAgent');
-    if (!agentDataStr) {
-      navigate('/agent/login');
-      return;
-    }
-    setAgent(JSON.parse(agentDataStr));
-  }, [navigate]);
+  useEffect(() => { checkAuthAndLoadData(); }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!subject.trim() || !message.trim()) {
-      showError('Missing Information', 'Please fill in all fields');
-      return;
-    }
-
-    // In production, this would send to admin
-    showSuccess('Message Sent', 'Your support request has been sent to the admin team. We will respond shortly.');
-    
-    // Clear form
-    setSubject('');
-    setMessage('');
-    setRequestType('general');
-  };
-
-  const handleCallRequest = async () => {
-    if (!agent) {
-      showError('Error', 'Agent information not found');
-      return;
-    }
-
+  const checkAuthAndLoadData = async () => {
     try {
-      // Save call request to disputes table
-      const { error } = await supabase
-        .from('disputes')
-        .insert({
-          dispute_type: 'call_request',
-          description: `Agent requesting callback - Name: ${agent.name || agent.full_name || 'N/A'}, Mobile: ${agent.mobile_number || 'N/A'}, Email: ${agent.email || 'N/A'}`,
-          status: 'open',
-          member_id: null, // No member involved in agent call requests
-          partner_id: null // No partner involved in agent call requests
-        });
-
-      if (error) {
-        console.error('Error saving call request:', error);
-        showError('Error', 'Failed to submit call request. Please try again.');
+      const agentDataStr = sessionStorage.getItem('currentAgent') || localStorage.getItem('currentAgent');
+      
+      if (!agentDataStr) {
+        navigate('/agent/login');
         return;
       }
 
-      showSuccess('Call Requested', 'An admin will call you within 24 hours');
+      const agentData = JSON.parse(agentDataStr);
+      
+      const { data: currentAgent, error: agentError } = await supabase
+        .from('agents')
+        .select('*')
+        .eq('id', agentData.agent_id || agentData.id)
+        .single();
+
+      if (agentError || !currentAgent) {
+        sessionStorage.removeItem('currentAgent');
+        localStorage.removeItem('currentAgent');
+        navigate('/agent/login');
+        return;
+      }
+
+      if (currentAgent.status !== 'active') {
+        sessionStorage.removeItem('currentAgent');
+        localStorage.removeItem('currentAgent');
+        alert('Your agent account is not yet approved.');
+        navigate('/agent/login');
+        return;
+      }
+
+      const combinedData = {
+        ...currentAgent,
+        name: currentAgent.first_name || 'Agent',
+        surname: currentAgent.surname || '',
+        phone: currentAgent.cell_phone || '',
+        email: currentAgent.email || ''
+      };
+
+      setAgent(combinedData as Agent);
     } catch (error) {
-      console.error('Error submitting call request:', error);
-      showError('Error', 'Failed to submit call request. Please try again.');
+      console.error('Auth check failed:', error);
+      navigate('/agent/login');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const showInfo = (title: string, message: string) => {
-    // Using showSuccess with info styling
-    showSuccess(title, message);
+  const handleSubmit = async (e?: { preventDefault: () => void }) => {
+    e?.preventDefault();
+    if (!description.trim() || !agent) return;
+    setSubmitting(true);
+    try {
+      const txId = transactionId.trim().match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+        ? transactionId.trim() : null;
+      
+      // Map issue types to valid dispute types
+      const disputeTypeMap: Record<string, string> = {
+        'commission_query': 'other',
+        'payment_issue': 'other',
+        'partner_recruitment': 'other',
+        'account_access': 'other',
+        'general_inquiry': 'other'
+      };
+      
+      const { error } = await supabase.from("disputes").insert([{
+        dispute_type: disputeTypeMap[issueType] || 'other',
+        description: `Agent Support - ${issueType}: ${description.trim()}`,
+        transaction_id: txId,
+        status: 'open',
+        agent_id: agent.id
+      }]);
+      if (error) {
+        console.error('Support ticket error:', error);
+        throw error;
+      }
+      setSuccessMessage("Support ticket submitted! Our team will review it within 24 hours.");
+      setDescription(""); setTransactionId(""); setIssueType("commission_query");
+      setTimeout(() => setSuccessMessage(""), 5000);
+    } catch { alert("Failed to submit. Please try again."); }
+    finally { setSubmitting(false); }
   };
 
-  if (!agent) {
-    return null;
-  }
+  const handleSignOut = () => {
+    sessionStorage.removeItem('currentAgent');
+    localStorage.removeItem('currentAgent');
+    navigate("/agent/login");
+  };
+
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="w-12 h-12 border-4 border-[#1a558b]/20 border-t-[#1a558b] rounded-full animate-spin mx-auto"></div>
+    </div>
+  );
+
+  if (!agent) return null;
 
   return (
-    <div className="min-h-screen bg-[#f5f8fc]">
-      {notification && (
-        <Notification
-          type={notification.type}
-          title={notification.title}
-          message={notification.message}
-          onClose={hideNotification}
-        />
-      )}
-
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="size-12 rounded-xl flex items-center justify-center text-white" style={{ backgroundColor: BLUE }}>
-              <span className="material-symbols-outlined text-2xl">support_agent</span>
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-3">
+              <img src="/logo.png" alt="+1 Rewards" className="h-10 w-auto" />
+              <div className="h-8 w-px bg-gray-300"></div>
+              <span className="text-sm font-medium text-gray-500">Agent Portal</span>
             </div>
-            <div>
-              <h1 className="text-xl font-black text-gray-900">Support & Contact</h1>
-              <p className="text-sm text-gray-600">Get help from the admin team</p>
-            </div>
+            <button
+              onClick={handleSignOut}
+              className="bg-[#1a558b] hover:bg-[#1a558b]/90 text-white px-4 py-2 rounded-lg font-bold transition-colors"
+            >
+              Sign Out
+            </button>
           </div>
-          <button
-            onClick={() => navigate('/agent/dashboard')}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-all text-sm font-semibold"
-          >
-            <span className="material-symbols-outlined text-lg">arrow_back</span>
-            Back
-          </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            onClick={handleCallRequest}
-            className="bg-white border border-gray-200 rounded-xl p-6 hover:border-blue-300 hover:shadow-md transition-all text-left group"
-          >
-            <div className="size-12 rounded-xl flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform" style={{ backgroundColor: BLUE }}>
-              <span className="material-symbols-outlined text-2xl">call</span>
+      <div className="font-sans text-slate-900 px-4 md:px-8">
+        <main className="mx-auto max-w-[1400px] px-4 py-8 space-y-10">
+
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-1 font-black text-2xl tracking-tighter">
+                  <span className="text-[#0D47A1]">Plus</span>
+                  <span className="bg-[#00C853] text-white px-1.5 py-0.5 rounded-sm">ONE</span>
+                  <span className="text-[#0D47A1] ml-1">REWARDS</span>
+                </div>
+                <Badge className="bg-green-50 text-green-600 border-green-100 text-[10px] font-bold px-2 py-0">
+                  AGENT PORTAL
+                </Badge>
+              </div>
+              <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Support Center</h1>
+              <p className="text-slate-500 text-lg max-w-2xl">We're here to help you manage your partnerships and resolve any issues quickly.</p>
             </div>
-            <h3 className="font-bold text-gray-900 mb-1">Request Call</h3>
-            <p className="text-sm text-gray-600">Admin will call you back</p>
-          </button>
-
-          <button
-            onClick={() => window.open('mailto:plus1rewards@gmail.com', '_blank')}
-            className="bg-white border border-gray-200 rounded-xl p-6 hover:border-blue-300 hover:shadow-md transition-all text-left group"
-          >
-            <div className="size-12 rounded-xl flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform" style={{ backgroundColor: BLUE }}>
-              <span className="material-symbols-outlined text-2xl">email</span>
-            </div>
-            <h3 className="font-bold text-gray-900 mb-1">Email Support</h3>
-            <p className="text-sm text-gray-600">plus1rewards@gmail.com</p>
-          </button>
-
-          <button
-            onClick={() => window.open('https://wa.me/0714329190', '_blank')}
-            className="bg-white border border-gray-200 rounded-xl p-6 hover:border-blue-300 hover:shadow-md transition-all text-left group"
-          >
-            <div className="size-12 rounded-xl flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform bg-green-600">
-              <span className="material-symbols-outlined text-2xl">chat</span>
-            </div>
-            <h3 className="font-bold text-gray-900 mb-1">WhatsApp</h3>
-            <p className="text-sm text-gray-600">Chat with us directly</p>
-          </button>
-        </div>
-
-        {/* Contact Form */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-200 bg-gray-50">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <span className="material-symbols-outlined" style={{ color: BLUE }}>mail</span>
-              Send Message to Admin
-            </h3>
-          </div>
-
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                Request Type
-              </label>
-              <select
-                value={requestType}
-                onChange={(e) => setRequestType(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              >
-                <option value="general">General Support</option>
-                <option value="partner">Partner Shop Issue</option>
-                <option value="commission">Commission Question</option>
-                <option value="technical">Technical Problem</option>
-                <option value="account">Account Issue</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                Subject
-              </label>
-              <input
-                type="text"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="Brief description of your issue"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                Message
-              </label>
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Describe your issue or question in detail..."
-                rows={6}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-3.5 text-white rounded-lg font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
-              style={{ backgroundColor: BLUE }}
-            >
-              <span className="material-symbols-outlined text-lg">send</span>
-              Send Message
+            <button onClick={() => navigate("/agent/dashboard")}
+              className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-[#0D47A1] inline-flex items-center gap-2 h-11 px-6 rounded-xl shadow-sm transition-all active:scale-95 font-medium text-sm">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Dashboard
             </button>
-          </form>
-        </div>
+          </div>
 
-        {/* Support Info */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-          <div className="flex items-start gap-3">
-            <span className="material-symbols-outlined text-blue-600 text-2xl">info</span>
-            <div>
-              <h3 className="font-bold text-gray-900 mb-2">Support Hours</h3>
-              <ul className="text-sm text-gray-700 space-y-1">
-                <li>• Monday - Friday: 8:00 AM - 5:00 PM</li>
-                <li>• Saturday: 9:00 AM - 1:00 PM</li>
-                <li>• Sunday: Closed</li>
-                <li>• Response time: Within 24 hours</li>
-              </ul>
+          {/* Success */}
+          {successMessage && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+              <span className="text-green-600 font-bold">{successMessage}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left Column */}
+            <div className="lg:col-span-8 space-y-8">
+
+              {/* Chat CTA */}
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: "easeOut" }}>
+                <Card className="overflow-hidden border-none shadow-2xl bg-[#0D47A1] relative group rounded-3xl">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#0D47A1] via-[#1A237E] to-[#311B92] opacity-90" />
+                  <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-colors duration-700" />
+                  <CardContent className="relative p-10 flex flex-col md:flex-row items-center gap-8">
+                    <div className="h-20 w-20 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-md border border-white/20 shadow-inner transform -rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                      <MessageCircle className="h-10 w-10 text-white" />
+                    </div>
+                    <div className="flex-1 text-center md:text-left space-y-3 pt-8">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00C853]/20 border border-[#00C853]/30 text-[#00C853] text-xs font-bold tracking-wider uppercase">
+                        <span className="h-2 w-2 rounded-full bg-[#00C853] animate-pulse" />
+                        Support Online
+                      </div>
+                      <h2 className="text-3xl font-bold text-white tracking-tight">Need Help? Chat with Us!</h2>
+                      <p className="text-blue-100/80 text-base leading-relaxed">Our friendly support team is ready to help with anything. Get instant answers in real-time.</p>
+                      <div className="pt-4">
+                        <button
+                          onClick={() => navigate('/agent/chat')}
+                          className="bg-white text-[#0D47A1] hover:bg-blue-50 rounded-xl px-8 h-12 inline-flex items-center gap-3 font-bold shadow-lg shadow-black/20 transition-all hover:-translate-y-0.5 active:translate-y-0"
+                        >
+                          Start Live Chat
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Support Form */}
+              <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden">
+                <CardHeader className="p-8 bg-slate-50/50 border-b border-slate-100">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-red-50 flex items-center justify-center border border-red-100 shadow-sm">
+                      <Info className="h-6 w-6 text-red-500" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl font-bold text-slate-800">Submit a Support Request</CardTitle>
+                      <CardDescription className="text-slate-500">Provide details about your issue or question</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-8 space-y-8">
+                  <form onSubmit={(e) => handleSubmit(e)} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700 ml-1">Issue Type</label>
+                        <Select value={issueType} onValueChange={setIssueType} className="bg-slate-50 border-slate-200 h-12 rounded-xl">
+                        <SelectContent>
+                          <SelectItem value="commission_query">Commission Query</SelectItem>
+                          <SelectItem value="partner_recruitment">Partner Recruitment</SelectItem>
+                          <SelectItem value="payout_issue">Payout Issue</SelectItem>
+                          <SelectItem value="technical_support">Technical Support</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700 ml-1">Transaction ID (Optional)</label>
+                        <Input value={transactionId} onChange={(e) => setTransactionId(e.target.value)}
+                          placeholder="e.g. TR-99283" className="bg-slate-50 border-slate-200 h-12 rounded-xl" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700 ml-1">Description *</label>
+                      <Textarea value={description} onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Please describe your issue in detail..."
+                        className="min-h-[160px] bg-slate-50 border-slate-200 rounded-2xl resize-none p-4" />
+                    </div>
+                    <SendButton
+                      disabled={submitting || !description.trim()}
+                      onClick={() => handleSubmit()}
+                    />
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right Column */}
+            <div className="lg:col-span-4 space-y-8">
+              <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden">
+                <div className="p-8 space-y-8">
+                  <div className="flex flex-col items-center text-center space-y-4">
+                    <div className="h-16 w-16 rounded-3xl bg-blue-50 flex items-center justify-center border border-blue-100 shadow-sm transform rotate-3">
+                      <HelpCircle className="h-8 w-8 text-[#0D47A1]" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-bold text-slate-800">Admin Support</h3>
+                      <p className="text-slate-500 text-sm leading-relaxed">Our dedicated admin team is available for direct assistance.</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    {[
+                      { icon: Mail, label: "Email", value: "plus1rewards@gmail.com", color: "text-blue-500" },
+                      { icon: Phone, label: "Phone", value: "071 432 9190", color: "text-green-500" },
+                      { icon: Clock, label: "Hours", value: "Mon-Fri: 7:30 - 19:00", color: "text-orange-500" },
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 group hover:bg-white hover:shadow-md transition-all duration-300">
+                        <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center border border-slate-200 shadow-sm">
+                          <item.icon className={`h-5 w-5 ${item.color}`} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{item.label}</p>
+                          <p className="text-sm font-bold text-slate-700">{item.value}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <a href="https://wa.me/27714329190" target="_blank" rel="noopener noreferrer">
+                    <button className="w-full bg-[#00C853] hover:bg-[#00B24A] text-white inline-flex items-center justify-center gap-3 h-14 rounded-2xl font-bold shadow-lg transition-all hover:scale-[1.02] active:scale-100">
+                      <MessageCircle className="h-5 w-5" />
+                      WhatsApp Support
+                    </button>
+                  </a>
+                </div>
+              </Card>
+
+              <div className="bg-gradient-to-br from-blue-600 to-[#0D47A1] rounded-3xl p-8 text-white shadow-xl relative overflow-hidden group">
+                <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-700" />
+                <div className="relative space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                      <Info className="h-4 w-4 text-white" />
+                    </div>
+                    <h4 className="font-bold text-base">Quick Response</h4>
+                  </div>
+                  <p className="text-blue-50/80 text-sm leading-relaxed">
+                    We typically respond within <span className="text-white font-bold underline decoration-[#00C853] underline-offset-4">15 minutes</span> during business hours.
+                  </p>
+                  <div className="flex items-center gap-2 text-[10px] font-bold text-blue-200 uppercase tracking-widest">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#00C853]" />
+                    Priority Support Active
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Common Issues */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-200 bg-gray-50">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <span className="material-symbols-outlined" style={{ color: BLUE }}>help</span>
-              Common Issues
-            </h3>
+          {/* Common Topics */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <HelpCircle className="h-5 w-5 text-[#0D47A1]" />
+                Common Support Topics
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+              {[
+                { title: "Commission Tracking", desc: "View and track your earnings", icon: Receipt, color: "bg-emerald-50 text-emerald-600 border-emerald-100" },
+                { title: "Partner Recruitment", desc: "Help with onboarding partners", icon: FileText, color: "bg-blue-50 text-blue-600 border-blue-100" },
+                { title: "Payout Support", desc: "Payment and withdrawal queries", icon: UserPlus, color: "bg-purple-50 text-purple-600 border-purple-100" },
+                { title: "Account Help", desc: "Profile and settings assistance", icon: HelpCircle, color: "bg-orange-50 text-orange-600 border-orange-100" },
+              ].map((topic, i) => (
+                <motion.div key={i} whileHover={{ y: -5 }} className="group h-full">
+                  <Card className="border-none bg-white shadow-sm hover:shadow-md transition-all cursor-pointer rounded-2xl h-full min-h-[160px]">
+                    <CardContent className="p-6 pt-8 flex flex-col gap-4 h-full">
+                      <div className={`h-12 w-12 rounded-xl flex items-center justify-center border ${topic.color} group-hover:scale-110 transition-transform flex-shrink-0`}>
+                        <topic.icon className="h-6 w-6" />
+                      </div>
+                      <div className="space-y-1 flex-1">
+                        <h4 className="font-bold text-slate-800 group-hover:text-[#0D47A1] transition-colors">{topic.title}</h4>
+                        <p className="text-xs text-slate-500 leading-relaxed">{topic.desc}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
           </div>
-
-          <div className="p-6 space-y-4">
-            <details className="group">
-              <summary className="flex items-center justify-between cursor-pointer p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <span className="font-semibold text-gray-900">How do I resend login details to a partner?</span>
-                <span className="material-symbols-outlined text-gray-400 group-open:rotate-180 transition-transform">expand_more</span>
-              </summary>
-              <div className="p-4 text-sm text-gray-700">
-                Go to "My Partner Shops", find the partner, and click "Resend Login Details" button.
-              </div>
-            </details>
-
-            <details className="group">
-              <summary className="flex items-center justify-between cursor-pointer p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <span className="font-semibold text-gray-900">When do I receive commission payouts?</span>
-                <span className="material-symbols-outlined text-gray-400 group-open:rotate-180 transition-transform">expand_more</span>
-              </summary>
-              <div className="p-4 text-sm text-gray-700">
-                Commissions are paid on the 5th of each month if you've reached the R500 minimum threshold.
-              </div>
-            </details>
-
-            <details className="group">
-              <summary className="flex items-center justify-between cursor-pointer p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <span className="font-semibold text-gray-900">How do I add a new partner shop?</span>
-                <span className="material-symbols-outlined text-gray-400 group-open:rotate-180 transition-transform">expand_more</span>
-              </summary>
-              <div className="p-4 text-sm text-gray-700">
-                Click "Add New Shop" from your dashboard. Fill in all required details and submit for admin approval.
-              </div>
-            </details>
-          </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

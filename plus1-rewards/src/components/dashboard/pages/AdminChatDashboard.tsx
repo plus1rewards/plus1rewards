@@ -25,11 +25,12 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect, ChangeEvent } from 'react';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { Notification, useNotification } from '../../Notification';
 
 interface ChatMessage {
   id: string;
   conversation_id: string;
-  sender_type: 'member' | 'admin';
+  sender_type: 'member' | 'partner' | 'agent' | 'admin';
   message: string;
   created_at: string;
   read: boolean;
@@ -40,7 +41,9 @@ interface ChatMessage {
 
 interface ChatConversation {
   id: string;
-  member_id: string;
+  member_id?: string;
+  partner_id?: string;
+  agent_id?: string;
   status: 'open' | 'closed';
   feedback_requested: boolean;
   feedback_requested_at?: string;
@@ -51,6 +54,17 @@ interface ChatConversation {
     name: string;
     phone: string;
   };
+  partner?: {
+    id: string;
+    name: string;
+    phone: string;
+  };
+  agent?: {
+    id: string;
+    name: string;
+    phone: string;
+  };
+  conversation_type?: 'member' | 'partner' | 'agent';
   unread_count?: number;
   last_message?: string;
   last_message_time?: string;
@@ -58,6 +72,7 @@ interface ChatConversation {
 }
 
 export default function App() {
+  const { notification, showSuccess, showError, showInfo, hideNotification } = useNotification();
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
@@ -92,18 +107,121 @@ export default function App() {
   useEffect(() => {
     loadConversations();
     
-    // Set up real-time subscription
+    // Set up real-time subscription for member, partner, and agent chats
     const channel = supabaseAdmin
       .channel('admin-chat')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'chat_conversations'
         },
         () => {
           loadConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_conversations'
+        },
+        () => {
+          loadConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'chat_conversations'
+        },
+        (payload) => {
+          const deletedId = payload.old.id;
+          setConversations(prev => prev.filter(c => c.id !== deletedId));
+          if (selectedConversation?.id === deletedId) {
+            setSelectedConversation(null);
+            setMessages([]);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'partner_chat_conversations'
+        },
+        () => {
+          loadConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'partner_chat_conversations'
+        },
+        () => {
+          loadConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'partner_chat_conversations'
+        },
+        (payload) => {
+          const deletedId = payload.old.id;
+          setConversations(prev => prev.filter(c => c.id !== deletedId));
+          if (selectedConversation?.id === deletedId) {
+            setSelectedConversation(null);
+            setMessages([]);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'agent_chat_conversations'
+        },
+        () => {
+          loadConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'agent_chat_conversations'
+        },
+        () => {
+          loadConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'agent_chat_conversations'
+        },
+        (payload) => {
+          const deletedId = payload.old.id;
+          setConversations(prev => prev.filter(c => c.id !== deletedId));
+          if (selectedConversation?.id === deletedId) {
+            setSelectedConversation(null);
+            setMessages([]);
+          }
         }
       )
       .on(
@@ -115,7 +233,39 @@ export default function App() {
         },
         (payload) => {
           const newMsg = payload.new as ChatMessage;
-          if (selectedConversation && newMsg.conversation_id === selectedConversation.id) {
+          if (selectedConversation && selectedConversation.conversation_type === 'member' && newMsg.conversation_id === selectedConversation.id) {
+            setMessages(prev => [...prev, newMsg]);
+            scrollToBottom();
+          }
+          loadConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'partner_chat_messages'
+        },
+        (payload) => {
+          const newMsg = payload.new as ChatMessage;
+          if (selectedConversation && selectedConversation.conversation_type === 'partner' && newMsg.conversation_id === selectedConversation.id) {
+            setMessages(prev => [...prev, newMsg]);
+            scrollToBottom();
+          }
+          loadConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'agent_chat_messages'
+        },
+        (payload) => {
+          const newMsg = payload.new as ChatMessage;
+          if (selectedConversation && selectedConversation.conversation_type === 'agent' && newMsg.conversation_id === selectedConversation.id) {
             setMessages(prev => [...prev, newMsg]);
             scrollToBottom();
           }
@@ -137,7 +287,8 @@ export default function App() {
 
   const loadConversations = async () => {
     try {
-      const { data: convos, error } = await supabaseAdmin
+      // Load member conversations
+      const { data: memberConvos, error: memberError } = await supabaseAdmin
         .from('chat_conversations')
         .select(`
           *,
@@ -150,10 +301,42 @@ export default function App() {
         `)
         .order('updated_at', { ascending: false });
 
-      if (error) throw error;
+      if (memberError) throw memberError;
 
-      const conversationsWithDetails = await Promise.all(
-        (convos || []).map(async (convo) => {
+      // Load partner conversations
+      const { data: partnerConvos, error: partnerError } = await supabaseAdmin
+        .from('partner_chat_conversations')
+        .select(`
+          *,
+          partner:partners!partner_chat_conversations_partner_id_fkey (
+            id,
+            shop_name,
+            cell_phone
+          )
+        `)
+        .order('updated_at', { ascending: false });
+
+      if (partnerError) throw partnerError;
+
+      // Load agent conversations
+      const { data: agentConvos, error: agentError } = await supabaseAdmin
+        .from('agent_chat_conversations')
+        .select(`
+          *,
+          agent:agents!agent_chat_conversations_agent_id_fkey (
+            id,
+            first_name,
+            last_name,
+            cell_phone
+          )
+        `)
+        .order('updated_at', { ascending: false });
+
+      if (agentError) throw agentError;
+
+      // Process member conversations
+      const memberConversationsWithDetails = await Promise.all(
+        (memberConvos || []).map(async (convo) => {
           const { data: lastMsg } = await supabaseAdmin
             .from('chat_messages')
             .select('message, created_at, sender_type, attachment_url, attachment_type')
@@ -171,6 +354,7 @@ export default function App() {
 
           return {
             ...convo,
+            conversation_type: 'member' as const,
             member: convo.member ? {
               id: convo.member.id,
               name: `${convo.member.first_name || ''} ${convo.member.last_name || ''}`.trim() || 'Unknown Member',
@@ -184,10 +368,104 @@ export default function App() {
         })
       );
 
-      setConversations(conversationsWithDetails);
+      // Process partner conversations
+      const partnerConversationsWithDetails = await Promise.all(
+        (partnerConvos || []).map(async (convo) => {
+          const { data: lastMsg } = await supabaseAdmin
+            .from('partner_chat_messages')
+            .select('message, created_at, sender_type, attachment_url, attachment_type')
+            .eq('conversation_id', convo.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          const { count: unreadCount } = await supabaseAdmin
+            .from('partner_chat_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', convo.id)
+            .eq('sender_type', 'partner')
+            .eq('read', false);
+
+          return {
+            ...convo,
+            conversation_type: 'partner' as const,
+            partner: convo.partner ? {
+              id: convo.partner.id,
+              name: convo.partner.shop_name || 'Unknown Partner',
+              phone: convo.partner.cell_phone || 'No phone'
+            } : undefined,
+            last_message: lastMsg?.message || 'No messages yet',
+            last_message_time: lastMsg?.created_at,
+            last_message_thumbnail: lastMsg?.attachment_type === 'image' ? lastMsg.attachment_url : null,
+            unread_count: unreadCount || 0
+          };
+        })
+      );
+
+      // Process agent conversations
+      const agentConversationsWithDetails = await Promise.all(
+        (agentConvos || []).map(async (convo) => {
+          const { data: lastMsg } = await supabaseAdmin
+            .from('agent_chat_messages')
+            .select('message, created_at, sender_type, attachment_url, attachment_type')
+            .eq('conversation_id', convo.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          const { count: unreadCount } = await supabaseAdmin
+            .from('agent_chat_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', convo.id)
+            .eq('sender_type', 'agent')
+            .eq('read', false);
+
+          return {
+            ...convo,
+            conversation_type: 'agent' as const,
+            agent: convo.agent ? {
+              id: convo.agent.id,
+              name: `${convo.agent.first_name || ''} ${convo.agent.last_name || ''}`.trim() || 'Unknown Agent',
+              phone: convo.agent.cell_phone || 'No phone'
+            } : undefined,
+            last_message: lastMsg?.message || 'No messages yet',
+            last_message_time: lastMsg?.created_at,
+            last_message_thumbnail: lastMsg?.attachment_type === 'image' ? lastMsg.attachment_url : null,
+            unread_count: unreadCount || 0
+          };
+        })
+      );
+
+      // Combine and sort by updated_at
+      const allConversations = [...memberConversationsWithDetails, ...partnerConversationsWithDetails, ...agentConversationsWithDetails]
+        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+
+      // Remove duplicates - keep only the most recent conversation per member_id, partner_id, or agent_id
+      const uniqueConversations = allConversations.reduce((acc, convo) => {
+        const key = convo.conversation_type === 'member' ? convo.member_id : 
+                    convo.conversation_type === 'partner' ? convo.partner_id : 
+                    convo.agent_id;
+        const existing = acc.find(c => 
+          (c.conversation_type === convo.conversation_type) && 
+          ((c.conversation_type === 'member' && c.member_id === key) || 
+           (c.conversation_type === 'partner' && c.partner_id === key) ||
+           (c.conversation_type === 'agent' && c.agent_id === key))
+        );
+        if (!existing) {
+          acc.push(convo);
+        } else {
+          const existingIndex = acc.indexOf(existing);
+          if (new Date(convo.updated_at) > new Date(existing.updated_at)) {
+            acc[existingIndex] = convo;
+          }
+        }
+        return acc;
+      }, [] as typeof allConversations);
+
+      setConversations(uniqueConversations);
       
-      if (!selectedConversation && conversationsWithDetails.length > 0) {
-        setSelectedConversation(conversationsWithDetails[0]);
+      if (!selectedConversation && uniqueConversations.length > 0) {
+        setSelectedConversation(uniqueConversations[0]);
       }
     } catch (error) {
       console.error('Error loading conversations:', error);
@@ -197,9 +475,23 @@ export default function App() {
   };
 
   const loadMessages = async (conversationId: string) => {
+    if (!selectedConversation) return;
+    
     try {
+      const tableName = selectedConversation.conversation_type === 'member' 
+        ? 'chat_messages' 
+        : selectedConversation.conversation_type === 'partner'
+        ? 'partner_chat_messages'
+        : 'agent_chat_messages';
+      
+      const senderType = selectedConversation.conversation_type === 'member' 
+        ? 'member' 
+        : selectedConversation.conversation_type === 'partner'
+        ? 'partner'
+        : 'agent';
+
       const { data, error } = await supabaseAdmin
-        .from('chat_messages')
+        .from(tableName)
         .select('*')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
@@ -210,10 +502,10 @@ export default function App() {
 
       // Mark messages as read
       await supabaseAdmin
-        .from('chat_messages')
+        .from(tableName)
         .update({ read: true })
         .eq('conversation_id', conversationId)
-        .eq('sender_type', 'member')
+        .eq('sender_type', senderType)
         .eq('read', false);
 
       loadConversations();
@@ -227,6 +519,18 @@ export default function App() {
 
     setSending(true);
     try {
+      const tableName = selectedConversation.conversation_type === 'member' 
+        ? 'chat_messages' 
+        : selectedConversation.conversation_type === 'partner'
+        ? 'partner_chat_messages'
+        : 'agent_chat_messages';
+      
+      const conversationTableName = selectedConversation.conversation_type === 'member'
+        ? 'chat_conversations'
+        : selectedConversation.conversation_type === 'partner'
+        ? 'partner_chat_conversations'
+        : 'agent_chat_conversations';
+
       let attachmentUrl = null;
       let attachmentType = null;
 
@@ -239,7 +543,7 @@ export default function App() {
       const messageText = inputText.trim() || (attachmentType === 'image' ? '📷 Image' : '🎥 Video');
 
       const { error } = await supabaseAdmin
-        .from('chat_messages')
+        .from(tableName)
         .insert([{
           conversation_id: selectedConversation.id,
           sender_type: 'admin',
@@ -253,7 +557,7 @@ export default function App() {
       if (error) throw error;
 
       await supabaseAdmin
-        .from('chat_conversations')
+        .from(conversationTableName)
         .update({ updated_at: new Date().toISOString() })
         .eq('id', selectedConversation.id);
 
@@ -316,11 +620,23 @@ export default function App() {
     setIsAttachmentMenuOpen(false);
 
     try {
+      const tableName = selectedConversation.conversation_type === 'member' 
+        ? 'chat_messages' 
+        : selectedConversation.conversation_type === 'partner'
+        ? 'partner_chat_messages'
+        : 'agent_chat_messages';
+      
+      const conversationTableName = selectedConversation.conversation_type === 'member'
+        ? 'chat_conversations'
+        : selectedConversation.conversation_type === 'partner'
+        ? 'partner_chat_conversations'
+        : 'agent_chat_conversations';
+
       const fileUrl = await uploadFile(file);
       if (!fileUrl) throw new Error('Failed to upload file');
 
       const { error } = await supabaseAdmin
-        .from('chat_messages')
+        .from(tableName)
         .insert([{
           conversation_id: selectedConversation.id,
           sender_type: 'admin',
@@ -334,14 +650,14 @@ export default function App() {
       if (error) throw error;
 
       await supabaseAdmin
-        .from('chat_conversations')
+        .from(conversationTableName)
         .update({ updated_at: new Date().toISOString() })
         .eq('id', selectedConversation.id);
 
       await loadMessages(selectedConversation.id);
     } catch (error) {
       console.error('Error sending file:', error);
-      alert('Failed to send file. Please try again.');
+      showError('Upload Failed', 'Failed to send file. Please try again.');
     } finally {
       setUploadingFile(false);
       if (e.target) e.target.value = '';
@@ -382,17 +698,32 @@ export default function App() {
     if (!selectedConversation) return;
 
     try {
-      await supabaseAdmin
-        .from('chat_conversations')
+      const tableName = selectedConversation.conversation_type === 'member'
+        ? 'chat_conversations'
+        : selectedConversation.conversation_type === 'partner'
+        ? 'partner_chat_conversations'
+        : 'agent_chat_conversations';
+
+      const { error } = await supabaseAdmin
+        .from(tableName)
         .update({ 
           status: 'closed',
-          feedback_requested: false
+          feedback_requested: true,
+          feedback_requested_at: new Date().toISOString()
         })
         .eq('id', selectedConversation.id);
 
+      if (error) {
+        console.error('Error closing conversation:', error);
+        showError('Failed to Close', error.message);
+        return;
+      }
+
       await loadConversations();
+      showSuccess('Conversation Closed', 'Feedback request sent successfully');
     } catch (error) {
       console.error('Error closing conversation:', error);
+      showError('Failed to Close', 'Failed to close conversation. Please try again.');
     }
   };
 
@@ -400,8 +731,14 @@ export default function App() {
     if (!selectedConversation) return;
 
     try {
+      const tableName = selectedConversation.conversation_type === 'member'
+        ? 'chat_conversations'
+        : selectedConversation.conversation_type === 'partner'
+        ? 'partner_chat_conversations'
+        : 'agent_chat_conversations';
+
       await supabaseAdmin
-        .from('chat_conversations')
+        .from(tableName)
         .update({ 
           status: 'closed',
           feedback_requested: true,
@@ -410,9 +747,10 @@ export default function App() {
         .eq('id', selectedConversation.id);
 
       await loadConversations();
-      alert('Feedback request sent! The conversation has been closed.');
+      showSuccess('Feedback Requested', 'The conversation has been closed and feedback request sent');
     } catch (error) {
       console.error('Error requesting feedback:', error);
+      showError('Request Failed', 'Failed to request feedback. Please try again.');
     }
   };
 
@@ -420,24 +758,53 @@ export default function App() {
     if (!selectedConversation || !confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) return;
 
     try {
+      const messagesTableName = selectedConversation.conversation_type === 'member' 
+        ? 'chat_messages' 
+        : selectedConversation.conversation_type === 'partner'
+        ? 'partner_chat_messages'
+        : 'agent_chat_messages';
+      
+      const conversationTableName = selectedConversation.conversation_type === 'member'
+        ? 'chat_conversations'
+        : selectedConversation.conversation_type === 'partner'
+        ? 'partner_chat_conversations'
+        : 'agent_chat_conversations';
+
+      const conversationIdToDelete = selectedConversation.id;
+
       // Delete messages first
-      await supabaseAdmin
-        .from('chat_messages')
+      const { error: messagesError } = await supabaseAdmin
+        .from(messagesTableName)
         .delete()
-        .eq('conversation_id', selectedConversation.id);
+        .eq('conversation_id', conversationIdToDelete);
+
+      if (messagesError) {
+        console.error('Error deleting messages:', messagesError);
+        throw messagesError;
+      }
 
       // Delete conversation
-      await supabaseAdmin
-        .from('chat_conversations')
+      const { error: conversationError } = await supabaseAdmin
+        .from(conversationTableName)
         .delete()
-        .eq('id', selectedConversation.id);
+        .eq('id', conversationIdToDelete);
 
+      if (conversationError) {
+        console.error('Error deleting conversation:', conversationError);
+        throw conversationError;
+      }
+
+      // Clear selected conversation and messages
       setSelectedConversation(null);
       setMessages([]);
-      await loadConversations();
+      
+      // Remove from conversations list immediately
+      setConversations(prev => prev.filter(c => c.id !== conversationIdToDelete));
+      
+      showSuccess('Deleted', 'Conversation deleted successfully');
     } catch (error) {
       console.error('Error deleting conversation:', error);
-      alert('Failed to delete conversation. Please try again.');
+      showError('Delete Failed', 'Failed to delete conversation. Please try again.');
     }
   };
 
@@ -460,11 +827,23 @@ export default function App() {
         
         setUploadingFile(true);
         try {
+          const tableName = selectedConversation.conversation_type === 'member' 
+            ? 'chat_messages' 
+            : selectedConversation.conversation_type === 'partner'
+            ? 'partner_chat_messages'
+            : 'agent_chat_messages';
+          
+          const conversationTableName = selectedConversation.conversation_type === 'member'
+            ? 'chat_conversations'
+            : selectedConversation.conversation_type === 'partner'
+            ? 'partner_chat_conversations'
+            : 'agent_chat_conversations';
+
           const fileUrl = await uploadFile(audioFile);
           if (!fileUrl) throw new Error('Failed to upload voice note');
 
           const { error } = await supabaseAdmin
-            .from('chat_messages')
+            .from(tableName)
             .insert([{
               conversation_id: selectedConversation.id,
               sender_type: 'admin',
@@ -477,14 +856,14 @@ export default function App() {
           if (error) throw error;
 
           await supabaseAdmin
-            .from('chat_conversations')
+            .from(conversationTableName)
             .update({ updated_at: new Date().toISOString() })
             .eq('id', selectedConversation.id);
 
           await loadMessages(selectedConversation.id);
         } catch (error) {
           console.error('Error sending voice note:', error);
-          alert('Failed to send voice note. Please try again.');
+          showError('Upload Failed', 'Failed to send voice note. Please try again.');
         } finally {
           setUploadingFile(false);
         }
@@ -499,7 +878,7 @@ export default function App() {
       }, 1000);
     } catch (err) {
       console.error("Error accessing microphone:", err);
-      alert('Failed to access microphone. Please check permissions.');
+      showError('Microphone Access Denied', 'Failed to access microphone. Please check permissions.');
     }
   };
 
@@ -541,9 +920,20 @@ export default function App() {
   const filteredConversations = conversations.filter(convo => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
+    const name = convo.conversation_type === 'member' 
+      ? convo.member?.name 
+      : convo.conversation_type === 'partner'
+      ? convo.partner?.name
+      : convo.agent?.name;
+    const phone = convo.conversation_type === 'member'
+      ? convo.member?.phone
+      : convo.conversation_type === 'partner'
+      ? convo.partner?.phone
+      : convo.agent?.phone;
+    
     return (
-      convo.member?.name?.toLowerCase().includes(query) ||
-      convo.member?.phone?.toLowerCase().includes(query) ||
+      name?.toLowerCase().includes(query) ||
+      phone?.toLowerCase().includes(query) ||
       convo.last_message?.toLowerCase().includes(query)
     );
   });
@@ -598,20 +988,30 @@ export default function App() {
               <p className="text-sm text-gray-500">No conversations yet</p>
             </div>
           ) : (
-            filteredConversations.map((convo) => (
-              <ChatItem 
-                key={convo.id}
-                name={convo.member?.name || 'Unknown Member'} 
-                message={convo.last_message || 'No messages'} 
-                time={formatTimeAgo(convo.last_message_time)} 
-                unread={convo.unread_count} 
-                active={selectedConversation?.id === convo.id}
-                status={convo.status === 'open' ? 'online' : undefined}
-                initial={convo.member?.name?.charAt(0).toUpperCase() || 'M'}
-                thumbnail={convo.last_message_thumbnail}
-                onClick={() => setSelectedConversation(convo)}
-              />
-            ))
+            filteredConversations.map((convo) => {
+              const name = convo.conversation_type === 'member' 
+                ? (convo.member?.name || 'Unknown Member')
+                : convo.conversation_type === 'partner'
+                ? (convo.partner?.name || 'Unknown Partner')
+                : (convo.agent?.name || 'Unknown Agent');
+              const initial = name.charAt(0).toUpperCase();
+              
+              return (
+                <ChatItem 
+                  key={convo.id}
+                  name={name} 
+                  message={convo.last_message || 'No messages'} 
+                  time={formatTimeAgo(convo.last_message_time)} 
+                  unread={convo.unread_count} 
+                  active={selectedConversation?.id === convo.id}
+                  status={convo.status === 'open' ? 'online' : undefined}
+                  initial={initial}
+                  thumbnail={convo.last_message_thumbnail}
+                  conversationType={convo.conversation_type}
+                  onClick={() => setSelectedConversation(convo)}
+                />
+              );
+            })
           )}
         </div>
       </aside>
@@ -624,15 +1024,34 @@ export default function App() {
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="w-10 h-10 rounded-full bg-[#1a558b] flex items-center justify-center font-semibold text-white">
-                  {selectedConversation.member?.name?.charAt(0).toUpperCase() || 'M'}
+                  {selectedConversation.conversation_type === 'member' 
+                    ? (selectedConversation.member?.name?.charAt(0).toUpperCase() || 'M')
+                    : selectedConversation.conversation_type === 'partner'
+                    ? (selectedConversation.partner?.name?.charAt(0).toUpperCase() || 'P')
+                    : (selectedConversation.agent?.name?.charAt(0).toUpperCase() || 'A')}
                 </div>
                 {selectedConversation.status === 'open' && (
                   <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#00a63e] border-2 border-white rounded-full" />
                 )}
               </div>
               <div>
-                <h2 className="font-semibold text-sm text-gray-900">{selectedConversation.member?.name || 'Unknown Member'}</h2>
-                <p className="text-xs text-gray-500">{selectedConversation.member?.phone || 'No phone'}</p>
+                <h2 className="font-semibold text-sm text-gray-900">
+                  {selectedConversation.conversation_type === 'member' 
+                    ? (selectedConversation.member?.name || 'Unknown Member')
+                    : selectedConversation.conversation_type === 'partner'
+                    ? (selectedConversation.partner?.name || 'Unknown Partner')
+                    : (selectedConversation.agent?.name || 'Unknown Agent')}
+                  {selectedConversation.conversation_type === 'partner' && (
+                    <span className="ml-2 text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full">Partner</span>
+                  )}
+                </h2>
+                <p className="text-xs text-gray-500">
+                  {selectedConversation.conversation_type === 'member' 
+                    ? (selectedConversation.member?.phone || 'No phone')
+                    : selectedConversation.conversation_type === 'partner'
+                    ? (selectedConversation.partner?.phone || 'No phone')
+                    : (selectedConversation.agent?.phone || 'No phone')}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4 text-gray-400">
@@ -831,11 +1250,22 @@ export default function App() {
           </div>
         </main>
       )}
+
+      {/* Notification */}
+      {notification && (
+        <Notification
+          type={notification.type}
+          title={notification.title}
+          message={notification.message}
+          onClose={hideNotification}
+          duration={notification.duration}
+        />
+      )}
     </div>
   );
 }
 
-function ChatItem({ name, message, time, unread, active, status, initial, thumbnail, onClick }: any) {
+function ChatItem({ name, message, time, unread, active, status, initial, thumbnail, conversationType, onClick }: any) {
   return (
     <div 
       onClick={onClick}
@@ -851,7 +1281,12 @@ function ChatItem({ name, message, time, unread, active, status, initial, thumbn
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-0.5">
-          <h3 className={`font-semibold text-sm truncate ${active ? 'text-[#1a558b]' : 'text-gray-900'}`}>{name}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className={`font-semibold text-sm truncate ${active ? 'text-[#1a558b]' : 'text-gray-900'}`}>{name}</h3>
+            {conversationType === 'partner' && (
+              <span className="text-[9px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full font-bold">PARTNER</span>
+            )}
+          </div>
           <span className="text-[10px] text-gray-400">{time}</span>
         </div>
         <div className="flex items-center justify-between gap-2">
@@ -876,8 +1311,20 @@ function ChatItem({ name, message, time, unread, active, status, initial, thumbn
 
 function Message({ msg, selectedConversation, playingAudio, toggleAudioPlayback }: any) {
   const isAdmin = msg.sender_type === 'admin';
-  const senderName = isAdmin ? 'Admin' : selectedConversation.member?.name || 'Member';
-  const initial = isAdmin ? 'A' : selectedConversation.member?.name?.charAt(0).toUpperCase() || 'M';
+  const senderName = isAdmin 
+    ? 'Admin' 
+    : (selectedConversation.conversation_type === 'member' 
+        ? (selectedConversation.member?.name || 'Member')
+        : selectedConversation.conversation_type === 'partner'
+        ? (selectedConversation.partner?.name || 'Partner')
+        : (selectedConversation.agent?.name || 'Agent'));
+  const initial = isAdmin 
+    ? 'A' 
+    : (selectedConversation.conversation_type === 'member'
+        ? (selectedConversation.member?.name?.charAt(0).toUpperCase() || 'M')
+        : selectedConversation.conversation_type === 'partner'
+        ? (selectedConversation.partner?.name?.charAt(0).toUpperCase() || 'P')
+        : (selectedConversation.agent?.name?.charAt(0).toUpperCase() || 'A'));
   const time = new Date(msg.created_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
 
   return (
@@ -978,3 +1425,4 @@ function AttachmentOption({ icon, label, onClick }: any) {
     </button>
   );
 }
+

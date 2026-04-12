@@ -30,7 +30,7 @@ import FeedbackModal from '../components/ui/FeedbackModal';
 interface ChatMessage {
   id: string;
   conversation_id: string;
-  sender_type: 'partner' | 'admin';
+  sender_type: 'agent' | 'admin';
   message: string;
   created_at: string;
   read: boolean;
@@ -41,7 +41,7 @@ interface ChatMessage {
 
 interface ChatConversation {
   id: string;
-  partner_id: string;
+  agent_id: string;
   status: 'open' | 'closed';
   feedback_requested?: boolean;
   feedback_submitted_at?: string;
@@ -49,7 +49,7 @@ interface ChatConversation {
   updated_at: string;
 }
 
-export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) {
+export default function AgentChat({ onClose }: { onClose?: () => void } = {}) {
   const navigate = useNavigate();
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
@@ -91,13 +91,13 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
       
       // Set up real-time subscription using supabaseAdmin to bypass RLS
       const channel = supabaseAdmin
-        .channel(`partner-chat:${conversation.id}`)
+        .channel(`agent-chat:${conversation.id}`)
         .on(
           'postgres_changes',
           {
             event: 'INSERT',
             schema: 'public',
-            table: 'partner_chat_messages',
+            table: 'agent_chat_messages',
             filter: `conversation_id=eq.${conversation.id}`
           },
           (payload) => {
@@ -111,7 +111,7 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
           {
             event: 'UPDATE',
             schema: 'public',
-            table: 'partner_chat_conversations',
+            table: 'agent_chat_conversations',
             filter: `id=eq.${conversation.id}`
           },
           (payload) => {
@@ -129,7 +129,7 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
           {
             event: 'DELETE',
             schema: 'public',
-            table: 'partner_chat_conversations',
+            table: 'agent_chat_conversations',
             filter: `id=eq.${conversation.id}`
           },
           () => {
@@ -160,25 +160,24 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
 
   const loadOrCreateConversation = async () => {
     try {
-      const partnerSessionData = localStorage.getItem('partnerSession') || sessionStorage.getItem('partnerSession');
-      if (!partnerSessionData) {
-        navigate('/partner/login');
+      const agentSessionData = localStorage.getItem('currentAgent') || sessionStorage.getItem('currentAgent');
+      if (!agentSessionData) {
+        navigate('/agent/login');
         return;
       }
 
-      const session = JSON.parse(partnerSessionData);
-      const partnerId = session.partner?.id;
-      if (!partnerId) {
-        navigate('/partner/login');
+      const session = JSON.parse(agentSessionData);
+      const agentId = session.agent_id || session.id;
+      if (!agentId) {
+        navigate('/agent/login');
         return;
       }
 
       // Try to find existing OPEN conversation using admin client
-      // Note: Tables are in chat schema, accessed via search_path
       const { data: openConvo } = await supabaseAdmin
-        .from('partner_chat_conversations')
+        .from('agent_chat_conversations')
         .select('*')
-        .eq('partner_id', partnerId)
+        .eq('agent_id', agentId)
         .eq('status', 'open')
         .order('created_at', { ascending: false })
         .limit(1)
@@ -189,8 +188,8 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
       } else {
         // Create new conversation using admin client
         const { data: newConvo, error: createError } = await supabaseAdmin
-          .from('partner_chat_conversations')
-          .insert([{ partner_id: partnerId, status: 'open' }])
+          .from('agent_chat_conversations')
+          .insert([{ agent_id: agentId, status: 'open' }])
           .select()
           .single();
 
@@ -207,7 +206,7 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
   const loadMessages = async (conversationId: string) => {
     try {
       const { data, error } = await supabaseAdmin
-        .from('partner_chat_messages')
+        .from('agent_chat_messages')
         .select('*')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true});
@@ -236,10 +235,10 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
       const messageText = inputText.trim() || (attachmentType === 'image' ? '📷 Image' : '🎥 Video');
 
       const { error } = await supabaseAdmin
-        .from('partner_chat_messages')
+        .from('agent_chat_messages')
         .insert([{
           conversation_id: conversation.id,
-          sender_type: 'partner',
+          sender_type: 'agent',
           message: messageText,
           attachment_url: attachmentUrl,
           attachment_type: attachmentType,
@@ -264,7 +263,7 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
       }
 
       await supabaseAdmin
-        .from('partner_chat_conversations')
+        .from('agent_chat_conversations')
         .update({ updated_at: new Date().toISOString() })
         .eq('id', conversation.id);
 
@@ -340,10 +339,10 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
       if (!fileUrl) throw new Error('Failed to upload file');
 
       const { error } = await supabaseAdmin
-        .from('partner_chat_messages')
+        .from('agent_chat_messages')
         .insert([{
           conversation_id: conversation.id,
-          sender_type: 'partner',
+          sender_type: 'agent',
           message: `📎 Sent ${file.name}`,
           attachment_url: fileUrl,
           attachment_type: 'file',
@@ -354,7 +353,7 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
       if (error) throw error;
 
       await supabaseAdmin
-        .from('partner_chat_conversations')
+        .from('agent_chat_conversations')
         .update({ updated_at: new Date().toISOString() })
         .eq('id', conversation.id);
 
@@ -421,10 +420,10 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
           if (!fileUrl) throw new Error('Failed to upload voice note');
 
           const { error } = await supabaseAdmin
-            .from('partner_chat_messages')
+            .from('agent_chat_messages')
             .insert([{
               conversation_id: conversation.id,
-              sender_type: 'partner',
+              sender_type: 'agent',
               message: '🎤 Sent a voice note',
               attachment_url: fileUrl,
               attachment_type: 'voice',
@@ -434,7 +433,7 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
           if (error) throw error;
 
           await supabaseAdmin
-            .from('partner_chat_conversations')
+            .from('agent_chat_conversations')
             .update({ updated_at: new Date().toISOString() })
             .eq('id', conversation.id);
 
@@ -519,7 +518,7 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
       <header className="h-16 flex items-center justify-between px-6 border-b border-gray-200 bg-white/80 backdrop-blur-md z-10">
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => onClose ? onClose() : navigate('/partner/dashboard')}
+            onClick={() => onClose ? onClose() : navigate('/agent/dashboard')}
             className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -551,10 +550,10 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
             <h3 className="text-xl font-bold text-gray-900 mb-2">Hey there! 👋</h3>
             <p className="text-gray-600 max-w-sm mb-6">
               Welcome to Plus1 Support! We're here to help with anything you need. 
-              Ask us about payments, invoices, or anything else!
+              Ask us about commissions, partners, or anything else!
             </p>
             <div className="flex flex-wrap gap-2 justify-center">
-              {['Help with invoice', 'Transaction issue', 'Account question'].map((suggestion) => (
+              {['Commission query', 'Partner help', 'Account question'].map((suggestion) => (
                 <button
                   key={suggestion}
                   onClick={() => setInputText(suggestion)}
@@ -714,7 +713,7 @@ export default function PartnerChat({ onClose }: { onClose?: () => void } = {}) 
           isOpen={showFeedbackModal}
           onClose={() => setShowFeedbackModal(false)}
           conversationId={conversation.id}
-          userType="partner"
+          userType="agent"
         />
       )}
     </div>

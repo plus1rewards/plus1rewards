@@ -18,15 +18,43 @@ export default function DisputesPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const { data: disputesData } = await supabaseAdmin
+      const { data: disputesData, error } = await supabaseAdmin
         .from('disputes')
         .select(`
           *,
           members(first_name, last_name, cell_phone),
-          partners(shop_name),
+          partners(shop_name, cell_phone),
           transactions(purchase_amount)
         `)
         .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching disputes:', error);
+      }
+
+      // Fetch agent data separately for disputes with agent_id
+      if (disputesData) {
+        const agentIds = disputesData
+          .filter(d => d.agent_id)
+          .map(d => d.agent_id);
+        
+        if (agentIds.length > 0) {
+          const { data: agentsData } = await supabaseAdmin
+            .from('agents')
+            .select('id, name, surname, cell_phone')
+            .in('id', agentIds);
+          
+          // Map agent data to disputes
+          disputesData.forEach(dispute => {
+            if (dispute.agent_id) {
+              const agent = agentsData?.find(a => a.id === dispute.agent_id);
+              if (agent) {
+                dispute.agents = agent;
+              }
+            }
+          });
+        }
+      }
 
       const total = disputesData?.length || 0;
       const open = disputesData?.filter(d => d.status === 'open').length || 0;
@@ -204,25 +232,33 @@ export default function DisputesPage() {
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
                           <div>
-                            <p className="text-xs text-gray-600 uppercase font-bold">Member</p>
+                            <p className="text-xs text-gray-600 uppercase font-bold">Submitted By</p>
                             <p className="text-sm text-gray-900">
-                              {dispute.dispute_type === 'call_request' ? 'N/A (Agent Request)' : 
-                               `${dispute.members?.first_name} ${dispute.members?.last_name}`.trim() || 'Unknown'}
+                              {dispute.member_id ? `${dispute.members?.first_name} ${dispute.members?.last_name}`.trim() || 'Unknown Member' :
+                               dispute.partner_id ? dispute.partners?.shop_name || 'Unknown Partner' :
+                               dispute.agent_id ? `${dispute.agents?.name} ${dispute.agents?.surname}`.trim() || 'Unknown Agent' :
+                               'Unknown'}
                             </p>
-                            <div className="text-xs text-gray-600">{dispute.members?.cell_phone || '-'}</div>
+                            <div className="text-xs text-gray-600">
+                              {dispute.member_id ? dispute.members?.cell_phone :
+                               dispute.partner_id ? dispute.partners?.cell_phone :
+                               dispute.agent_id ? dispute.agents?.cell_phone :
+                               '-'}
+                            </div>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-600 uppercase font-bold">Partner</p>
+                            <p className="text-xs text-gray-600 uppercase font-bold">User Type</p>
                             <p className="text-sm text-gray-900">
-                              {dispute.dispute_type === 'call_request' ? 'N/A (Agent Request)' : 
-                               dispute.partners?.shop_name || 'Unknown'}
+                              {dispute.member_id ? 'Member' :
+                               dispute.partner_id ? 'Partner' :
+                               dispute.agent_id ? 'Agent' :
+                               'Unknown'}
                             </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 uppercase font-bold">Dispute Type</p>
                             <p className="text-sm text-gray-900 capitalize">
-                              {dispute.dispute_type === 'call_request' ? 'Call Requested' : 
-                               dispute.dispute_type?.replace('_', ' ') || '-'}
+                              {dispute.dispute_type?.replace('_', ' ') || '-'}
                             </p>
                           </div>
                           <div>

@@ -33,10 +33,13 @@ const SettingsPage = lazy(() => import('./components/dashboard/pages/SettingsPag
 const AdminChatDashboard = lazy(() => import('./components/dashboard/pages/AdminChatDashboard'))
 const MemberDashboard = lazy(() => import('./pages/DashboardNew'))
 const MemberCoverPlans = lazy(() => import('./pages/MemberCoverPlans'))
+const MemberViewPlans = lazy(() => import('./pages/MemberViewPlans'))
 const MemberTransactions = lazy(() => import('./pages/MemberTransactions'))
 const MemberTopUp = lazy(() => import('./pages/MemberTopUp'))
 const MemberSupport = lazy(() => import('./pages/MemberSupport'))
 const MemberChat = lazy(() => import('./pages/MemberChat'))
+const PartnerChat = lazy(() => import('./pages/PartnerChat'))
+const AgentChat = lazy(() => import('./pages/AgentChat'))
 const AddDependant = lazy(() => import('./pages/AddDependant'))
 const SponsorSomeone = lazy(() => import('./pages/SponsorSomeone'))
 const PartnerDashboard = lazy(() => import('./components/partner/PartnerDashboard'))
@@ -53,7 +56,7 @@ const PartnerSalesTerminal = lazy(() => import('./pages/PartnerSalesTerminal'))
 const AgentDashboard = lazy(() => import('./pages/AgentDashboard').then(m => ({ default: m.AgentDashboard })))
 const AgentAddShop = lazy(() => import('./pages/AgentAddPartner').then(m => ({ default: m.AgentAddShop })))
 const AgentCommission = lazy(() => import('./pages/AgentCommission').then(m => ({ default: m.AgentCommission })))
-const AgentSupport = lazy(() => import('./pages/AgentSupport').then(m => ({ default: m.AgentSupport })))
+const AgentSupport = lazy(() => import('./pages/AgentSupport'))
 const AgentProfile = lazy(() => import('./pages/AgentProfile').then(m => ({ default: m.AgentProfile })))
 const AgentShopDetail = lazy(() => import('./pages/AgentShopDetail').then(m => ({ default: m.AgentShopDetail })))
 const PolicyProviderDashboard = lazy(() => import('./pages/PolicyProviderDashboard').then(m => ({ default: m.PolicyProviderDashboard })))
@@ -208,6 +211,7 @@ export default function App() {
           <Route path="/member/dashboard" element={<MemberDashboard />} />
           <Route path="/member/chat" element={<MemberChat />} />
           <Route path="/member/cover-plans" element={<MemberCoverPlans />} />
+          <Route path="/member/view-plans" element={<MemberViewPlans />} />
           <Route path="/member/transactions" element={<MemberTransactions />} />
           <Route path="/member/top-up" element={<MemberTopUp />} />
           <Route path="/member/support" element={<MemberSupport />} />
@@ -231,10 +235,12 @@ export default function App() {
           <Route path="/partner/statement" element={<PartnerStatement />} />
           <Route path="/partner/profile" element={<PartnerShopProfile />} />
           <Route path="/partner/support" element={<PartnerSupport />} />
+          <Route path="/partner/chat" element={<PartnerChat />} />
           <Route path="/agent/dashboard" element={<AgentDashboard />} />
           <Route path="/agent/add-shop" element={<AgentAddShop />} />
           <Route path="/agent/commission" element={<AgentCommission />} />
           <Route path="/agent/support" element={<AgentSupport />} />
+          <Route path="/agent/chat" element={<AgentChat />} />
           <Route path="/agent/profile" element={<AgentProfile />} />
           <Route path="/agent/shop/:partnerId" element={<AgentShopDetail />} />
           <Route path="/provider/dashboard" element={

@@ -23,9 +23,10 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect, ChangeEvent } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseAdmin } from '../lib/supabase';
 import { getSession } from '../lib/session';
 import { useNavigate } from 'react-router-dom';
+import FeedbackModal from '../components/ui/FeedbackModal';
 
 interface ChatMessage {
   id: string;
@@ -45,12 +46,14 @@ interface ChatConversation {
   status: 'open' | 'closed';
   feedback_requested: boolean;
   feedback_requested_at?: string;
+  feedback_submitted_at?: string;
   created_at: string;
   updated_at: string;
 }
 
 export default function MemberChat({ onClose }: { onClose?: () => void } = {}) {
   const navigate = useNavigate();
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [conversation, setConversation] = useState<ChatConversation | null>(null);
@@ -116,6 +119,26 @@ export default function MemberChat({ onClose }: { onClose?: () => void } = {}) {
           (payload) => {
             const updatedConvo = payload.new as ChatConversation;
             setConversation(updatedConvo);
+            
+            // Check if feedback is requested and not yet submitted
+            if (updatedConvo.status === 'closed' && updatedConvo.feedback_requested && !updatedConvo.feedback_submitted_at) {
+              setShowFeedbackModal(true);
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'chat_conversations',
+            filter: `id=eq.${conversation.id}`
+          },
+          () => {
+            // Conversation was deleted by admin - create a new one
+            setConversation(null);
+            setMessages([]);
+            loadOrCreateConversation();
           }
         )
         .subscribe();
@@ -125,6 +148,17 @@ export default function MemberChat({ onClose }: { onClose?: () => void } = {}) {
       };
     }
   }, [conversation]);
+
+  // Check for pending feedback on mount - only for conversations with messages
+  useEffect(() => {
+    if (conversation && 
+        conversation.status === 'closed' && 
+        conversation.feedback_requested && 
+        !conversation.feedback_submitted_at &&
+        messages.length > 0) {
+      setShowFeedbackModal(true);
+    }
+  }, [conversation?.id, conversation?.status, conversation?.feedback_requested, conversation?.feedback_submitted_at, messages.length]);
 
   const loadOrCreateConversation = async () => {
     try {
@@ -136,8 +170,8 @@ export default function MemberChat({ onClose }: { onClose?: () => void } = {}) {
 
       const memberId = session.member.id;
 
-      // Try to find existing OPEN conversation
-      const { data: openConvo, error: fetchError } = await supabase
+      // Try to find existing OPEN conversation using admin client
+      const { data: openConvo, error: fetchError } = await supabaseAdmin
         .from('chat_conversations')
         .select('*')
         .eq('member_id', memberId)
@@ -151,8 +185,8 @@ export default function MemberChat({ onClose }: { onClose?: () => void } = {}) {
       if (openConvo) {
         setConversation(openConvo);
       } else {
-        // Create new conversation
-        const { data: newConvo, error } = await supabase
+        // Create new conversation using admin client
+        const { data: newConvo, error } = await supabaseAdmin
           .from('chat_conversations')
           .insert([{
             member_id: memberId,
@@ -217,6 +251,16 @@ export default function MemberChat({ onClose }: { onClose?: () => void } = {}) {
 
       if (error) {
         console.error('Error inserting message:', error);
+        
+        // Check if it's a foreign key error (conversation was deleted)
+        if (error.code === '23503') {
+          alert('This conversation was deleted. Creating a new one...');
+          setConversation(null);
+          setMessages([]);
+          await loadOrCreateConversation();
+          return;
+        }
+        
         alert('Failed to send message. Please try again.');
         throw error;
       }
@@ -232,8 +276,15 @@ export default function MemberChat({ onClose }: { onClose?: () => void } = {}) {
       
       // Reload messages to ensure UI updates (real-time might have delay)
       await loadMessages(conversation.id);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
+      
+      // Additional check for foreign key error in catch block
+      if (error?.code === '23503') {
+        setConversation(null);
+        setMessages([]);
+        await loadOrCreateConversation();
+      }
     } finally {
       setSending(false);
     }
@@ -629,11 +680,13 @@ export default function MemberChat({ onClose }: { onClose?: () => void } = {}) {
           </div>
         </div>
       ) : (
-        <div className="p-4 bg-gray-50 border-t border-gray-100">
-          <p className="text-center text-sm text-gray-500">This conversation has been closed</p>
-          {conversation?.feedback_requested && (
-            <p className="text-center text-xs text-gray-400 mt-1">Please provide feedback about your experience</p>
-          )}
+        <div className="p-4 bg-gradient-to-r from-red-50 to-orange-50 border-t border-red-100">
+          <div className="max-w-4xl mx-auto text-center">
+            <p className="text-sm font-semibold text-red-700">Conversation was closed by ADMIN</p>
+            {conversation?.feedback_requested && (
+              <p className="text-xs text-red-600 mt-1">Please provide feedback about your experience</p>
+            )}
+          </div>
         </div>
       )}
 
@@ -644,6 +697,16 @@ export default function MemberChat({ onClose }: { onClose?: () => void } = {}) {
       >
         <ChevronDown className="w-5 h-5" />
       </button>
+
+      {/* Feedback Modal */}
+      {conversation && (
+        <FeedbackModal
+          isOpen={showFeedbackModal}
+          onClose={() => setShowFeedbackModal(false)}
+          conversationId={conversation.id}
+          userType="member"
+        />
+      )}
     </div>
   );
 }
@@ -752,3 +815,4 @@ function AttachmentOption({ icon, label, onClick }: any) {
     </button>
   );
 }
+

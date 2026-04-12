@@ -108,6 +108,19 @@ export const adminAuth = {
   // Fallback: Login directly with database (less secure but functional)
   async loginWithDatabase(phone: string, pattern: number[], rememberMe: boolean, fingerprint: string): Promise<{ success: boolean; error?: string }> {
     try {
+      // --- RATE LIMIT CHECK ---
+      const { data: rateLimit, error: rateError } = await supabase
+        .rpc('check_admin_rate_limit', { p_phone: phone });
+
+      if (rateError) console.warn('Rate limit check failed:', rateError);
+
+      if (rateLimit && !rateLimit.allowed) {
+        return {
+          success: false,
+          error: `Too many failed attempts. Try again in ${rateLimit.minutes_remaining} minute${rateLimit.minutes_remaining === 1 ? '' : 's'}.`
+        };
+      }
+
       // Query admin from members table
       const { data: admin, error } = await supabase
         .from('members')
@@ -117,28 +130,38 @@ export const adminAuth = {
         .single();
 
       if (error || !admin) {
+        await supabase.rpc('record_admin_login_attempt', { p_phone: phone, p_success: false });
         return { success: false, error: 'Invalid credentials' };
       }
 
       if (admin.status !== 'active') {
+        await supabase.rpc('record_admin_login_attempt', { p_phone: phone, p_success: false });
         return { success: false, error: 'Account is not active' };
       }
 
       // Verify pattern
       if (!admin.pattern_lock) {
+        await supabase.rpc('record_admin_login_attempt', { p_phone: phone, p_success: false });
         return { success: false, error: 'Pattern not set for this account' };
       }
 
       const storedPattern = JSON.parse(admin.pattern_lock);
       if (JSON.stringify(pattern) !== JSON.stringify(storedPattern)) {
-        return { success: false, error: 'Invalid pattern' };
+        await supabase.rpc('record_admin_login_attempt', { p_phone: phone, p_success: false });
+        const attemptsLeft = rateLimit ? rateLimit.attempts_remaining - 1 : null;
+        const attemptsMsg = attemptsLeft !== null && attemptsLeft > 0
+          ? ` ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} remaining.`
+          : attemptsLeft === 0 ? ' Account locked for 15 minutes.' : '';
+        return { success: false, error: `Invalid pattern.${attemptsMsg}` };
       }
 
-      // Generate session token (simple version - in production use crypto)
+      // Pattern correct — record success and clear failed attempts
+      await supabase.rpc('record_admin_login_attempt', { p_phone: phone, p_success: true });
+
+      // Generate session token
       const sessionToken = `admin_${admin.id}_${Date.now()}_${Math.random().toString(36)}`;
       const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(); // 2 hours
 
-      // Store session
       const session: AdminSession = {
         sessionToken,
         phone: admin.cell_phone,
