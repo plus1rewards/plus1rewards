@@ -91,6 +91,7 @@ serve(async (req) => {
         .from('admin_audit_log')
         .select('id')
         .eq('action', 'login_attempt')
+        .eq('success', false)
         .eq('ip_address', ipAddress)
         .gte('created_at', fifteenMinutesAgo);
 

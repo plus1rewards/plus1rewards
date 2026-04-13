@@ -30,7 +30,7 @@ export default function MemberLayout({ children, member, isOnline, pendingTransa
           pendingTransactions={pendingTransactions}
           onSignOut={onSignOut}
         />
-        <main className={`flex-1 w-full mx-auto px-4 py-6 md:px-8 md:py-8 space-y-6 md:space-y-8 ${wide ? 'max-w-[1400px]' : 'max-w-5xl'}`} style={{ paddingTop: '5rem' }}>
+        <main className={`flex-1 w-full mx-auto px-4 py-6 md:px-8 md:py-8 space-y-4 md:space-y-6 ${wide ? 'max-w-[1400px]' : 'max-w-5xl'}`} style={{ paddingTop: '4.5rem' }}>
           {children}
         </main>
         <MemberFooter />

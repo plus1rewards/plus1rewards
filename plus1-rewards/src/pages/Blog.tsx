@@ -47,6 +47,13 @@ export default function Blog() {
       {/* Hero band */}
       <div className="pt-24 pb-14 px-6 lg:px-20" style={{ backgroundColor: '#f5f8fc' }}>
         <div className="max-w-5xl mx-auto">
+          <a
+            href="/"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-6"
+          >
+            <span className="material-symbols-outlined text-base">arrow_back</span>
+            Back to Home
+          </a>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

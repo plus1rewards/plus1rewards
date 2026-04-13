@@ -52,9 +52,10 @@ export default function Footer() {
             <h4 className="text-gray-900 font-bold mb-5">Quick Links</h4>
             <ul className="space-y-3 text-sm text-gray-500">
               <li><a className="hover:text-blue-800 transition-colors" href="#how-it-works">How it Works</a></li>
-              <li><a className="hover:text-blue-800 transition-colors" href="#roles">Partner Stores</a></li>
+              <li><a className="hover:text-blue-800 transition-colors" href="/find-partner">Partner Stores</a></li>
               <li><a className="hover:text-blue-800 transition-colors" href="/agent/register">Become an Agent</a></li>
               <li><a className="hover:text-blue-800 transition-colors" href="/partner/register">Become a Partner</a></li>
+              <li><a className="hover:text-blue-800 transition-colors" href="/become-a-partner">Partner Benefits</a></li>
               <li><a className="hover:text-blue-800 transition-colors" href="/blog">Blog</a></li>
               <li><a className="hover:text-blue-800 transition-colors" href="/faq">FAQ</a></li>
             </ul>

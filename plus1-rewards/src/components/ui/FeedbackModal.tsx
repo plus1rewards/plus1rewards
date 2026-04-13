@@ -51,12 +51,13 @@ export default function FeedbackModal({ isOpen, onClose, conversationId, userTyp
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden"
+            onClick={e => e.stopPropagation()}
           >
             {/* Header */}
             <div className="bg-gradient-to-br from-[#0D47A1] to-[#1A237E] p-6 relative overflow-hidden">
@@ -156,6 +157,12 @@ export default function FeedbackModal({ isOpen, onClose, conversationId, userTyp
                     Submit Feedback
                   </>
                 )}
+              </button>
+              <button
+                onClick={onClose}
+                className="w-full text-sm text-gray-400 hover:text-gray-600 transition-colors py-1"
+              >
+                Skip for now
               </button>
             </div>
           </motion.div>

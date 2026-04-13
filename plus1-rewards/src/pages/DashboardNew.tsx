@@ -781,26 +781,24 @@ const DashboardNew: React.FC = () => {
       <div className="layout-container flex h-full grow flex-col w-full">
         {/* Header */}
         <header
-          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4"
+          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-10 py-3"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+            borderBottom: '1px solid rgba(0,0,0,0.06)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
           }}
         >
           {/* Left: Logo */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <a href="/" className="hover:opacity-80 transition-opacity">
-              <img src="/logo.png" alt="+1 Rewards" className="h-10 w-auto object-contain" />
+              <img src="/logo.png" alt="+1 Rewards" className="h-8 md:h-10 w-auto object-contain" />
             </a>
-            <div className="h-8 w-px bg-gray-300"></div>
-            <div className="w-4"></div>
           </div>
 
           {/* Right: Portal label, online badge, sign out, avatar */}
-          <div className="flex flex-1 justify-end items-center gap-6">
+          <div className="flex flex-1 justify-end items-center gap-2 md:gap-6">
             <div className="hidden md:flex items-center gap-2">
               <span className="text-sm font-medium text-gray-500">Member Portal</span>
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(26, 85, 139, 0.1)', border: '1px solid rgba(26, 85, 139, 0.2)' }}>
@@ -810,12 +808,12 @@ const DashboardNew: React.FC = () => {
             </div>
             <button
               onClick={handleSignOut}
-              className="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-9 px-4 text-sm font-bold transition-all hover:opacity-90 text-white bg-[#1a558b]"
+              className="flex cursor-pointer items-center justify-center rounded-lg h-8 md:h-9 px-3 md:px-4 text-xs md:text-sm font-bold transition-all hover:opacity-90 text-white bg-[#1a558b]"
             >
               Sign out
             </button>
             <div
-              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
+              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 md:size-10 flex-shrink-0"
               style={{
                 backgroundImage: `url("https://ui-avatars.com/api/?name=${encodeURIComponent(member?.name || 'M')}&background=1a558b&color=ffffff&size=128&bold=true")`,
                 border: '2px solid rgba(26, 85, 139, 0.25)'
@@ -824,41 +822,40 @@ const DashboardNew: React.FC = () => {
           </div>
         </header>
 
-      <main className="pt-[50px] pb-20 px-4 md:px-8 max-w-7xl mx-auto">
+      <main className="pt-16 pb-24 md:pb-10 px-4 md:px-8 max-w-7xl mx-auto w-full">
         {/* Profile Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4 pt-4">
           <div className="flex items-center gap-4">
             <div className="relative">
-              {/* Profile Picture - placeholder if not available */}
-              <div className="w-20 h-20 rounded-lg object-cover border-2 border-gray-200 shadow-sm bg-gray-100 flex items-center justify-center overflow-hidden">
-                <span className="material-symbols-outlined text-gray-400 text-4xl">person</span>
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg object-cover border-2 border-gray-200 shadow-sm bg-gray-100 flex items-center justify-center overflow-hidden">
+                <span className="material-symbols-outlined text-gray-400 text-3xl md:text-4xl">person</span>
               </div>
               <div className="absolute -bottom-1 -right-1 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-white shadow-sm">
                 ACTIVE
               </div>
             </div>
             <div>
-              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">{member?.name || 'Member'}</h1>
-              <p className="text-gray-600 font-medium">{member?.phone} • {member?.qr_code}</p>
+              <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">{member?.name || 'Member'}</h1>
+              <p className="text-gray-600 font-medium text-sm">{member?.phone}</p>
               <button 
                 onClick={() => {
                   const element = document.getElementById('edit-profile-section');
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
+                  if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }}
-                className="mt-2 text-gray-900 font-bold text-sm flex items-center gap-1 hover:underline"
+                className="mt-1 text-gray-900 font-bold text-sm flex items-center gap-1 hover:underline"
               >
                 <span className="material-symbols-outlined text-sm">edit</span> Edit Profile
               </button>
             </div>
           </div>
-          <DigitalPassCard
-            memberName={member?.name || ''}
-            qrCode={member?.qr_code || ''}
-            qrDataUrl={qrDataUrl}
-            onQRClick={() => setShowQRModal(true)}
-          />
+          <div className="w-full md:w-auto flex justify-center md:justify-end">
+            <DigitalPassCard
+              memberName={member?.name || ''}
+              qrCode={member?.qr_code || ''}
+              qrDataUrl={qrDataUrl}
+              onQRClick={() => setShowQRModal(true)}
+            />
+          </div>
         </div>
 
 
@@ -867,7 +864,7 @@ const DashboardNew: React.FC = () => {
           {/* Main Balance & Metrics */}
           <div className="md:col-span-8 flex flex-col gap-6">
             {/* Primary Balance Card */}
-            <div className="bg-blue-700 text-white p-8 rounded-lg relative overflow-hidden flex flex-col justify-between min-h-[220px] -mt-[60px]">
+            <div className="bg-blue-700 text-white p-6 md:p-8 rounded-lg relative overflow-hidden flex flex-col justify-between min-h-[200px] md:min-h-[220px] mt-4 md:mt-0">
               <div className="absolute top-0 right-0 p-8 opacity-10">
                 <span className="material-symbols-outlined text-8xl">account_balance_wallet</span>
               </div>
@@ -875,7 +872,7 @@ const DashboardNew: React.FC = () => {
                 <p className="text-blue-200 text-xs font-bold uppercase tracking-[0.1em] mb-1">
                   Overflow Balance
                 </p>
-                <h2 className="text-6xl font-extrabold tracking-tighter">R{overflowBalance.toFixed(2)}</h2>
+                <h2 className="text-4xl md:text-6xl font-extrabold tracking-tighter">R{overflowBalance.toFixed(2)}</h2>
               </div>
               <div className="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-white/20">
                 <div>
@@ -894,11 +891,11 @@ const DashboardNew: React.FC = () => {
             </div>
 
             {/* Manage Cashback Actions */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               <button 
                 onClick={handleUpgrade}
                 disabled={Number(mainCoverPlan?.target_amount) >= 665}
-                className="!bg-blue-600 !text-white p-4 rounded-lg text-left hover:scale-[0.98] transition-all flex flex-col justify-between min-h-[120px] disabled:!bg-gray-400 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="!bg-blue-600 !text-white p-4 rounded-lg text-left hover:scale-[0.98] transition-all flex flex-col justify-between min-h-[100px] md:min-h-[120px] disabled:!bg-gray-400 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 <span className="material-symbols-outlined text-2xl !text-white">upgrade</span>
                 <span className="font-bold text-sm leading-tight !text-white">
@@ -908,7 +905,7 @@ const DashboardNew: React.FC = () => {
               <button 
                 onClick={handleAddDependant}
                 disabled={mainCoverPlan?.status !== 'active' || overflowBalance < 156}
-                className="!bg-teal-800 !text-white p-4 rounded-lg text-left hover:scale-[0.98] transition-all flex flex-col justify-between min-h-[120px] disabled:!bg-gray-400 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="!bg-teal-800 !text-white p-4 rounded-lg text-left hover:scale-[0.98] transition-all flex flex-col justify-between min-h-[100px] md:min-h-[120px] disabled:!bg-gray-400 disabled:cursor-not-allowed disabled:hover:scale-100"
                 title={
                   mainCoverPlan?.status !== 'active' 
                     ? 'Plan must be active to add dependants' 
@@ -925,7 +922,7 @@ const DashboardNew: React.FC = () => {
               <button 
                 onClick={handleSponsorSomeone}
                 disabled={mainCoverPlan?.status !== 'active' || overflowBalance < 390}
-                className="!bg-green-700 !text-white p-4 rounded-lg text-left hover:scale-[0.98] transition-all flex flex-col justify-between min-h-[120px] disabled:!bg-gray-400 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="!bg-green-700 !text-white p-4 rounded-lg text-left hover:scale-[0.98] transition-all flex flex-col justify-between min-h-[100px] md:min-h-[120px] disabled:!bg-gray-400 disabled:cursor-not-allowed disabled:hover:scale-100"
                 title={
                   mainCoverPlan?.status !== 'active' 
                     ? 'Plan must be active to sponsor someone' 
@@ -941,7 +938,7 @@ const DashboardNew: React.FC = () => {
               </button>
               <button 
                 onClick={() => navigate('/member/view-plans')}
-                className="!bg-slate-600 !text-white p-4 rounded-lg text-left hover:scale-[0.98] transition-all flex flex-col justify-between min-h-[120px]"
+                className="!bg-slate-600 !text-white p-4 rounded-lg text-left hover:scale-[0.98] transition-all flex flex-col justify-between min-h-[100px] md:min-h-[120px]"
               >
                 <span className="material-symbols-outlined text-2xl !text-white">list_alt</span>
                 <span className="font-bold text-sm leading-tight !text-white">
@@ -1001,7 +998,7 @@ const DashboardNew: React.FC = () => {
               mainCoverPlan?.status === 'paused' ? 'bg-orange-50 border-orange-300' : 
               mainCoverPlan?.status === 'pending' ? 'bg-yellow-50 border-yellow-300' : 
               'bg-white border-gray-200'
-            } border p-6 rounded-lg shadow-sm mt-[10px]`}>
+            } border p-6 rounded-lg shadow-sm`}>
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.1em]">
@@ -1120,8 +1117,8 @@ const DashboardNew: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Actions Grid */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Quick Actions Grid — hidden on mobile, shown on desktop */}
+            <div className="hidden md:grid grid-cols-2 gap-3">
               <button 
                 onClick={() => navigate('/find-partner')}
                 className="bg-blue-50 p-4 rounded-lg flex flex-col items-center justify-center gap-2 hover:bg-blue-100 transition-colors group border border-blue-100">
@@ -1231,126 +1228,94 @@ const DashboardNew: React.FC = () => {
 
 
           {/* Settings Form Section */}
-          <div id="edit-profile-section" className="md:col-span-12 bg-blue-50 rounded-lg border border-blue-100 overflow-hidden shadow-sm">
-            <div className="bg-blue-100 px-6 py-4 flex items-center gap-2 border-b border-blue-200">
-              <span className="material-symbols-outlined text-blue-700">manage_accounts</span>
+          <div id="edit-profile-section" className="md:col-span-12 bg-blue-50 rounded-xl border border-blue-100 overflow-hidden shadow-sm">
+            <div className="bg-blue-100 px-4 md:px-6 py-3 md:py-4 flex items-center gap-2 border-b border-blue-200">
+              <span className="material-symbols-outlined text-blue-700 text-xl">manage_accounts</span>
               <h3 className="text-sm font-bold uppercase tracking-[0.1em] text-gray-700">
-                Account Settings &amp; Preferences
+                Account Settings
               </h3>
             </div>
-            <div className="p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+            <div className="p-4 md:p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-600 uppercase tracking-[0.05em] block">
-                    First Name
-                  </label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">First Name</label>
                   <input
-                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                    type="text"
-                    value={firstName}
-                    onFocus={handleInputFocus}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none"
+                    type="text" value={firstName} onFocus={handleInputFocus}
                     onChange={(e) => setFirstName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-600 uppercase tracking-[0.05em] block">
-                    Last Name
-                  </label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Last Name</label>
                   <input
-                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                    type="text"
-                    value={lastName}
-                    onFocus={handleInputFocus}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none"
+                    type="text" value={lastName} onFocus={handleInputFocus}
                     onChange={(e) => setLastName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-600 uppercase tracking-[0.05em] block">
-                    Contact Number
-                  </label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Contact Number</label>
                   <input
-                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                    type="text"
-                    value={contactNumber}
-                    onFocus={handleInputFocus}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none"
+                    type="text" value={contactNumber} onFocus={handleInputFocus}
                     onChange={(e) => setContactNumber(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-600 uppercase tracking-[0.05em] block">
-                    Email Address
-                  </label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Email Address</label>
                   <input
-                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                    type="email"
-                    value={email}
-                    onFocus={handleInputFocus}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none"
+                    type="email" value={email} onFocus={handleInputFocus}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-600 uppercase tracking-[0.05em] block">
-                    SA ID Number
-                  </label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">SA ID Number</label>
                   <input
-                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                    type="text"
-                    placeholder="Enter your SA ID number"
-                    value={member?.sa_id || ''}
-                    onFocus={handleInputFocus}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none"
+                    type="text" placeholder="Enter your SA ID number"
+                    value={member?.sa_id || ''} onFocus={handleInputFocus}
                     onChange={(e) => setMember(prev => prev ? {...prev, sa_id: e.target.value} : null)}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-600 uppercase tracking-[0.05em] block">
-                    Address Line 1
-                  </label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Address Line 1</label>
                   <input
-                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                    type="text"
-                    placeholder="Enter your address line 1"
-                    value={member?.address_line_1 || ''}
-                    onFocus={handleInputFocus}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none"
+                    type="text" placeholder="Enter your address"
+                    value={member?.address_line_1 || ''} onFocus={handleInputFocus}
                     onChange={(e) => setMember(prev => prev ? {...prev, address_line_1: e.target.value} : null)}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-600 uppercase tracking-[0.05em] block">
-                    City
-                  </label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">City</label>
                   <input
-                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                    type="text"
-                    placeholder="Enter your city"
-                    value={member?.city || ''}
-                    onFocus={handleInputFocus}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none"
+                    type="text" placeholder="Enter your city"
+                    value={member?.city || ''} onFocus={handleInputFocus}
                     onChange={(e) => setMember(prev => prev ? {...prev, city: e.target.value} : null)}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-600 uppercase tracking-[0.05em] block">
-                    Postal Code
-                  </label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Postal Code</label>
                   <input
-                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                    type="text"
-                    placeholder="Enter your postal code"
-                    value={member?.postal_code || ''}
-                    onFocus={handleInputFocus}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none"
+                    type="text" placeholder="Enter your postal code"
+                    value={member?.postal_code || ''} onFocus={handleInputFocus}
                     onChange={(e) => setMember(prev => prev ? {...prev, postal_code: e.target.value} : null)}
                   />
                 </div>
               </div>
-              <div className="mt-10 flex justify-end gap-3">
-                <button 
+              <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                <button
                   onClick={handleDiscardChanges}
-                  className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors rounded-lg"
+                  className="w-full sm:w-auto px-6 py-3 text-sm font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors rounded-xl"
                 >
                   Discard Changes
                 </button>
-                <button 
+                <button
                   onClick={handleSaveProfile}
-                  className="bg-blue-600 text-white px-8 py-2.5 text-sm font-bold rounded-lg shadow-sm hover:bg-blue-700 transition-all"
+                  className="w-full sm:w-auto bg-blue-600 text-white px-8 py-3 text-sm font-bold rounded-xl shadow-sm hover:bg-blue-700 transition-all"
                 >
                   Update Profile
                 </button>
@@ -1362,32 +1327,26 @@ const DashboardNew: React.FC = () => {
 
 
       {/* BottomNavBar (Mobile Only) */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-white dark:bg-background-dark shadow-[0px_-4px_20px_rgba(0,31,40,0.06)] border-t border-gray-200">
-        <button className="flex flex-col items-center justify-center bg-primary-50 text-primary-600 rounded-lg px-3 py-1 transition-transform active:scale-95">
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-            dashboard
-          </span>
-          <span className="text-[10px] uppercase font-bold tracking-[0.05em]">
-            Dashboard
-          </span>
+      <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-2 bg-white shadow-[0px_-4px_20px_rgba(0,31,40,0.06)] border-t border-gray-200">
+        <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex flex-col items-center justify-center px-3 py-1.5 rounded-lg bg-blue-50 text-[#1a558b] transition-transform active:scale-95">
+          <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>dashboard</span>
+          <span className="text-[9px] uppercase font-bold tracking-wider mt-0.5">Home</span>
         </button>
-        <button className="flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 transition-all">
-          <span className="material-symbols-outlined">military_tech</span>
-          <span className="text-[10px] uppercase font-bold tracking-[0.05em]">
-            Rewards
-          </span>
+        <button onClick={() => navigate('/find-partner')} className="flex flex-col items-center justify-center px-3 py-1.5 rounded-lg text-gray-500 hover:bg-gray-50 transition-all active:scale-95">
+          <span className="material-symbols-outlined text-xl">store</span>
+          <span className="text-[9px] uppercase font-bold tracking-wider mt-0.5">Stores</span>
         </button>
-        <button className="flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 transition-all">
-          <span className="material-symbols-outlined">receipt_long</span>
-          <span className="text-[10px] uppercase font-bold tracking-[0.05em]">
-            History
-          </span>
+        <button onClick={() => navigate('/member/cover-plans')} className="flex flex-col items-center justify-center px-3 py-1.5 rounded-lg text-gray-500 hover:bg-gray-50 transition-all active:scale-95">
+          <span className="material-symbols-outlined text-xl">health_and_safety</span>
+          <span className="text-[9px] uppercase font-bold tracking-wider mt-0.5">Cover</span>
         </button>
-        <button className="flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 transition-all">
-          <span className="material-symbols-outlined">medical_services</span>
-          <span className="text-[10px] uppercase font-bold tracking-[0.05em]">
-            Health
-          </span>
+        <button onClick={() => navigate('/member/top-up')} className="flex flex-col items-center justify-center px-3 py-1.5 rounded-lg text-gray-500 hover:bg-gray-50 transition-all active:scale-95">
+          <span className="material-symbols-outlined text-xl">account_balance</span>
+          <span className="text-[9px] uppercase font-bold tracking-wider mt-0.5">Top Up</span>
+        </button>
+        <button onClick={() => navigate('/member/support')} className="flex flex-col items-center justify-center px-3 py-1.5 rounded-lg text-gray-500 hover:bg-gray-50 transition-all active:scale-95">
+          <span className="material-symbols-outlined text-xl">support_agent</span>
+          <span className="text-[9px] uppercase font-bold tracking-wider mt-0.5">Support</span>
         </button>
       </nav>
 

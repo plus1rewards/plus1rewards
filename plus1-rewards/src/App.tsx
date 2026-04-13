@@ -100,6 +100,7 @@ const NotFound = lazy(() => import('./pages/NotFound'))
 const Blog = lazy(() => import('./pages/Blog'))
 const BlogPost = lazy(() => import('./pages/BlogPost'))
 const BlogAdminPage = lazy(() => import('./components/dashboard/pages/BlogAdminPage'))
+const BecomePartner = lazy(() => import('./pages/BecomePartner'))
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(() => {
@@ -150,6 +151,7 @@ export default function App() {
           <Route path="/faq" element={<FAQPage />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<BlogPost />} />
+          <Route path="/become-a-partner" element={<BecomePartner />} />
           
           {/* Unified login/register routes (for both Rewards and Go) */}
           <Route path="/login" element={<MemberLogin />} />

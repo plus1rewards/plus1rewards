@@ -235,16 +235,16 @@ export default function MemberCoverPlans() {
       onSignOut={handleSignOut}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Cover Plans</h1>
-          <p className="text-gray-600">View all your healthcare cover plans</p>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">My Cover Plans</h1>
+          <p className="text-gray-600 text-sm">View all your healthcare cover plans</p>
         </div>
         <button
           onClick={() => navigate('/member/dashboard')}
-          className="bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-4 py-2 rounded-xl transition-colors"
+          className="self-start sm:self-auto bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-4 py-2 rounded-xl transition-colors text-sm"
         >
-          ← Back to Dashboard
+          ← Back
         </button>
       </div>
 
@@ -427,147 +427,114 @@ export default function MemberCoverPlans() {
 
       {/* Member Details Modal */}
       {selectedPlanForDetails && detailsMemberData && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closeDetailsModal}>
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            {/* Modal Header */}
-            <div className="bg-gradient-to-r from-[#1a558b] to-blue-700 px-6 py-5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                  <span className="material-symbols-outlined text-white text-2xl">person</span>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={closeDetailsModal}>
+          <div
+            className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[90vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#1a558b] to-blue-700 px-4 py-4 flex items-center justify-between rounded-t-2xl flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-white text-lg">person</span>
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white">Member Details</h2>
-                  <p className="text-sm text-blue-100">Read-only information</p>
+                  <h2 className="text-base font-bold text-white leading-tight">Member Details</h2>
+                  <p className="text-xs text-blue-100">Read-only information</p>
                 </div>
               </div>
-              <button
-                onClick={closeDetailsModal}
-                className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
-              >
-                <span className="material-symbols-outlined">close</span>
+              <button onClick={closeDetailsModal} className="text-white hover:bg-white/20 rounded-lg p-1.5 transition-colors flex-shrink-0">
+                <span className="material-symbols-outlined text-xl">close</span>
               </button>
             </div>
 
-            {/* Modal Content */}
-            <div className="p-6 space-y-4">
-              {/* Personal Information */}
-              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-                <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[#1a558b]">badge</span>
+            {/* Scrollable content */}
+            <div className="overflow-y-auto flex-1 p-4 space-y-3">
+
+              {/* Personal Info */}
+              <div className="bg-gray-50 rounded-xl p-3 space-y-2.5">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[#1a558b] text-base">badge</span>
                   Personal Information
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase">First Name</label>
-                    <p className="text-gray-900 font-medium">{detailsMemberData.first_name || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase">Last Name</label>
-                    <p className="text-gray-900 font-medium">{detailsMemberData.last_name || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase">Cell Phone</label>
-                    <p className="text-gray-900 font-medium">{detailsMemberData.cell_phone || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase">Email</label>
-                    <p className="text-gray-900 font-medium break-all">{detailsMemberData.email || 'N/A'}</p>
-                  </div>
-                  {detailsMemberData.sa_id && (
-                    <div>
-                      <label className="text-xs font-bold text-gray-500 uppercase">SA ID Number</label>
-                      <p className="text-gray-900 font-medium">{detailsMemberData.sa_id}</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                  {[
+                    { label: 'First Name',   value: detailsMemberData.first_name },
+                    { label: 'Last Name',    value: detailsMemberData.last_name },
+                    { label: 'Cell Phone',   value: detailsMemberData.cell_phone },
+                    { label: 'Status',       value: detailsMemberData.status?.toUpperCase(), bold: true,
+                      color: detailsMemberData.status === 'active' ? 'text-green-600' : 'text-red-600' },
+                    ...(detailsMemberData.sa_id ? [{ label: 'SA ID', value: detailsMemberData.sa_id }] : []),
+                  ].map((f, i) => (
+                    <div key={i}>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{f.label}</p>
+                      <p className={`text-sm font-medium text-gray-900 break-all ${(f as any).color || ''} ${(f as any).bold ? 'font-bold' : ''}`}>
+                        {(f as any).value || 'N/A'}
+                      </p>
                     </div>
-                  )}
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase">Status</label>
-                    <p className={`font-bold ${detailsMemberData.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
-                      {detailsMemberData.status?.toUpperCase() || 'N/A'}
-                    </p>
+                  ))}
+                  {/* Email full width */}
+                  <div className="col-span-2">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email</p>
+                    <p className="text-sm font-medium text-gray-900 break-all">{detailsMemberData.email || 'N/A'}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Cover Plan Information */}
-              <div className="bg-blue-50 rounded-xl p-4 space-y-3">
-                <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[#1a558b]">health_and_safety</span>
-                  Cover Plan Information
+              {/* Cover Plan Info */}
+              <div className="bg-blue-50 rounded-xl p-3 space-y-2.5">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[#1a558b] text-base">health_and_safety</span>
+                  Cover Plan
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase">Plan Name</label>
-                    <p className="text-gray-900 font-medium">{selectedPlanForDetails.cover_plans.plan_name}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase">Monthly Target</label>
-                    <p className="text-gray-900 font-medium">R{selectedPlanForDetails.target_amount.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase">Funded Amount</label>
-                    <p className="text-gray-900 font-medium">R{selectedPlanForDetails.funded_amount.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase">Plan Status</label>
-                    <p className={`font-bold ${
-                      selectedPlanForDetails.status === 'active' ? 'text-green-600' :
-                      selectedPlanForDetails.status === 'in_progress' ? 'text-blue-600' :
-                      'text-red-600'
-                    }`}>
-                      {selectedPlanForDetails.status.toUpperCase()}
-                    </p>
-                  </div>
-                  {selectedPlanForDetails.active_from && (
-                    <div>
-                      <label className="text-xs font-bold text-gray-500 uppercase">Active From</label>
-                      <p className="text-gray-900 font-medium">
-                        {new Date(selectedPlanForDetails.active_from).toLocaleDateString('en-ZA')}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                  {[
+                    { label: 'Plan Name',      value: selectedPlanForDetails.cover_plans.plan_name },
+                    { label: 'Monthly Target', value: `R${selectedPlanForDetails.target_amount.toFixed(2)}` },
+                    { label: 'Funded',         value: `R${selectedPlanForDetails.funded_amount.toFixed(2)}` },
+                    { label: 'Status',         value: selectedPlanForDetails.status.toUpperCase(), bold: true,
+                      color: selectedPlanForDetails.status === 'active' ? 'text-green-600' :
+                             selectedPlanForDetails.status === 'in_progress' ? 'text-blue-600' : 'text-red-600' },
+                    ...(selectedPlanForDetails.active_from ? [{ label: 'Active From', value: new Date(selectedPlanForDetails.active_from).toLocaleDateString('en-ZA') }] : []),
+                    ...(selectedPlanForDetails.active_to   ? [{ label: 'Active Until', value: new Date(selectedPlanForDetails.active_to).toLocaleDateString('en-ZA') }] : []),
+                  ].map((f, i) => (
+                    <div key={i}>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{f.label}</p>
+                      <p className={`text-sm font-medium text-gray-900 ${(f as any).color || ''} ${(f as any).bold ? 'font-bold' : ''}`}>
+                        {(f as any).value}
                       </p>
                     </div>
-                  )}
-                  {selectedPlanForDetails.active_to && (
-                    <div>
-                      <label className="text-xs font-bold text-gray-500 uppercase">Active Until</label>
-                      <p className="text-gray-900 font-medium">
-                        {new Date(selectedPlanForDetails.active_to).toLocaleDateString('en-ZA')}
-                      </p>
-                    </div>
-                  )}
+                  ))}
                 </div>
               </div>
 
               {/* QR Code */}
               {detailsMemberData.qr_code && (
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-3">
-                    <span className="material-symbols-outlined text-[#1a558b]">qr_code</span>
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5 mb-2">
+                    <span className="material-symbols-outlined text-[#1a558b] text-base">qr_code</span>
                     QR Code
                   </h3>
-                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 inline-block">
-                    <p className="text-sm font-mono text-gray-700">{detailsMemberData.qr_code}</p>
-                  </div>
+                  <p className="text-xs font-mono text-gray-600 break-all bg-white border border-gray-200 rounded-lg p-2">
+                    {detailsMemberData.qr_code}
+                  </p>
                 </div>
               )}
 
-              {/* Sponsorship Info */}
+              {/* Sponsorship */}
               {selectedPlanForDetails.sponsored_by && (
-                <div className="bg-green-50 rounded-xl p-4">
-                  <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-green-600">volunteer_activism</span>
-                    Sponsorship Information
-                  </h3>
-                  <p className="text-sm text-gray-700 mt-2">
-                    This plan is sponsored by another member
-                  </p>
+                <div className="bg-green-50 rounded-xl p-3 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-green-600 text-lg">volunteer_activism</span>
+                  <p className="text-sm text-gray-700 font-medium">This plan is sponsored by another member</p>
                 </div>
               )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+            {/* Footer */}
+            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex-shrink-0">
               <button
                 onClick={closeDetailsModal}
-                className="bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-6 py-2 rounded-lg transition-colors"
+                className="w-full bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold py-3 rounded-xl transition-colors text-sm"
               >
                 Close
               </button>

@@ -79,14 +79,14 @@ export default function MemberViewPlans() {
   return (
     <MemberLayout member={member} isOnline={navigator.onLine} pendingTransactions={0} onSignOut={handleSignOut}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Day1Health Plans</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Day1Health Plans</h1>
           <p className="text-gray-500 text-sm mt-1">All available medical cover plans</p>
         </div>
         <button
           onClick={() => navigate('/member/dashboard')}
-          className="flex items-center gap-2 bg-[#1a568b] text-white font-bold px-4 py-2 rounded-xl text-sm hover:bg-[#1a568b]/90 transition-colors"
+          className="self-start sm:self-auto flex items-center gap-2 bg-[#1a568b] text-white font-bold px-4 py-2 rounded-xl text-sm hover:bg-[#1a568b]/90 transition-colors"
         >
           <span className="material-symbols-outlined text-base">arrow_back</span>
           Back
@@ -113,17 +113,17 @@ export default function MemberViewPlans() {
         {PLANS.map((plan) => (
           <div key={plan.id} className={`bg-white border-2 ${plan.borderColor} rounded-2xl overflow-hidden shadow-sm`}>
             {/* Plan Header */}
-            <div className={`${plan.bgColor} px-5 py-4 flex items-center justify-between`}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: plan.color }}>
+            <div className={`${plan.bgColor} px-4 md:px-5 py-4 flex items-start justify-between gap-3`}>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: plan.color }}>
                   <span className="material-symbols-outlined text-white text-xl">{plan.icon}</span>
                 </div>
-                <div>
-                  <h2 className="font-bold text-gray-900 text-base">{plan.name}</h2>
-                  <p className="text-gray-500 text-xs">{plan.description}</p>
+                <div className="min-w-0">
+                  <h2 className="font-bold text-gray-900 text-sm md:text-base leading-tight">{plan.name}</h2>
+                  <p className="text-gray-500 text-xs mt-0.5">{plan.description}</p>
                 </div>
               </div>
-              <span className={`text-xs font-bold px-3 py-1 rounded-full ${plan.badgeColor}`}>{plan.tag}</span>
+              <span className={`text-xs font-bold px-2 py-1 rounded-full flex-shrink-0 ${plan.badgeColor}`}>{plan.tag}</span>
             </div>
 
             {/* Price */}

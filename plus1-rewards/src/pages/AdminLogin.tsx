@@ -1,13 +1,10 @@
 // plus1-rewards/src/pages/AdminLogin.tsx
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { adminAuth } from '../lib/adminAuth';
-import AuthLayout from '../components/auth/AuthLayout';
-import { AuthInput, AuthButton, AuthDivider, AuthError } from '../components/auth/AuthComponents';
 import PatternLock from '../components/auth/PatternLock';
 import SecurityAlert from '../components/SecurityAlert';
-
-const BLUE = '#1a558b';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -18,14 +15,33 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [patternError, setPatternError] = useState('');
+  const [scanLine, setScanLine] = useState(0);
+  const [glitch, setGlitch] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Check if already authenticated
+  // Scan line animation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setScanLine(p => (p + 1) % 100);
+    }, 30);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Random glitch effect
+  useEffect(() => {
+    const glitchInterval = setInterval(() => {
+      if (Math.random() > 0.85) {
+        setGlitch(true);
+        setTimeout(() => setGlitch(false), 150);
+      }
+    }, 2000);
+    return () => clearInterval(glitchInterval);
+  }, []);
+
   useEffect(() => {
     let mounted = true;
-    
     const checkAuth = async () => {
       try {
-        // Use sync check first to avoid async issues
         if (adminAuth.isAuthenticatedSync()) {
           const isValid = await adminAuth.isAuthenticated();
           if (isValid && mounted) {
@@ -33,61 +49,43 @@ export default function AdminLogin() {
             navigate(from, { replace: true });
           }
         }
-      } catch (error) {
-        console.error('Auth check error:', error);
-      }
+      } catch {}
     };
-    
     checkAuth();
-    
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [navigate, location]);
 
   const handlePhoneSubmit = (e: FormEvent) => {
     e.preventDefault();
     setError('');
-
-    // Validate phone number format
     const cleanPhone = phone.replace(/\s/g, '');
     if (!/^0\d{9}$/.test(cleanPhone)) {
-      setError('Invalid phone number format. Must be 10 digits starting with 0.');
+      setError('INVALID IDENTIFIER — 10 DIGITS REQUIRED');
       return;
     }
-
-    // Show pattern lock
     setShowPattern(true);
   };
 
   const handlePatternComplete = async (pattern: number[]) => {
     if (pattern.length < 4) {
-      setPatternError('Pattern must connect at least 4 dots');
+      setPatternError('MINIMUM 4 NODES REQUIRED');
       return;
     }
-
     setLoading(true);
     setPatternError('');
-
     try {
       const cleanPhone = phone.replace(/\s/g, '');
-      
-      // Attempt login with pattern
       const result = await adminAuth.loginWithPattern(cleanPhone, pattern, rememberMe);
-
       if (result.success) {
-        // Successfully logged in, redirect to admin dashboard
         const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
         navigate(from, { replace: true });
       } else {
-        setPatternError(result.error || 'Invalid pattern. Please try again.');
-        // Reset after showing error
-        setTimeout(() => setPatternError(''), 2000);
+        setPatternError('ACCESS DENIED — PATTERN MISMATCH');
+        setTimeout(() => setPatternError(''), 2500);
       }
-    } catch (err: any) {
-      console.error('Login error:', err);
-      setPatternError('An unexpected error occurred. Please try again.');
-      setTimeout(() => setPatternError(''), 2000);
+    } catch {
+      setPatternError('SYSTEM ERROR — RETRY');
+      setTimeout(() => setPatternError(''), 2500);
     } finally {
       setLoading(false);
     }
@@ -96,115 +94,352 @@ export default function AdminLogin() {
   return (
     <>
       <SecurityAlert />
-      <AuthLayout
-        portalIcon="admin_panel_settings"
-        portalName="Admin Portal"
-        headline={<>Complete platform <span style={{ color: '#93c5fd' }}>control</span> center.</>}
-        subheadline="Manage all aspects of the +1 Rewards ecosystem from shops and agents to policy providers and system analytics."
-        stats={[
-          { value: 'All', label: 'System Access' },
-          { value: 'Real-time', label: 'Analytics' },
-          { value: 'Secure', label: 'Admin Panel' },
-        ]}
-      >
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-black text-gray-900">Administrator Login</h2>
-          <p className="text-sm text-gray-500 mt-1">Secure access to the +1 Rewards management system.</p>
+      <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
+        style={{ background: '#020408', fontFamily: "'Inter', monospace" }}>
+
+        {/* Animated grid */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'linear-gradient(rgba(0,255,136,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,136,0.04) 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+          }} />
+
+        {/* Scan line */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute left-0 right-0 h-px opacity-20"
+            style={{ top: `${scanLine}%`, background: 'linear-gradient(90deg, transparent, #00ff88, transparent)' }} />
         </div>
 
-        <AuthError message={error} />
+        {/* Corner decorations */}
+        {[
+          'top-0 left-0 border-t-2 border-l-2',
+          'top-0 right-0 border-t-2 border-r-2',
+          'bottom-0 left-0 border-b-2 border-l-2',
+          'bottom-0 right-0 border-b-2 border-r-2',
+        ].map((cls, i) => (
+          <div key={i} className={`absolute w-12 h-12 ${cls}`} style={{ borderColor: 'rgba(0,255,136,0.3)' }} />
+        ))}
 
-        {!showPattern ? (
-          <form onSubmit={handlePhoneSubmit} className="space-y-4">
-            <AuthInput
-              label="Administrator Phone Number"
-              icon="admin_panel_settings"
-              id="phone"
-              type="tel"
-              placeholder="0714329190"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-              maxLength={10}
-              required
-            />
+        {/* Floating particles */}
+        {[...Array(20)].map((_, i) => (
+          <motion.div key={i}
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              width: Math.random() * 3 + 1,
+              height: Math.random() * 3 + 1,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              backgroundColor: i % 3 === 0 ? '#00ff88' : i % 3 === 1 ? '#1a568b' : '#ffffff',
+              opacity: 0.4,
+            }}
+            animate={{ y: [0, -40, 0], opacity: [0, 0.6, 0] }}
+            transition={{ duration: 4 + Math.random() * 6, repeat: Infinity, delay: Math.random() * 8, ease: 'easeInOut' }}
+          />
+        ))}
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                <div className="checkbox-container">
-                  <input
-                    type="checkbox"
-                    id="admin-remember-cbx"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    style={{ display: 'none' }}
-                  />
-                  <label htmlFor="admin-remember-cbx" className="check">
-                    <svg width="18px" height="18px" viewBox="0 0 18 18">
-                      <path d="M1,9 L1,3.5 C1,2 2,1 3.5,1 L14.5,1 C16,1 17,2 17,3.5 L17,14.5 C17,16 16,17 14.5,17 L3.5,17 C2,17 1,16 1,14.5 L1,9 Z"></path>
-                      <polyline points="1 9 7 14 15 4"></polyline>
-                    </svg>
-                  </label>
-                </div>
-                Keep me signed in for 2 hours
-              </label>
-              <a href="#" className="text-sm font-semibold" style={{ color: BLUE }}>Contact IT</a>
-            </div>
+        {/* Glow orbs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(0,255,136,0.06), transparent 70%)' }} />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(26,86,139,0.15), transparent 70%)' }} />
 
-            <AuthButton type="submit" loading={loading} loadingText="Verifying...">
-              Continue
-              <span className="material-symbols-outlined text-base">arrow_forward</span>
-            </AuthButton>
-          </form>
-        ) : (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => {
-                  setShowPattern(false);
-                  setPatternError('');
-                }}
-                className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
-              >
-                <span className="material-symbols-outlined text-lg">arrow_back</span>
-                Back
-              </button>
-              <p className="text-sm text-gray-600">Phone: {phone}</p>
-            </div>
+        {/* Main panel */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className={`relative w-full max-w-md mx-4 ${glitch ? 'translate-x-[2px]' : ''}`}
+          style={{ transition: glitch ? 'none' : 'transform 0.1s' }}
+        >
+          {/* Panel border glow */}
+          <div className="absolute -inset-px rounded-2xl pointer-events-none"
+            style={{ background: 'linear-gradient(135deg, rgba(0,255,136,0.3), rgba(26,86,139,0.3), rgba(0,255,136,0.1))', borderRadius: '16px' }} />
 
-            <div className="bg-white border-2 border-gray-200 rounded-2xl p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">Draw Your Pattern</h3>
-              <PatternLock
-                onPatternComplete={handlePatternComplete}
-                gridSize={4}
-                minDots={4}
-                disabled={loading}
-                error={patternError}
-              />
-            </div>
+          <div className="relative rounded-2xl overflow-hidden"
+            style={{ background: 'rgba(4,10,20,0.95)', border: '1px solid rgba(0,255,136,0.15)', backdropFilter: 'blur(20px)' }}>
 
-            {loading && (
-              <div className="text-center">
-                <div className="inline-block w-6 h-6 border-3 border-green-600/30 border-t-green-600 rounded-full animate-spin"></div>
-                <p className="text-sm text-gray-600 mt-2">Verifying pattern...</p>
+            {/* Top status bar */}
+            <div className="flex items-center justify-between px-5 py-3 border-b"
+              style={{ borderColor: 'rgba(0,255,136,0.1)', background: 'rgba(0,255,136,0.03)' }}>
+              <div className="flex items-center gap-2">
+                <motion.div
+                  animate={{ opacity: [1, 0.3, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: '#00ff88' }}
+                />
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: '#00ff88' }}>
+                  SYSTEM ONLINE
+                </span>
               </div>
-            )}
-          </div>
-        )}
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-mono" style={{ color: 'rgba(0,255,136,0.5)' }}>
+                  PLUS1-ADMIN-v2.0
+                </span>
+                <div className="flex gap-1">
+                  {[...Array(3)].map((_, i) => (
+                    <motion.div key={i} className="w-1 h-3 rounded-sm"
+                      style={{ backgroundColor: 'rgba(0,255,136,0.4)' }}
+                      animate={{ scaleY: [0.4, 1, 0.4] }}
+                      transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15 }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
 
-        <AuthDivider label="Restricted Access" />
+            <div className="p-7">
+              {/* Header */}
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)' }}>
+                    <span className="material-symbols-outlined text-xl" style={{ color: '#00ff88' }}>admin_panel_settings</span>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-0.5" style={{ color: 'rgba(0,255,136,0.6)' }}>
+                      RESTRICTED ACCESS
+                    </div>
+                    <h1 className={`text-xl font-black text-white glitch-text ${glitch ? 'opacity-80' : ''}`} data-text="ADMINISTRATOR LOGIN">
+                      ADMINISTRATOR LOGIN
+                    </h1>
+                  </div>
+                </div>
 
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="material-symbols-outlined text-red-600 text-xl">warning</span>
-            <span className="text-sm font-bold text-red-800">Authorized Personnel Only</span>
+                {/* Typing effect subtitle */}
+                <div className="flex items-center gap-2 text-xs font-mono" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  <span className="material-symbols-outlined text-sm" style={{ color: 'rgba(0,255,136,0.4)' }}>terminal</span>
+                  Secure access to the +1 Rewards management system
+                </div>
+              </div>
+
+              {/* Error */}
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mb-5 px-4 py-3 rounded-xl flex items-center gap-2"
+                    style={{ background: 'rgba(255,50,50,0.1)', border: '1px solid rgba(255,50,50,0.3)' }}
+                  >
+                    <span className="material-symbols-outlined text-base" style={{ color: '#ff5050' }}>error</span>
+                    <span className="text-xs font-bold font-mono" style={{ color: '#ff5050' }}>{error}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <AnimatePresence mode="wait">
+                {!showPattern ? (
+                  <motion.form
+                    key="phone"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.3 }}
+                    onSubmit={handlePhoneSubmit}
+                    className="space-y-5"
+                  >
+                    {/* Phone input */}
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-[0.2em] mb-2" style={{ color: 'rgba(0,255,136,0.7)' }}>
+                        ADMIN IDENTIFIER
+                      </label>
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-base" style={{ color: 'rgba(0,255,136,0.5)' }}>fingerprint</span>
+                          <span className="text-xs font-mono" style={{ color: 'rgba(0,255,136,0.3)' }}>|</span>
+                        </div>
+                        <input
+                          ref={inputRef}
+                          type="tel"
+                          value={phone}
+                          onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
+                          placeholder="0714329190"
+                          maxLength={10}
+                          required
+                          className="w-full pl-12 pr-4 py-3.5 rounded-xl text-sm font-mono outline-none transition-all"
+                          style={{
+                            background: 'rgba(0,255,136,0.04)',
+                            border: '1px solid rgba(0,255,136,0.2)',
+                            color: '#00ff88',
+                            caretColor: '#00ff88',
+                          }}
+                          onFocus={e => e.currentTarget.style.borderColor = 'rgba(0,255,136,0.6)'}
+                          onBlur={e => e.currentTarget.style.borderColor = 'rgba(0,255,136,0.2)'}
+                        />
+                        {phone.length === 10 && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2"
+                          >
+                            <span className="material-symbols-outlined text-base" style={{ color: '#00ff88' }}>check_circle</span>
+                          </motion.div>
+                        )}
+                      </div>
+                      {/* Progress bar */}
+                      <div className="mt-2 h-px rounded-full overflow-hidden" style={{ background: 'rgba(0,255,136,0.1)' }}>
+                        <motion.div
+                          className="h-full rounded-full"
+                          style={{ background: 'linear-gradient(90deg, #00ff88, #1a568b)', width: `${(phone.length / 10) * 100}%` }}
+                          transition={{ duration: 0.1 }}
+                        />
+                      </div>
+                      <div className="flex justify-between mt-1">
+                        <span className="text-[10px] font-mono" style={{ color: 'rgba(0,255,136,0.3)' }}>INPUT</span>
+                        <span className="text-[10px] font-mono" style={{ color: 'rgba(0,255,136,0.3)' }}>{phone.length}/10</span>
+                      </div>
+                    </div>
+
+                    {/* Remember me */}
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div
+                        onClick={() => setRememberMe(r => !r)}
+                        className="w-5 h-5 rounded flex items-center justify-center transition-all flex-shrink-0"
+                        style={{
+                          background: rememberMe ? 'rgba(0,255,136,0.2)' : 'transparent',
+                          border: `1px solid ${rememberMe ? '#00ff88' : 'rgba(0,255,136,0.3)'}`,
+                        }}
+                      >
+                        {rememberMe && <span className="material-symbols-outlined text-sm" style={{ color: '#00ff88' }}>check</span>}
+                      </div>
+                      <span className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                        MAINTAIN SESSION — 2HR TOKEN
+                      </span>
+                    </label>
+
+                    {/* Submit */}
+                    <motion.button
+                      type="submit"
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="w-full py-3.5 rounded-xl font-black text-sm relative overflow-hidden"
+                      style={{ background: 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(26,86,139,0.3))', border: '1px solid rgba(0,255,136,0.4)', color: '#00ff88' }}
+                    >
+                      <motion.span
+                        animate={{ x: ['-100%', '200%'] }}
+                        transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 2 }}
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 pointer-events-none"
+                      />
+                      <span className="relative flex items-center justify-center gap-2">
+                        <span className="material-symbols-outlined text-base">lock_open</span>
+                        INITIATE AUTHENTICATION
+                      </span>
+                    </motion.button>
+                  </motion.form>
+                ) : (
+                  <motion.div
+                    key="pattern"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-5"
+                  >
+                    {/* Back + identity */}
+                    <div className="flex items-center justify-between">
+                      <button
+                        onClick={() => { setShowPattern(false); setPatternError(''); }}
+                        className="flex items-center gap-1.5 text-xs font-mono transition-colors"
+                        style={{ color: 'rgba(0,255,136,0.5)' }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#00ff88'}
+                        onMouseLeave={e => e.currentTarget.style.color = 'rgba(0,255,136,0.5)'}
+                      >
+                        <span className="material-symbols-outlined text-base">arrow_back</span>
+                        BACK
+                      </button>
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
+                        style={{ background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.15)' }}>
+                        <span className="material-symbols-outlined text-sm" style={{ color: '#00ff88' }}>verified_user</span>
+                        <span className="text-[10px] font-mono" style={{ color: 'rgba(0,255,136,0.7)' }}>ID: {phone}</span>
+                      </div>
+                    </div>
+
+                    {/* Pattern container */}
+                    <div className="rounded-2xl p-5 relative overflow-hidden"
+                      style={{ background: 'rgba(0,255,136,0.03)', border: '1px solid rgba(0,255,136,0.15)' }}>
+                      {/* Corner brackets */}
+                      {['top-2 left-2 border-t border-l', 'top-2 right-2 border-t border-r', 'bottom-2 left-2 border-b border-l', 'bottom-2 right-2 border-b border-r'].map((cls, i) => (
+                        <div key={i} className={`absolute w-4 h-4 ${cls}`} style={{ borderColor: 'rgba(0,255,136,0.4)' }} />
+                      ))}
+
+                      <div className="text-center mb-4">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: 'rgba(0,255,136,0.6)' }}>
+                          BIOMETRIC PATTERN LOCK
+                        </span>
+                      </div>
+
+                      <PatternLock
+                        onPatternComplete={handlePatternComplete}
+                        gridSize={4}
+                        minDots={4}
+                        disabled={loading}
+                        error={patternError}
+                      />
+
+                      {/* Error */}
+                      <AnimatePresence>
+                        {patternError && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="mt-4 px-3 py-2 rounded-lg flex items-center gap-2"
+                            style={{ background: 'rgba(255,50,50,0.1)', border: '1px solid rgba(255,50,50,0.3)' }}
+                          >
+                            <span className="material-symbols-outlined text-sm" style={{ color: '#ff5050' }}>block</span>
+                            <span className="text-[10px] font-bold font-mono" style={{ color: '#ff5050' }}>{patternError}</span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Loading */}
+                    <AnimatePresence>
+                      {loading && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="flex items-center justify-center gap-3 py-2"
+                        >
+                          <div className="flex gap-1">
+                            {[...Array(4)].map((_, i) => (
+                              <motion.div key={i} className="w-1.5 h-1.5 rounded-full"
+                                style={{ backgroundColor: '#00ff88' }}
+                                animate={{ scaleY: [1, 2, 1], opacity: [0.4, 1, 0.4] }}
+                                transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.1 }}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs font-mono" style={{ color: 'rgba(0,255,136,0.7)' }}>
+                            VERIFYING CREDENTIALS...
+                          </span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Footer */}
+              <div className="mt-7 pt-5 border-t flex items-center justify-between"
+                style={{ borderColor: 'rgba(0,255,136,0.08)' }}>
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm" style={{ color: 'rgba(255,50,50,0.6)' }}>warning</span>
+                  <span className="text-[10px] font-mono" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                    AUTHORIZED PERSONNEL ONLY
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono" style={{ color: 'rgba(0,255,136,0.2)' }}>
+                  ALL ACCESS LOGGED
+                </span>
+              </div>
+            </div>
           </div>
-          <p className="text-xs text-red-700">
-            This system is restricted to authorized +1 Rewards administrators. All access attempts are logged and monitored.
-          </p>
-        </div>
+        </motion.div>
       </div>
-    </AuthLayout>
     </>
   );
 }

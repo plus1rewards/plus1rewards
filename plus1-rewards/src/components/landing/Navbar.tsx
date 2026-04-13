@@ -161,17 +161,7 @@ export default function Navbar() {
             transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="overflow-hidden"
           >
-            <div
-              className="md:hidden mt-3 pb-5 border-t border-gray-100 pt-4 flex flex-col gap-1"
-              style={{ backgroundColor: 'rgba(255,255,255,0.98)' }}
-            >
-              {/* Logo */}
-              <div className="flex justify-center mb-3">
-                <a href="/">
-                  <img src="/logo.png" alt="+1 Rewards" style={{ height: '44px' }} className="w-auto object-contain" />
-                </a>
-              </div>
-
+            <div className="md:hidden mt-3 pb-5 border-t border-gray-100 pt-4 flex flex-col gap-1">
               {/* Nav links */}
               {MOBILE_LINKS.map((item, i) => (
                 <motion.a

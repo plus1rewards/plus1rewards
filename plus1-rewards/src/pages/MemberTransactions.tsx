@@ -180,16 +180,16 @@ export default function MemberTransactions() {
       onSignOut={handleSignOut}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Transaction History</h1>
-          <p className="text-gray-600">View all your cashback transactions</p>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Transaction History</h1>
+          <p className="text-gray-600 text-sm">View all your cashback transactions</p>
         </div>
         <button
           onClick={() => navigate('/member/dashboard')}
-          className="bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-4 py-2 rounded-xl transition-colors"
+          className="self-start sm:self-auto bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-4 py-2 rounded-xl transition-colors text-sm"
         >
-          ← Back to Dashboard
+          ← Back
         </button>
       </div>
 
@@ -227,18 +227,18 @@ export default function MemberTransactions() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm">
-        <div className="flex gap-2">
+      <div className="bg-white border border-gray-200 rounded-xl p-3 md:p-4 mb-6 shadow-sm">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
           {[
             { id: 'today', label: 'Today', icon: 'today' },
-            { id: 'week', label: 'Last 7 Days', icon: 'date_range' },
-            { id: 'month', label: 'Last 30 Days', icon: 'calendar_month' },
+            { id: 'week', label: '7 Days', icon: 'date_range' },
+            { id: 'month', label: '30 Days', icon: 'calendar_month' },
             { id: 'all', label: 'All Time', icon: 'history' },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setFilter(tab.id as FilterPeriod)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-xs md:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
                 filter === tab.id
                   ? 'bg-[#1a558b] text-white'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -278,25 +278,24 @@ export default function MemberTransactions() {
         ) : (
           <div className="divide-y divide-gray-200">
             {transactions.map((tx) => (
-              <div key={tx.id} className="p-6 hover:bg-gray-50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-[#1a558b]/10 rounded-xl flex items-center justify-center">
-                      <span className="material-symbols-outlined text-[#1a558b] text-xl">store</span>
+              <div key={tx.id} className="p-4 md:p-6 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 bg-[#1a558b]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-[#1a558b] text-lg">store</span>
                     </div>
-                    <div>
-                      <h3 className="text-gray-900 font-bold">
+                    <div className="min-w-0">
+                      <h3 className="text-gray-900 font-bold text-sm truncate">
                         {tx.partners?.shop_name || 'Partner Store'}
                       </h3>
-                      <p className="text-gray-600 text-sm">
-                        {formatDate(tx.created_at)} • {tx.cashback_percent}% cashback
+                      <p className="text-gray-500 text-xs truncate">
+                        {formatDate(tx.created_at)} · {tx.cashback_percent}% back
                       </p>
                     </div>
                   </div>
-
-                  <div className="text-right">
-                    <p className="text-gray-900 font-bold text-lg">R{tx.purchase_amount.toFixed(2)}</p>
-                    <p className="text-green-600 text-sm">+R{tx.member_amount.toFixed(2)} cashback</p>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-gray-900 font-bold text-sm">R{tx.purchase_amount.toFixed(2)}</p>
+                    <p className="text-green-600 text-xs font-semibold">+R{tx.member_amount.toFixed(2)}</p>
                   </div>
                 </div>
               </div>

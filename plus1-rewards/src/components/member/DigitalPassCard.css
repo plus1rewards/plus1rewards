@@ -16,7 +16,7 @@
   border-radius: 100px;
   padding: 0 12px 0 10px;
   height: 36px;
-  min-width: 350px;
+  min-width: 420px;
   position: relative;
   top: -80px;
   right: -18.5px;
@@ -179,6 +179,7 @@
   animation: ticket-move 3s ease-in-out forwards;
   transform: translateY(-200px);
   perspective: 3000px;
+  cursor: pointer;
 }
 
 @keyframes ticket-move {
@@ -206,7 +207,8 @@
   transition-delay: 0.7s;
 }
 
-.ticket:hover .ticket-flip-container {
+.ticket:hover .ticket-flip-container,
+.ticket-flip-container.flipped {
   transform: rotateY(180deg);
 }
 
@@ -631,4 +633,51 @@
   filter: grayscale(1);
   pointer-events: none;
   z-index: 1;
+}
+
+/* ── Mobile responsive ── */
+@media (max-width: 640px) {
+  .digital-pass-wrapper {
+    justify-content: center;
+    padding-right: 0;
+    height: 240px;
+  }
+
+  .area {
+    justify-content: center;
+    padding-right: 0;
+  }
+
+  .ticket-mask {
+    justify-content: center;
+    padding-right: 0;
+  }
+
+  .ticket-body {
+    width: 260px;
+  }
+
+  .output {
+    min-width: 300px;    right: 0;
+  }
+
+  .ticket-body .contents .event span {
+    font-size: 2.4rem;
+  }
+
+  .ticket-body .contents .event span.bold {
+    font-size: 1.8rem;
+  }
+
+  .ticket-body .contents .number {
+    font-size: 1.4em;
+  }
+
+  .qrcode img {
+    height: 110px;
+  }
+
+  .front .qrcode img {
+    height: 56px;
+  }
 }

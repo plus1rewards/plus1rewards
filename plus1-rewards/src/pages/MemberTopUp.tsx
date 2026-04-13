@@ -82,21 +82,21 @@ export default function MemberTopUp() {
       onSignOut={handleSignOut}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Top-Up Cover Plan</h1>
-          <p className="text-gray-600">Add funds to reach your cover plan target</p>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Top-Up Cover Plan</h1>
+          <p className="text-gray-600 text-sm">Add funds to reach your cover plan target</p>
         </div>
         <button
           onClick={() => navigate('/member/dashboard')}
-          className="bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-4 py-2 rounded-xl transition-colors"
+          className="self-start sm:self-auto bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-4 py-2 rounded-xl transition-colors text-sm"
         >
-          ← Back to Dashboard
+          ← Back
         </button>
       </div>
 
       {/* Main Action Card */}
-      <div className="bg-white border border-gray-200 rounded-xl p-8 mb-6 shadow-sm text-center">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 md:p-8 mb-6 shadow-sm text-center">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <span className="material-symbols-outlined text-green-600 text-3xl">account_balance</span>
         </div>
@@ -162,8 +162,8 @@ export default function MemberTopUp() {
 
       {/* Chat Modal */}
       {showChat && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-2xl w-full shadow-xl flex flex-col h-[600px]">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-2xl shadow-xl flex flex-col h-[85vh] sm:h-[600px]">
             {/* Header */}
             <div className="bg-gradient-to-r from-[#1a558b] to-[#1a558b]/80 text-white p-4 rounded-t-xl flex items-center justify-between">
               <div>

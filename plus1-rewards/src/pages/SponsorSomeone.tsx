@@ -353,28 +353,18 @@ const SponsorSomeone: React.FC = () => {
   return (
     <div className="min-h-screen bg-background-light">
       {/* Header */}
-      <header className="fixed top-0 left-0 w-full flex justify-between items-center px-6 h-16 bg-slate-900 z-50">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleCancel}
-            className="text-white hover:text-gray-300 transition-colors"
-          >
+      <header className="fixed top-0 left-0 w-full flex items-center justify-between px-4 h-14 bg-slate-900 z-50">
+        <div className="flex items-center gap-3">
+          <button onClick={handleCancel} className="text-white hover:text-gray-300 transition-colors p-1">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
-          <img 
-            src="/logo.png" 
-            alt="Plus1 Rewards" 
-            className="h-8 w-auto"
-            onError={(e) => {
-              e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="40"><text x="10" y="25" fill="white" font-family="Arial" font-size="16" font-weight="bold">Plus1</text></svg>';
-            }}
-          />
+          <img src="/logo.png" alt="Plus1 Rewards" className="h-7 w-auto" />
         </div>
-        <h1 className="text-white text-lg font-bold">Sponsor Someone</h1>
-        <div className="w-10"></div>
+        <h1 className="text-white text-base font-bold absolute left-1/2 -translate-x-1/2">Sponsor Someone</h1>
+        <div className="w-10" />
       </header>
 
-      <main className="pt-24 pb-20 px-4 md:px-8 max-w-4xl mx-auto">
+      <main className="pt-16 pb-8 px-4 md:px-8 max-w-4xl mx-auto">
         {/* Info Card */}
         <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-6 mb-6">
           <div className="flex items-start gap-4">

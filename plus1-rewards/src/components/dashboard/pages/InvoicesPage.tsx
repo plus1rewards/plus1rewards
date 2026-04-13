@@ -523,7 +523,7 @@ export default function InvoicesPage() {
 
           <div className="mt-12 text-center">
             <p className="text-[10px] text-gray-600 font-bold tracking-[0.2em] uppercase">
-              © 2024 +1 Rewards Platform Management • Secured Admin Access
+              © 2026 +1 Rewards Platform Management • Secured Admin Access
             </p>
           </div>
         </div>

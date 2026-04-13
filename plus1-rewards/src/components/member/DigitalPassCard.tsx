@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import './DigitalPassCard.css';
 
 interface DigitalPassCardProps {
@@ -8,7 +9,8 @@ interface DigitalPassCardProps {
 }
 
 export default function DigitalPassCard({ memberName, qrCode, qrDataUrl, onQRClick }: DigitalPassCardProps) {
-  // Get current date
+  const [flipped, setFlipped] = useState(false);
+
   const now = new Date();
   const day = String(now.getDate()).padStart(2, '0');
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -29,8 +31,8 @@ export default function DigitalPassCard({ memberName, qrCode, qrDataUrl, onQRCli
       <div className="area">
         <div className="area-wrapper">
           <div className="ticket-mask">
-            <div className="ticket">
-              <div className="ticket-flip-container">
+            <div className="ticket" onClick={() => setFlipped(f => !f)}>
+              <div className={`ticket-flip-container${flipped ? ' flipped' : ''}`}>
                 <div className="float">
                   <div className="front">
                     <div className="ticket-body">

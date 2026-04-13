@@ -540,13 +540,22 @@ export default function App() {
       ) : (
         <>
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+      <div className={`lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 shadow-sm ${showMobilePartners || isDetailOpen ? 'z-[1999]' : 'z-[2100]'}`}>
         <div className="p-4">
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <h1 className="text-xl font-display font-bold tracking-tighter text-primary">
-                THE ARCHIVE
-              </h1>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => navigate('/member/dashboard')}
+                  className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center text-gray-600 transition-all flex-shrink-0"
+                  aria-label="Back to dashboard"
+                >
+                  <span className="material-symbols-outlined text-lg">arrow_back</span>
+                </button>
+                <h1 className="text-xl font-display font-bold tracking-tighter text-primary">
+                  THE ARCHIVE
+                </h1>
+              </div>
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                 <span className="text-xs font-black text-primary uppercase tracking-widest">
