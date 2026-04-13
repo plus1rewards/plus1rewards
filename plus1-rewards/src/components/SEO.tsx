@@ -8,6 +8,7 @@ interface SEOProps {
   image?: string;
   type?: string;
   noindex?: boolean;
+  ogUrl?: string; // override og:url (used for blog posts to point to OG meta function)
 }
 
 const defaultSEO = {
@@ -18,14 +19,7 @@ const defaultSEO = {
   type: 'website'
 };
 
-export default function SEO({ 
-  title, 
-  description, 
-  keywords, 
-  image, 
-  type = 'website',
-  noindex = false 
-}: SEOProps) {
+export default function SEO({ title, description, keywords, image, type = 'website', noindex = false, ogUrl }: SEOProps) {
   const location = useLocation();
   const currentUrl = `https://plus1rewards.com${location.pathname}`;
 
@@ -33,56 +27,46 @@ export default function SEO({
   const seoDescription = description || defaultSEO.description;
   const seoKeywords = keywords || defaultSEO.keywords;
   const seoImage = image || defaultSEO.image;
+  const shareUrl = ogUrl || currentUrl;
 
   useEffect(() => {
-    // Update document title
     document.title = seoTitle;
 
-    // Update or create meta tags
-    const updateMetaTag = (name: string, content: string, isProperty = false) => {
-      const attribute = isProperty ? 'property' : 'name';
-      let element = document.querySelector(`meta[${attribute}="${name}"]`);
-      
-      if (!element) {
-        element = document.createElement('meta');
-        element.setAttribute(attribute, name);
-        document.head.appendChild(element);
-      }
-      
-      element.setAttribute('content', content);
+    const setMeta = (name: string, content: string, isProperty = false) => {
+      const attr = isProperty ? 'property' : 'name';
+      let el = document.querySelector(`meta[${attr}="${name}"]`);
+      if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
+      el.setAttribute('content', content);
     };
 
-    // Standard meta tags
-    updateMetaTag('description', seoDescription);
-    updateMetaTag('keywords', seoKeywords);
-    updateMetaTag('robots', noindex ? 'noindex, nofollow' : 'index, follow');
+    setMeta('description', seoDescription);
+    setMeta('keywords', seoKeywords);
+    setMeta('robots', noindex ? 'noindex, nofollow' : 'index, follow');
 
-    // Open Graph tags
-    updateMetaTag('og:title', seoTitle, true);
-    updateMetaTag('og:description', seoDescription, true);
-    updateMetaTag('og:image', seoImage, true);
-    updateMetaTag('og:url', currentUrl, true);
-    updateMetaTag('og:type', type, true);
-    updateMetaTag('og:locale', 'en_ZA', true);
-    updateMetaTag('og:site_name', 'Plus1 Rewards', true);
+    // Open Graph — use shareUrl so crawlers (WhatsApp, Twitter, LinkedIn) hit the OG function
+    setMeta('og:title', seoTitle, true);
+    setMeta('og:description', seoDescription, true);
+    setMeta('og:image', seoImage, true);
+    setMeta('og:image:width', '1200', true);
+    setMeta('og:image:height', '630', true);
+    setMeta('og:url', shareUrl, true);
+    setMeta('og:type', type, true);
+    setMeta('og:locale', 'en_ZA', true);
+    setMeta('og:site_name', 'Plus1 Rewards', true);
 
-    // Twitter Card tags
-    updateMetaTag('twitter:card', 'summary_large_image');
-    updateMetaTag('twitter:title', seoTitle);
-    updateMetaTag('twitter:description', seoDescription);
-    updateMetaTag('twitter:image', seoImage);
-    updateMetaTag('twitter:url', currentUrl);
+    // Twitter Card
+    setMeta('twitter:card', 'summary_large_image');
+    setMeta('twitter:title', seoTitle);
+    setMeta('twitter:description', seoDescription);
+    setMeta('twitter:image', seoImage);
+    setMeta('twitter:url', shareUrl);
 
-    // Update canonical link
+    // Canonical always points to the real page URL
     let canonical = document.querySelector('link[rel="canonical"]');
-    if (!canonical) {
-      canonical = document.createElement('link');
-      canonical.setAttribute('rel', 'canonical');
-      document.head.appendChild(canonical);
-    }
+    if (!canonical) { canonical = document.createElement('link'); canonical.setAttribute('rel', 'canonical'); document.head.appendChild(canonical); }
     canonical.setAttribute('href', currentUrl);
 
-  }, [seoTitle, seoDescription, seoKeywords, seoImage, currentUrl, type, noindex]);
+  }, [seoTitle, seoDescription, seoKeywords, seoImage, currentUrl, shareUrl, type, noindex]);
 
   return null;
 }

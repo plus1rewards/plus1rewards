@@ -4,13 +4,33 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import LoadingPage from './components/LoadingPage'
 import Maintenance from './pages/Maintenance'
+import { Component, type ReactNode } from 'react'
+
+// Catches lazy chunk load failures so they don't silently route to 404
+class ChunkErrorBoundary extends Component<{ children: ReactNode }, { error: boolean }> {
+  state = { error: false }
+  static getDerivedStateFromError() { return { error: true } }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, fontFamily: 'Inter, sans-serif' }}>
+          <p style={{ fontSize: 18, fontWeight: 700, color: '#1a568b' }}>Something went wrong loading this page.</p>
+          <button onClick={() => window.location.reload()} style={{ padding: '10px 24px', background: '#1a568b', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: 'pointer' }}>
+            Reload
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 const MAINTENANCE_MODE = import.meta.env.VITE_MAINTENANCE_MODE === 'true'
 
-// Critical routes - loaded immediately
-import Landing from './pages/Landing'
-import MemberLogin from './pages/MemberLogin'
-import MemberRegister from './pages/MemberRegister'
+// All routes lazy loaded to prevent hook/context issues before Router mounts
+const Landing = lazy(() => import('./pages/Landing'))
+const MemberLogin = lazy(() => import('./pages/MemberLogin'))
+const MemberRegister = lazy(() => import('./pages/MemberRegister'))
 
 // Lazy load all other routes for code splitting
 const PartnerLogin = lazy(() => import('./pages/PartnerLogin'))
@@ -77,10 +97,12 @@ const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 const InsuranceDisclosure = lazy(() => import('./pages/InsuranceDisclosure'))
 const FAQPage = lazy(() => import('./pages/FAQPage'))
 const NotFound = lazy(() => import('./pages/NotFound'))
+const Blog = lazy(() => import('./pages/Blog'))
+const BlogPost = lazy(() => import('./pages/BlogPost'))
+const BlogAdminPage = lazy(() => import('./components/dashboard/pages/BlogAdminPage'))
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(() => {
-    // Check on initial render only
     return !sessionStorage.getItem('plus1_app_loaded');
   });
 
@@ -89,14 +111,12 @@ export default function App() {
     sessionStorage.setItem('plus1_app_loaded', 'true');
   };
   
-  // Sync session across storage when app loads or regains focus
   useEffect(() => {
     const syncSession = () => {
       const localSession = localStorage.getItem('memberSession');
       if (localSession && !sessionStorage.getItem('memberSession')) {
         try {
           const session = JSON.parse(localSession);
-          // Check if not expired
           if (!session.expiresAt || new Date(session.expiresAt) > new Date()) {
             sessionStorage.setItem('memberSession', localSession);
           }
@@ -107,27 +127,29 @@ export default function App() {
     };
     
     syncSession();
-    
-    // Re-sync when window gains focus
     window.addEventListener('focus', syncSession);
     return () => window.removeEventListener('focus', syncSession);
   }, []);
 
+  if (MAINTENANCE_MODE) return <Maintenance />
+
   return (
-    MAINTENANCE_MODE ? <Maintenance /> :
     <div className="min-h-screen w-full bg-white text-gray-900 antialiased font-display overflow-x-hidden">
       <Router>
         <AnimatePresence mode="wait">
           {isLoading && <LoadingPage key="loader" onLoadComplete={handleLoadComplete} />}
         </AnimatePresence>
         {!isLoading && (
-          <Suspense fallback={<LoadingPage />}>
+          <ChunkErrorBoundary>
+          <Suspense fallback={<div className="fixed inset-0 bg-white" />}>
           <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/insurance-disclosure" element={<InsuranceDisclosure />} />
           <Route path="/faq" element={<FAQPage />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:slug" element={<BlogPost />} />
           
           {/* Unified login/register routes (for both Rewards and Go) */}
           <Route path="/login" element={<MemberLogin />} />
@@ -217,6 +239,11 @@ export default function App() {
               <AdminChatDashboard />
             </ProtectedAdminRoute>
           } />
+          <Route path="/admin/blog" element={
+            <ProtectedAdminRoute>
+              <BlogAdminPage />
+            </ProtectedAdminRoute>
+          } />
           <Route path="/member/dashboard" element={<MemberDashboard />} />
           <Route path="/member/chat" element={<MemberChat />} />
           <Route path="/member/cover-plans" element={<MemberCoverPlans />} />
@@ -260,6 +287,7 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
           </Suspense>
+          </ChunkErrorBoundary>
         )}
       </Router>
     </div>

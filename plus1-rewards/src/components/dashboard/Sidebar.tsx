@@ -321,6 +321,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className={getTextClasses('/admin/chat')}>Admin Chat</span>
           </a>
           
+          <a className={getLinkClasses('/admin/blog')} href="/admin/blog">
+            <span className="material-symbols-outlined">edit_note</span>
+            <span className={getTextClasses('/admin/blog')}>Blog Posts</span>
+          </a>
+          
           <a className={getLinkClasses('/admin/settings')} href="/admin/settings">
             <span className="material-symbols-outlined">settings</span>
             <span className={getTextClasses('/admin/settings')}>Settings / Config</span>
@@ -481,6 +486,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <a className={getLinkClasses('/admin/chat')} href="/admin/chat" onClick={handleLinkClick}>
             <span className="material-symbols-outlined">chat</span>
             <span className={getTextClasses('/admin/chat')}>Admin Chat</span>
+          </a>
+          
+          <a className={getLinkClasses('/admin/blog')} href="/admin/blog" onClick={handleLinkClick}>
+            <span className="material-symbols-outlined">edit_note</span>
+            <span className={getTextClasses('/admin/blog')}>Blog Posts</span>
           </a>
           
           <a className={getLinkClasses('/admin/settings')} href="/admin/settings" onClick={handleLinkClick}>
