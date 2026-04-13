@@ -280,13 +280,13 @@ export default function BlogAdminPage() {
     setUploadingImage(true)
     try {
       const ext = file.name.split('.').pop()
-      const path = `blog/${Date.now()}.${ext}`
-      const { error } = await supabaseAdmin.storage.from('public').upload(path, file, { upsert: true })
+      const path = `covers/${Date.now()}.${ext}`
+      const { error } = await supabaseAdmin.storage.from('blog-images').upload(path, file, { upsert: true })
       if (error) throw error
-      const { data: { publicUrl } } = supabaseAdmin.storage.from('public').getPublicUrl(path)
+      const { data: { publicUrl } } = supabaseAdmin.storage.from('blog-images').getPublicUrl(path)
       setEditingPost(p => ({ ...p, cover_image_url: publicUrl }))
-    } catch (err) {
-      alert('Image upload failed. Make sure a "public" storage bucket exists in Supabase.')
+    } catch (err: any) {
+      alert(`Image upload failed: ${err?.message || 'Unknown error'}`)
     } finally {
       setUploadingImage(false)
     }
