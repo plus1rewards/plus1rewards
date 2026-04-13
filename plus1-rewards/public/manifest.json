@@ -1,7 +1,7 @@
 {
-  "name": "+1 Rewards",
+  "name": "Plus1 Rewards - Earn Cashback Toward Medical Cover",
   "short_name": "+1 Rewards",
-  "description": "Earn rewards at partner shops and fund your Day1 Health insurance",
+  "description": "Shop at partner stores and earn real cashback that funds your medical cover. Plus1 Rewards makes healthcare accessible for everyone in South Africa. Choose from Day to Day, Hospital, or Comprehensive cover plans.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -22,7 +22,7 @@
       "purpose": "maskable"
     }
   ],
-  "categories": ["finance", "shopping"],
+  "categories": ["finance", "shopping", "health"],
   "screenshots": [
     {
       "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%23f9fafb' width='540' height='720'/><rect fill='%231a568b' width='540' height='80'/><text x='270' y='40' font-size='32' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='central'>+1 Rewards</text></svg>",

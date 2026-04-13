@@ -4,6 +4,7 @@ import Navbar from '../components/landing/Navbar'
 import Hero from '../components/landing/Hero'
 import { lazy, Suspense } from 'react'
 import SEO from '../components/SEO'
+import { OrganizationSchema, WebSiteSchema, ServiceSchema, FAQSchema } from '../components/StructuredData'
 
 // Lazy load below-the-fold components
 const HowItWorks = lazy(() => import('../components/landing/HowItWorks'))
@@ -38,6 +39,34 @@ export default function Landing() {
     }
   }
 
+  // FAQ data for structured data
+  const faqData = [
+    {
+      question: 'How do I start earning?',
+      answer: 'Join Plus1 Rewards and shop at any participating partner store. At checkout, give your cell phone number to earn cashback. You can also scan your QR code. Your cashback then goes toward your medical cover.'
+    },
+    {
+      question: 'Is the medical cover comprehensive?',
+      answer: 'You get access to real medical cover, with your benefits clearly shown upfront so you can understand exactly what cover you have.'
+    },
+    {
+      question: "What happens if I don't reach my target this month?",
+      answer: "If you do not reach your monthly target, your cover status may change. Keep shopping at Plus1 Rewards partners to help keep your cover active."
+    },
+    {
+      question: 'Is this the same as medical aid?',
+      answer: 'No. Plus1 Rewards is different from medical aid. It helps turn your everyday shopping into cashback that goes toward your medical cover.'
+    },
+    {
+      question: 'Do I need a smartphone or internet to use Plus1 Rewards?',
+      answer: 'No. The quickest way is to give your cell phone number at checkout. You can also scan your QR code. Plus1 Rewards is built for real-life shopping, even when data is tight.'
+    },
+    {
+      question: 'Which stores near me are Plus1 Rewards partners?',
+      answer: 'Look for the Plus1 Rewards sign at participating stores near you, or check the platform to find partner stores in your area.'
+    }
+  ]
+
   return (
     <motion.div
       variants={pageVariants}
@@ -45,12 +74,14 @@ export default function Landing() {
       animate="animate"
     >
       <SEO
-        title="Plus1 Rewards | Earn Cashback Toward Medical Cover"
-        description="Shop at partner stores and earn real cashback that funds your medical cover. Plus1 Rewards makes healthcare accessible for everyone in South Africa."
-        keywords="medical cover South Africa, cashback rewards, healthcare funding, Day1Health, affordable medical insurance, shop and earn, partner stores SA, medical cover cashback"
-        canonical="https://plus1rewards.com/"
-        robots="index, follow"
+        title="Plus1 Rewards | Earn Cashback Toward Medical Cover in South Africa"
+        description="Shop at partner stores and earn real cashback that funds your medical cover. Plus1 Rewards makes healthcare accessible for everyone in South Africa. Choose from Day to Day, Hospital, or Comprehensive cover plans starting at R390/month."
+        keywords="medical cover South Africa, cashback rewards, healthcare funding, Day1Health, affordable medical insurance, shop and earn, partner stores SA, medical cover cashback, medical aid alternative, health insurance SA, cashback medical cover, affordable healthcare South Africa"
       />
+      <OrganizationSchema />
+      <WebSiteSchema />
+      <ServiceSchema />
+      <FAQSchema faqs={faqData} />
       <Navbar />
       <Hero />
       <Suspense fallback={<div className="h-20" />}>

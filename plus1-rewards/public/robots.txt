@@ -1,0 +1,87 @@
+# Plus1 Rewards - Robots.txt
+# Allow AI agents and search engines to crawl public pages
+
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /terms-of-service
+Allow: /privacy-policy
+Allow: /find-partner
+
+# Block authenticated/private areas
+Disallow: /admin/
+Disallow: /member/dashboard
+Disallow: /member/chat
+Disallow: /member/cover-plans
+Disallow: /member/transactions
+Disallow: /member/top-up
+Disallow: /member/support
+Disallow: /member/add-dependant
+Disallow: /member/sponsor
+Disallow: /member/scan-partner
+Disallow: /member/policy-selector
+Disallow: /member/policies
+Disallow: /member/history
+Disallow: /member/qr
+Disallow: /member/find-partners
+Disallow: /partner/dashboard
+Disallow: /partner/process-transaction
+Disallow: /partner/quick-transaction
+Disallow: /partner/member-registration
+Disallow: /partner/sales
+Disallow: /partner/sales-terminal
+Disallow: /partner/transaction-history
+Disallow: /partner/transaction/*
+Disallow: /partner/statement
+Disallow: /partner/profile
+Disallow: /partner/support
+Disallow: /partner/chat
+Disallow: /agent/dashboard
+Disallow: /agent/add-shop
+Disallow: /agent/commission
+Disallow: /agent/support
+Disallow: /agent/chat
+Disallow: /agent/profile
+Disallow: /agent/shop/*
+Disallow: /provider/dashboard
+
+# Sitemap location
+Sitemap: https://plus1rewards.com/sitemap.xml
+
+# Crawl delay for polite bots
+Crawl-delay: 1
+
+# Specific rules for AI agents
+User-agent: GPTBot
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /terms-of-service
+Allow: /privacy-policy
+Allow: /find-partner
+Disallow: /admin/
+Disallow: /member/
+Disallow: /partner/
+Disallow: /agent/
+Disallow: /provider/
+
+User-agent: ChatGPT-User
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /terms-of-service
+Allow: /privacy-policy
+Allow: /find-partner
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
