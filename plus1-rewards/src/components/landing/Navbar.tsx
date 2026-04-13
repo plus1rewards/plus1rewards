@@ -1,11 +1,13 @@
 // plus1-rewards/src/components/landing/Navbar.tsx
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { usePWAInstall } from '../../hooks/usePWAInstall'
 
 const BLUE = '#1a558b'
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const { canInstall, isInstalling, install } = usePWAInstall()
 
   return (
     <motion.nav 
@@ -88,6 +90,22 @@ export default function Navbar() {
           >
             Sign In
           </motion.a>
+          {canInstall && (
+            <motion.button
+              onClick={install}
+              disabled={isInstalling}
+              className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-sm border-2 transition-all"
+              style={{ borderColor: BLUE, color: BLUE }}
+              whileHover={{ scale: 1.05, backgroundColor: 'rgba(26,85,139,0.08)' }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 16V4" /><path d="M8 12l4 4 4-4" /><path d="M4 20h16" />
+              </svg>
+              {isInstalling ? 'Installing...' : 'Install App'}
+            </motion.button>
+          )}
           <motion.button
             className="hidden md:block px-5 py-2 rounded-lg font-bold text-sm transition-all shadow-sm text-white"
             style={{ backgroundColor: BLUE }}
@@ -194,6 +212,21 @@ export default function Navbar() {
               >
                 Sign In
               </motion.a>
+              {canInstall && (
+                <motion.button
+                  onClick={() => { install(); setMenuOpen(false) }}
+                  disabled={isInstalling}
+                  className="flex items-center justify-center gap-2 py-3 rounded-lg font-bold text-base border-2 transition-all"
+                  style={{ borderColor: BLUE, color: BLUE }}
+                  whileHover={{ scale: 1.02, backgroundColor: 'rgba(26,85,139,0.08)' }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 16V4" /><path d="M8 12l4 4 4-4" /><path d="M4 20h16" />
+                  </svg>
+                  {isInstalling ? 'Installing...' : 'Download App'}
+                </motion.button>
+              )}
               <motion.button
                 className="py-3 rounded-lg font-bold text-base transition-all shadow-md text-white"
                 style={{ backgroundColor: BLUE }}

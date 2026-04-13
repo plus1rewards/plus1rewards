@@ -3,6 +3,9 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import LoadingPage from './components/LoadingPage'
+import Maintenance from './pages/Maintenance'
+
+const MAINTENANCE_MODE = import.meta.env.VITE_MAINTENANCE_MODE === 'true'
 
 // Critical routes - loaded immediately
 import Landing from './pages/Landing'
@@ -71,6 +74,9 @@ const ProtectedPolicyProviderRoute = lazy(() => import('./components/ProtectedPo
 const ProtectedAdminRoute = lazy(() => import('./components/ProtectedAdminRoute'))
 const TermsOfService = lazy(() => import('./pages/TermsOfService'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
+const InsuranceDisclosure = lazy(() => import('./pages/InsuranceDisclosure'))
+const FAQPage = lazy(() => import('./pages/FAQPage'))
+const NotFound = lazy(() => import('./pages/NotFound'))
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(() => {
@@ -108,6 +114,7 @@ export default function App() {
   }, []);
 
   return (
+    MAINTENANCE_MODE ? <Maintenance /> :
     <div className="min-h-screen w-full bg-white text-gray-900 antialiased font-display overflow-x-hidden">
       <Router>
         <AnimatePresence mode="wait">
@@ -119,6 +126,8 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/insurance-disclosure" element={<InsuranceDisclosure />} />
+          <Route path="/faq" element={<FAQPage />} />
           
           {/* Unified login/register routes (for both Rewards and Go) */}
           <Route path="/login" element={<MemberLogin />} />
@@ -248,6 +257,7 @@ export default function App() {
               <PolicyProviderDashboard />
             </ProtectedPolicyProviderRoute>
           } />
+          <Route path="*" element={<NotFound />} />
         </Routes>
           </Suspense>
         )}

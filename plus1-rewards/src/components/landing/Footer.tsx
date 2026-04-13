@@ -54,8 +54,8 @@ export default function Footer() {
               <li><a className="hover:text-blue-800 transition-colors" href="#how-it-works">How it Works</a></li>
               <li><a className="hover:text-blue-800 transition-colors" href="#roles">Partner Stores</a></li>
               <li><a className="hover:text-blue-800 transition-colors" href="/agent/register">Become an Agent</a></li>
-              <li><a className="hover:text-blue-800 transition-colors" href="#faq">Day1Health Details</a></li>
-              <li><a className="hover:text-blue-800 transition-colors" href="#">Contact Us</a></li>
+              <li><a className="hover:text-blue-800 transition-colors" href="/partner/register">Become a Partner</a></li>
+              <li><a className="hover:text-blue-800 transition-colors" href="#faq">FAQ</a></li>
             </ul>
           </div>
 
@@ -63,10 +63,10 @@ export default function Footer() {
           <div>
             <h4 className="text-gray-900 font-bold mb-5">Legal</h4>
             <ul className="space-y-3 text-sm text-gray-500">
-              <li><a className="hover:text-blue-800 transition-colors" href="/legal/popia">Privacy Policy</a></li>
-              <li><a className="hover:text-blue-800 transition-colors" href="/legal/member-terms">Terms of Service</a></li>
-              <li><a className="hover:text-blue-800 transition-colors" href="#">Insurance Disclosure</a></li>
-              <li><a className="hover:text-blue-800 transition-colors" href="#faq">FAQ</a></li>
+              <li><a className="hover:text-blue-800 transition-colors" href="/privacy-policy">Privacy Policy</a></li>
+              <li><a className="hover:text-blue-800 transition-colors" href="/terms-of-service">Terms of Service</a></li>
+              <li><a className="hover:text-blue-800 transition-colors" href="/insurance-disclosure">Insurance Disclosure</a></li>
+              <li><a className="hover:text-blue-800 transition-colors" href="/faq">FAQ</a></li>
             </ul>
           </div>
         </div>

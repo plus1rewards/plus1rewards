@@ -269,6 +269,8 @@ export default function Hero() {
               </span>
               <span className="text">Become A Partner</span>
             </motion.button>
+
+
           </motion.div>
 
           {/* Trust indicators */}

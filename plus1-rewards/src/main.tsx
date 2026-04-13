@@ -3,12 +3,20 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { SpeedInsights } from '@vercel/speed-insights/react'
+
+// Register service worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // SW registration failed silently
+    })
+  })
+}
 
 // Initialize performance monitoring in production
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
   import('./utils/performanceMonitor').then(({ performanceMonitor }) => {
-    // Monitor will automatically start tracking
-    // Log summary after 5 seconds in development
     setTimeout(() => {
       if (process.env.NODE_ENV === 'development') {
         performanceMonitor.logSummary()
@@ -20,5 +28,6 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
+    <SpeedInsights />
   </StrictMode>,
 )
