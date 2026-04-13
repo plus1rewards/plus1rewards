@@ -4,9 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import AuthLayout from '../components/auth/AuthLayout';
 import { AuthInput, AuthButton, AuthDivider, AuthError, AuthLink } from '../components/auth/AuthComponents';
-import { executeRecaptcha } from '../components/auth/ReCaptcha';
 
-const BLUE = '#1a558b'
+const BLUE = '#1a568b'
+const MAX_ATTEMPTS = 5
+const LOCKOUT_MINUTES = 15
 
 export default function AgentLogin() {
   const navigate = useNavigate();
@@ -23,71 +24,82 @@ export default function AgentLogin() {
     setError('');
 
     try {
-      await executeRecaptcha('agent_login');
-    } catch {
-      setError('reCAPTCHA verification failed. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Validate PIN is 6 digits
       if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
         setError('PIN must be exactly 6 digits');
-        setLoading(false);
         return;
       }
 
-      // Clean mobile number (remove non-digits)
-      const cleanMobileNumber = mobileNumber.replace(/\D/g, '');
+      const cleanPhone = mobileNumber.replace(/\D/g, '');
 
-      // Query agents table directly by mobile number and PIN
-      const { data: agentData, error: agentError } = await supabase
+      // Fetch agent by phone only first
+      const { data: agentData, error: fetchError } = await supabase
         .from('agents')
         .select('*')
-        .eq('cell_phone', cleanMobileNumber)
-        .eq('pin_code', pin)
+        .eq('cell_phone', cleanPhone)
         .single();
 
-      if (agentError || !agentData) {
+      if (fetchError || !agentData) {
         setError('Invalid mobile number or PIN');
-        setLoading(false);
         return;
       }
 
-      // Check agent status
+      // Check lockout
+      if (agentData.locked_until && new Date(agentData.locked_until) > new Date()) {
+        const mins = Math.ceil((new Date(agentData.locked_until).getTime() - Date.now()) / 60000);
+        setError(`Account locked. Too many failed attempts. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.`);
+        return;
+      }
+
+      // Verify PIN
+      if (agentData.pin_code !== pin) {
+        const newAttempts = (agentData.failed_login_attempts ?? 0) + 1;
+        const shouldLock = newAttempts >= MAX_ATTEMPTS;
+        await supabase.from('agents').update({
+          failed_login_attempts: newAttempts,
+          locked_until: shouldLock
+            ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000).toISOString()
+            : null,
+        }).eq('id', agentData.id);
+
+        if (shouldLock) {
+          setError(`Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.`);
+        } else {
+          setError(`Invalid mobile number or PIN. ${MAX_ATTEMPTS - newAttempts} attempt${MAX_ATTEMPTS - newAttempts !== 1 ? 's' : ''} remaining.`);
+        }
+        return;
+      }
+
+      // PIN correct — reset attempts
+      await supabase.from('agents').update({
+        failed_login_attempts: 0,
+        locked_until: null,
+      }).eq('id', agentData.id);
+
+      // Check status
       if (agentData.status === 'pending') {
-        setError(`Your application is still pending approval.`);
-        setLoading(false);
+        setError('Your application is still pending approval.');
         return;
       }
       if (agentData.status === 'suspended') {
-        setError(`Your account has been suspended. Please contact administrator.`);
-        setLoading(false);
+        setError('Your account has been suspended. Please contact administrator.');
         return;
       }
       if (agentData.status === 'rejected') {
-        setError(`Your application has been rejected.`);
-        setLoading(false);
+        setError('Your application has been rejected.');
+        return;
+      }
+      if (agentData.status !== 'active') {
+        setError('Your account status is unknown. Please contact support.');
         return;
       }
 
-      if (agentData.status === 'active') {
-        // Store agent session
-        const sessionData = {
-          ...agentData,
-          agent_id: agentData.id
-        };
-        
-        if (rememberMe) {
-          localStorage.setItem('currentAgent', JSON.stringify(sessionData));
-        } else {
-          sessionStorage.setItem('currentAgent', JSON.stringify(sessionData));
-        }
-        navigate('/agent/dashboard');
+      const sessionData = { ...agentData, agent_id: agentData.id };
+      if (rememberMe) {
+        localStorage.setItem('currentAgent', JSON.stringify(sessionData));
       } else {
-        setError('Your account status is unknown. Please contact support.');
+        sessionStorage.setItem('currentAgent', JSON.stringify(sessionData));
       }
+      navigate('/agent/dashboard');
     } catch (err: any) {
       setError(err.message || 'Failed to sign in');
     } finally {

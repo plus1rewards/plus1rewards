@@ -6,14 +6,15 @@ import AuthLayout from '../components/auth/AuthLayout';
 import { AuthInput, AuthButton, AuthDivider, AuthError, AuthLink } from '../components/auth/AuthComponents';
 import { useNotification, Notification } from '../components/Notification';
 import { normalizePhoneNumber, isValidMobileNumber } from '../utils/phoneValidation';
-import { executeRecaptcha } from '../components/auth/ReCaptcha';
 
-const BLUE = '#1a558b'
+const BLUE = '#1a568b'
+const MAX_ATTEMPTS = 5
+const LOCKOUT_MINUTES = 15
 
 export default function PartnerLogin() {
   const navigate = useNavigate();
   const { showNotification, hideNotification, notification } = useNotification();
-  const [identifier, setIdentifier] = useState(''); // mobile number OR email
+  const [identifier, setIdentifier] = useState('');
   const [pin, setPin] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -26,87 +27,83 @@ export default function PartnerLogin() {
     setError('');
 
     try {
-      await executeRecaptcha('partner_login');
-    } catch {
-      showNotification('error', 'Verification Failed', 'reCAPTCHA verification failed. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Validate PIN is 6 digits
       if (!/^\d{6}$/.test(pin)) {
         showNotification('error', 'Invalid PIN', 'PIN must be exactly 6 digits');
-        setLoading(false);
         return;
       }
 
-      // Determine if identifier is mobile number or email
       const normalizedPhone = normalizePhoneNumber(identifier);
       const isMobile = isValidMobileNumber(identifier);
       const isEmail = identifier.includes('@');
 
       if (!isMobile && !isEmail) {
-        showNotification('error', 'Invalid Input', 'Please enter a valid 10-digit mobile number (e.g., 060 296 2491) or email address');
-        setLoading(false);
+        showNotification('error', 'Invalid Input', 'Please enter a valid 10-digit mobile number or email address');
         return;
       }
 
-      // Query partners table directly (no central users table)
-      let partnerQuery = supabase
-        .from('partners')
-        .select('*');
+      // Fetch partner by phone or email
+      let query = supabase.from('partners').select('*');
+      query = isMobile ? query.eq('cell_phone', normalizedPhone) : query.eq('email', identifier);
+      const { data: partnerData, error: fetchError } = await query.single();
 
-      if (isMobile) {
-        // Use normalized phone number for database query
-        partnerQuery = partnerQuery.eq('cell_phone', normalizedPhone);
-      } else {
-        partnerQuery = partnerQuery.eq('email', identifier);
+      if (fetchError || !partnerData) {
+        showNotification('error', 'Account Not Found', 'Partner account not found');
+        return;
       }
 
-      const { data: partnerData, error: partnerError } = await partnerQuery.single();
-
-      if (partnerError || !partnerData) {
-        showNotification('error', 'Account Not Found', 'Partner account not found');
-        setLoading(false);
+      // Check lockout
+      if (partnerData.locked_until && new Date(partnerData.locked_until) > new Date()) {
+        const mins = Math.ceil((new Date(partnerData.locked_until).getTime() - Date.now()) / 60000);
+        showNotification('error', 'Account Locked', `Too many failed attempts. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.`);
         return;
       }
 
       // Verify PIN
       if (partnerData.pin_code !== pin) {
-        showNotification('error', 'Incorrect PIN', 'The PIN you entered is incorrect');
-        setLoading(false);
+        const newAttempts = (partnerData.failed_login_attempts ?? 0) + 1;
+        const shouldLock = newAttempts >= MAX_ATTEMPTS;
+        await supabase.from('partners').update({
+          failed_login_attempts: newAttempts,
+          locked_until: shouldLock
+            ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000).toISOString()
+            : null,
+        }).eq('id', partnerData.id);
+
+        if (shouldLock) {
+          showNotification('error', 'Account Locked', `Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.`);
+        } else {
+          showNotification('error', 'Incorrect PIN', `The PIN you entered is incorrect. ${MAX_ATTEMPTS - newAttempts} attempt${MAX_ATTEMPTS - newAttempts !== 1 ? 's' : ''} remaining.`);
+        }
         return;
       }
+
+      // PIN correct — reset attempts
+      await supabase.from('partners').update({
+        failed_login_attempts: 0,
+        locked_until: null,
+      }).eq('id', partnerData.id);
 
       // Check partner status
       if (partnerData.status === 'pending') {
         showNotification('warning', 'Pending Approval', `Your business "${partnerData.shop_name}" is still pending admin approval.`);
-        setLoading(false);
         return;
       }
       if (partnerData.status === 'paused') {
         showNotification('error', 'Account Paused', `Your business "${partnerData.shop_name}" has been paused. Please contact admin.`);
-        setLoading(false);
         return;
       }
       if (partnerData.status === 'rejected') {
-        const rejectionMessage = partnerData.rejection_reason 
-          ? `Your business registration has been rejected by the system admin after review.\n\nReason: ${partnerData.rejection_reason}\n\nPlease contact admin for more information.`
-          : 'Your business registration has been rejected by the system admin after review. Please contact admin for more information.';
-        showNotification('error', 'Application Rejected', rejectionMessage, 40000);
-        setLoading(false);
+        const msg = partnerData.rejection_reason
+          ? `Registration rejected.\n\nReason: ${partnerData.rejection_reason}\n\nPlease contact admin.`
+          : 'Registration rejected by admin. Please contact admin for more information.';
+        showNotification('error', 'Application Rejected', msg, 40000);
         return;
       }
-
-      // Only allow active partners to login
       if (partnerData.status !== 'active') {
         showNotification('error', 'Login Not Allowed', 'Your account status does not allow login. Please contact admin.');
-        setLoading(false);
         return;
       }
 
-      // Create session
       const sessionData = {
         user: {
           id: partnerData.id,
@@ -114,15 +111,14 @@ export default function PartnerLogin() {
           first_name: partnerData.first_name,
           last_name: partnerData.last_name,
           cell_phone: partnerData.cell_phone,
-          status: partnerData.status
+          status: partnerData.status,
         },
         partner: partnerData,
         loggedInAt: new Date().toISOString(),
         expiresAt: rememberMe ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null,
-        rememberMe
+        rememberMe,
       };
 
-      // Store session
       if (rememberMe) {
         localStorage.setItem('partnerSession', JSON.stringify(sessionData));
       } else {
@@ -187,10 +183,7 @@ export default function PartnerLogin() {
             type={showPin ? 'text' : 'password'}
             placeholder="••••••"
             value={pin}
-            onChange={(e) => {
-              const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-              setPin(value);
-            }}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
             required
             suffix={
               <button type="button" onClick={() => setShowPin(!showPin)} className="text-gray-400 hover:text-gray-600">

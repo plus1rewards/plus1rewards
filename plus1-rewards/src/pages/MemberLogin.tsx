@@ -5,15 +5,16 @@ import { supabase } from '../lib/supabase';
 import AuthLayout from '../components/auth/AuthLayout';
 import { AuthInput, AuthButton, AuthDivider, AuthError, AuthLink } from '../components/auth/AuthComponents';
 import SEO from '../components/SEO';
-import ReCaptchaLoader, { executeRecaptcha } from '../components/auth/ReCaptcha';
 
-const BLUE = '#1a558b'
+const BLUE = '#1a568b'
+const MAX_ATTEMPTS = 5
+const LOCKOUT_MINUTES = 15
 
 export default function MemberLogin() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const platform = searchParams.get('platform') || 'rewards'; // 'rewards' or 'go'
-  
+  const platform = searchParams.get('platform') || 'rewards';
+
   const [phone, setPhone] = useState('');
   const [pin, setPin] = useState('');
   const [showPin, setShowPin] = useState(false);
@@ -27,62 +28,73 @@ export default function MemberLogin() {
     setError('');
 
     try {
-      await executeRecaptcha('member_login');
-    } catch {
-      setError('reCAPTCHA verification failed. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Clean phone number
       const cleanPhone = phone.replace(/\D/g, '');
-      
+
       if (cleanPhone.length !== 10) {
         setError('Phone number must be exactly 10 digits');
-        setLoading(false);
         return;
       }
-
       if (pin.length !== 6) {
         setError('PIN must be exactly 6 digits');
-        setLoading(false);
         return;
       }
 
-      // Find member by cell phone and PIN directly from members table
-      const { data: memberData, error: memberError } = await supabase
+      // Fetch member (by phone only — check lockout before verifying PIN)
+      const { data: memberData, error: fetchError } = await supabase
         .from('members')
         .select('*')
         .eq('cell_phone', cleanPhone)
-        .eq('pin_code', pin)
         .single();
 
-      if (memberError || !memberData) {
+      if (fetchError || !memberData) {
         setError('Invalid mobile number or PIN');
-        setLoading(false);
         return;
       }
 
-      // Check if member is active
+      // Check lockout
+      if (memberData.locked_until && new Date(memberData.locked_until) > new Date()) {
+        const mins = Math.ceil((new Date(memberData.locked_until).getTime() - Date.now()) / 60000);
+        setError(`Account locked. Too many failed attempts. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.`);
+        return;
+      }
+
+      // Verify PIN
+      if (memberData.pin_code !== pin) {
+        const newAttempts = (memberData.failed_login_attempts ?? 0) + 1;
+        const shouldLock = newAttempts >= MAX_ATTEMPTS;
+        await supabase.from('members').update({
+          failed_login_attempts: newAttempts,
+          locked_until: shouldLock
+            ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000).toISOString()
+            : null,
+        }).eq('id', memberData.id);
+
+        if (shouldLock) {
+          setError(`Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.`);
+        } else {
+          setError(`Invalid mobile number or PIN. ${MAX_ATTEMPTS - newAttempts} attempt${MAX_ATTEMPTS - newAttempts !== 1 ? 's' : ''} remaining.`);
+        }
+        return;
+      }
+
+      // PIN correct — reset attempts
+      await supabase.from('members').update({
+        failed_login_attempts: 0,
+        locked_until: null,
+      }).eq('id', memberData.id);
+
       if (memberData.status !== 'active') {
         setError('Your account is ' + memberData.status + '. Please contact support.');
-        setLoading(false);
         return;
       }
 
-      // Store member session
       const now = new Date();
-      const expiresAt = rememberMe 
-        ? new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
-        : null; // Session storage doesn't need expiry (cleared on tab close)
-      
       const sessionData = {
         member: memberData,
         loggedInAt: now.toISOString(),
-        expiresAt: expiresAt,
-        rememberMe: rememberMe,
-        platform: platform // Track which platform they logged in from
+        expiresAt: rememberMe ? new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString() : null,
+        rememberMe,
+        platform,
       };
 
       if (rememberMe) {
@@ -91,7 +103,6 @@ export default function MemberLogin() {
         sessionStorage.setItem('memberSession', JSON.stringify(sessionData));
       }
 
-      // Navigate to unified member dashboard (works for both platforms)
       navigate('/member/dashboard');
     } catch (err: any) {
       setError(err.message || 'Failed to sign in');
@@ -112,7 +123,6 @@ export default function MemberLogin() {
         { value: 'R390', label: 'Monthly Target' },
       ]}
     >
-      <ReCaptchaLoader />
       <SEO
         title="Member Login & Register | Plus1 Rewards"
         description="Sign in or create your Plus1 Rewards account to start earning cashback toward your medical cover plan."
