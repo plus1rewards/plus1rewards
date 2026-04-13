@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import AuthLayout from '../components/auth/AuthLayout';
 import { AuthInput, AuthButton, AuthDivider, AuthError, AuthLink } from '../components/auth/AuthComponents';
+import { executeRecaptcha } from '../components/auth/ReCaptcha';
 
 const BLUE = '#1a558b'
 
@@ -20,6 +21,14 @@ export default function AgentLogin() {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    try {
+      await executeRecaptcha('agent_login');
+    } catch {
+      setError('reCAPTCHA verification failed. Please try again.');
+      setLoading(false);
+      return;
+    }
 
     try {
       // Validate PIN is 6 digits

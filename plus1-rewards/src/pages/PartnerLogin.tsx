@@ -6,6 +6,7 @@ import AuthLayout from '../components/auth/AuthLayout';
 import { AuthInput, AuthButton, AuthDivider, AuthError, AuthLink } from '../components/auth/AuthComponents';
 import { useNotification, Notification } from '../components/Notification';
 import { normalizePhoneNumber, isValidMobileNumber } from '../utils/phoneValidation';
+import { executeRecaptcha } from '../components/auth/ReCaptcha';
 
 const BLUE = '#1a558b'
 
@@ -23,6 +24,14 @@ export default function PartnerLogin() {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    try {
+      await executeRecaptcha('partner_login');
+    } catch {
+      showNotification('error', 'Verification Failed', 'reCAPTCHA verification failed. Please try again.');
+      setLoading(false);
+      return;
+    }
 
     try {
       // Validate PIN is 6 digits

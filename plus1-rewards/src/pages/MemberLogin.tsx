@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import AuthLayout from '../components/auth/AuthLayout';
 import { AuthInput, AuthButton, AuthDivider, AuthError, AuthLink } from '../components/auth/AuthComponents';
 import SEO from '../components/SEO';
+import ReCaptchaLoader, { executeRecaptcha } from '../components/auth/ReCaptcha';
 
 const BLUE = '#1a558b'
 
@@ -24,6 +25,14 @@ export default function MemberLogin() {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    try {
+      await executeRecaptcha('member_login');
+    } catch {
+      setError('reCAPTCHA verification failed. Please try again.');
+      setLoading(false);
+      return;
+    }
 
     try {
       // Clean phone number
@@ -103,6 +112,7 @@ export default function MemberLogin() {
         { value: 'R390', label: 'Monthly Target' },
       ]}
     >
+      <ReCaptchaLoader />
       <SEO
         title="Member Login & Register | Plus1 Rewards"
         description="Sign in or create your Plus1 Rewards account to start earning cashback toward your medical cover plan."
