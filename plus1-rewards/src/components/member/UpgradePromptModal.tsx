@@ -66,7 +66,7 @@ export default function UpgradePromptModal({
             </div>
             <div className="space-y-1">
               <p className="text-sm text-gray-700">
-                <span className="font-bold">Upgrade to:</span> Comprehensive - Value Plus - Single (R{nextTarget})
+                <span className="font-bold">Upgrade to:</span> Comprehensive - Value Plus (R{nextTarget})
               </p>
               <p className="text-sm text-gray-700">
                 <span className="font-bold">Additional needed:</span> R{additionalNeeded.toFixed(2)}

@@ -636,6 +636,12 @@
 }
 
 /* ── Mobile responsive ── */
+@media (min-width: 641px) {
+  .output {
+    right: -55px;
+  }
+}
+
 @media (max-width: 640px) {
   .digital-pass-wrapper {
     justify-content: center;

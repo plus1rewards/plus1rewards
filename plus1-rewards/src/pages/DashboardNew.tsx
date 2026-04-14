@@ -633,14 +633,14 @@ const DashboardNew: React.FC = () => {
     
     let upgradeCost = 0;
     let currentPlanName = '';
-    let newPlanName = 'Comprehensive - Value Plus - Single';
+    let newPlanName = 'Comprehensive - Value Plus';
     
     if (currentTarget === 390) {
       upgradeCost = 275;
-      currentPlanName = 'Hospital - Value - Single';
+      currentPlanName = 'Hospital - Value';
     } else if (currentTarget === 385) {
       upgradeCost = 280;
-      currentPlanName = 'Day to Day Single';
+      currentPlanName = 'Day to Day';
     } else if (currentTarget === 665) {
       showWarning(
         'Already on Comprehensive - Value Plus Plan', 
@@ -824,7 +824,7 @@ const DashboardNew: React.FC = () => {
 
       <main className="pt-16 pb-24 md:pb-10 px-4 md:px-8 max-w-7xl mx-auto w-full">
         {/* Profile Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4 pt-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4 pt-4 md:pt-0 md:-mt-[10px]">
           <div className="flex items-center gap-4">
             <div className="relative">
               <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg object-cover border-2 border-gray-200 shadow-sm bg-gray-100 flex items-center justify-center overflow-hidden">
@@ -862,7 +862,7 @@ const DashboardNew: React.FC = () => {
         {/* Bento Grid Layout */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           {/* Main Balance & Metrics */}
-          <div className="md:col-span-8 flex flex-col gap-6">
+          <div className="md:col-span-8 flex flex-col gap-6 md:-mt-[60px]">
             {/* Primary Balance Card */}
             <div className="bg-blue-700 text-white p-6 md:p-8 rounded-lg relative overflow-hidden flex flex-col justify-between min-h-[200px] md:min-h-[220px] mt-4 md:mt-0">
               <div className="absolute top-0 right-0 p-8 opacity-10">
@@ -1474,7 +1474,7 @@ const DashboardNew: React.FC = () => {
               {/* Plan Info */}
               <div className="space-y-4 mb-6">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="font-bold text-lg text-blue-900 mb-2">Comprehensive - Value Plus - Single</h3>
+                  <h3 className="font-bold text-lg text-blue-900 mb-2">Comprehensive - Value Plus</h3>
                   <p className="text-blue-800 mb-2">Price: R665.00/month</p>
                   <p className="text-sm text-blue-700">Upgrade Cost: R{upgradePlanInfo.cost.toFixed(2)}</p>
                 </div>

@@ -71,7 +71,7 @@ const categories: FAQCategory[] = [
     items: [
       {
         q: 'What cover plans are available?',
-        a: 'Three plans are available: Day to Day Single (R385/month), Hospital Value Single (R390/month), and Comprehensive Value Plus Single (R665/month). Each plan is underwritten by Day1Health (Pty) Ltd.',
+        a: 'Three plans are available: Day to Day (R385/month), Hospital Value (R390/month), and Comprehensive Value Plus (R665/month). Each plan is underwritten by Day1Health (Pty) Ltd.',
       },
       {
         q: 'Is this the same as medical aid?',

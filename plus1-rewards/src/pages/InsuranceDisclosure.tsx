@@ -101,13 +101,13 @@ export default function InsuranceDisclosure() {
         <div className="mt-4 grid sm:grid-cols-3 gap-4">
           {[
             {
-              name: 'Day to Day Single',
+              name: 'Day to Day',
               price: 'R385/month',
               desc: 'Covers day-to-day primary healthcare needs including GP visits, basic medication, and preventative care.',
               color: '#37d270',
             },
             {
-              name: 'Hospital Value Single',
+              name: 'Hospital Value',
               price: 'R390/month',
               desc: 'Covers in-hospital treatment and procedures. Ideal for members who want protection against unexpected hospitalisation.',
               color: '#1a558b',

@@ -5,7 +5,7 @@ import { getSession, clearSession } from '../lib/session';
 const PLANS = [
   {
     id: 'day-to-day',
-    name: 'Day to Day Single',
+    name: 'Day to Day',
     price: 385,
     color: '#37d270',
     bgColor: 'bg-green-50',
@@ -25,7 +25,7 @@ const PLANS = [
   },
   {
     id: 'hospital',
-    name: 'Hospital - Value - Single',
+    name: 'Hospital - Value',
     price: 390,
     color: '#1a568b',
     bgColor: 'bg-blue-50',
@@ -45,7 +45,7 @@ const PLANS = [
   },
   {
     id: 'comprehensive',
-    name: 'Comprehensive - Value Plus - Single',
+    name: 'Comprehensive - Value Plus',
     price: 665,
     color: '#7c3aed',
     bgColor: 'bg-purple-50',

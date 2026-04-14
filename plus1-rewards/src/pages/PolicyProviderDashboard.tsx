@@ -18,6 +18,7 @@ interface CoverPlan {
   member_name: string;
   member_phone: string;
   plan_name: string;
+  plan_variant: string;
   target_amount: number;
   funded_amount: number;
   status: 'active' | 'paused' | 'in_progress';
@@ -125,7 +126,7 @@ export function PolicyProviderDashboard() {
       const memberIds = memberCoverPlans.map(mcp => mcp.member_id);
       const { data: members, error: membersError } = await supabase
         .from('members')
-        .select('id, first_name, last_name, phone')
+        .select('id, first_name, last_name, phone, cover_plan_variant')
         .in('id', memberIds);
 
       console.log('Members query result:', { members, membersError });
@@ -162,6 +163,7 @@ export function PolicyProviderDashboard() {
           member_name: `${member?.first_name} ${member?.last_name}`.trim() || 'Unknown',
           member_phone: member?.phone || 'N/A',
           plan_name: coverPlan?.plan_name || 'Unknown Plan',
+          plan_variant: (member as any)?.cover_plan_variant || 'Single',
           target_amount: parseFloat(mcp.target_amount || 0),
           funded_amount: parseFloat(mcp.funded_amount || 0),
           status: mcp.status,
@@ -196,12 +198,13 @@ export function PolicyProviderDashboard() {
     setExporting(true);
     try {
       const currentMonth = new Date().toISOString().slice(0, 7);
-      const headers = ['Member ID', 'Member Name', 'Phone', 'Plan Name', 'Monthly Premium (R)', 'Funded Amount (R)', 'Status', 'Active From', 'Active To', 'Linked People', 'Month'];
+      const headers = ['Member ID', 'Member Name', 'Phone', 'Plan Name', 'Plan Variant', 'Monthly Premium (R)', 'Funded Amount (R)', 'Status', 'Active From', 'Active To', 'Linked People', 'Month'];
       const rows = activePlans.map(plan => [
         plan.member_id,
         plan.member_name,
         plan.member_phone,
         plan.plan_name,
+        plan.plan_variant,
         plan.target_amount.toFixed(2),
         plan.funded_amount.toFixed(2),
         'ACTIVE',
@@ -506,7 +509,8 @@ export function PolicyProviderDashboard() {
                         <p className="text-xs text-gray-600">{plan.member_phone}</p>
                       </td>
                       <td className="px-4 py-4">
-                        <span className="text-sm font-semibold text-gray-900">{plan.plan_name}</span>
+                        <p className="text-sm font-semibold text-gray-900">{plan.plan_name}</p>
+                        <span className="text-xs text-gray-500 font-medium">{plan.plan_variant}</span>
                       </td>
                       <td className="px-4 py-4">
                         <span className="text-sm font-bold text-gray-900">R{plan.target_amount.toFixed(2)}</span>
