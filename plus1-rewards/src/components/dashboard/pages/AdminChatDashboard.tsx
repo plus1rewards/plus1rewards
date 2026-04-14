@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
   Phone, 
@@ -73,6 +74,7 @@ interface ChatConversation {
 
 export default function App() {
   const { notification, showSuccess, showError, showInfo, hideNotification } = useNotification();
+  const navigate = useNavigate();
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
@@ -975,7 +977,13 @@ export default function App() {
       
       {/* Sidebar */}
       <aside className="w-80 flex flex-col border-r border-gray-200 bg-gray-50">
-        <div className="p-4">
+        <div className="p-4 space-y-3">
+          <button
+            onClick={() => navigate('/admin/dashboard')}
+            className="flex items-center gap-2 text-sm font-semibold text-[#1a558b] hover:underline"
+          >
+            ← Back to Home
+          </button>
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#1a558b] transition-colors" />
             <input 
@@ -1062,45 +1070,24 @@ export default function App() {
               </div>
             </div>
             <div className="flex items-center gap-4 text-gray-400">
+              {selectedConversation.status === 'open' ? (
+                <button
+                  onClick={handleCloseConversation}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#1a558b] hover:bg-[#1a558b]/90 transition-colors shadow-sm"
+                >
+                  <XCircle className="w-3.5 h-3.5" /> Close
+                </button>
+              ) : (
+                <span className="text-xs text-gray-500 px-3 py-1.5 bg-gray-100 rounded-lg font-medium">Closed</span>
+              )}
+              <button
+                onClick={handleDeleteConversation}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </button>
             </div>
           </header>
-
-          {/* Action Bar */}
-          <div className="flex items-center gap-2 px-6 py-2 border-b border-gray-100 bg-gray-50/50">
-            {selectedConversation.status === 'open' ? (
-              <>
-                <button 
-                  onClick={handleCloseConversation}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors group"
-                >
-                  <XCircle className="w-3.5 h-3.5 text-gray-400 group-hover:text-[#1a558b]" /> Close Conversation
-                </button>
-                <button 
-                  onClick={handleDeleteConversation}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors group"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-gray-400 group-hover:text-red-500" /> Delete
-                </button>
-                <div className="flex-1" />
-                <button 
-                  onClick={handleRequestFeedback}
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium text-white bg-[#00a63e] hover:bg-[#00a63e]/90 transition-colors shadow-sm"
-                >
-                  <MessageSquarePlus className="w-3.5 h-3.5" /> Request Feedback
-                </button>
-              </>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 px-3 py-1.5 bg-gray-100 rounded-lg">Conversation Closed</span>
-                <button 
-                  onClick={handleDeleteConversation}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors group"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-gray-400 group-hover:text-red-500" /> Delete
-                </button>
-              </div>
-            )}
-          </div>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">

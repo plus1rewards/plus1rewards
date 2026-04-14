@@ -32,7 +32,7 @@ export default function PartnerCarousel() {
     try {
       const { data, error } = await supabase
         .from('partners')
-        .select('id, shop_name, category, address, cashback_percent, status, store_logo_url, phone')
+        .select('id, shop_name, category, address, cashback_percent, status, store_logo_url, cell_phone')
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(12);
