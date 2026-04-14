@@ -122,11 +122,11 @@ body {
 
 /* Primary colors */
 .text-primary {
-  color: #11d452 !important;
+  color: #1a568b !important;
 }
 
 .bg-primary {
-  background-color: #11d452 !important;
+  background-color: #1a568b !important;
 }
 
 /* Custom utility classes for opacity combinations */
@@ -183,35 +183,35 @@ body {
 }
 
 .bg-primary\/5 {
-  background-color: rgba(17, 212, 82, 0.05) !important;
+  background-color: rgba(26, 85, 139, 0.05) !important;
 }
 
 .bg-primary\/10 {
-  background-color: rgba(17, 212, 82, 0.1) !important;
+  background-color: rgba(26, 85, 139, 0.1) !important;
 }
 
 .bg-primary\/20 {
-  background-color: rgba(17, 212, 82, 0.2) !important;
+  background-color: rgba(26, 85, 139, 0.2) !important;
 }
 
 .bg-primary\/90 {
-  background-color: rgba(17, 212, 82, 0.9) !important;
+  background-color: rgba(26, 85, 139, 0.9) !important;
 }
 
 .hover\:bg-primary\/90:hover {
-  background-color: rgba(17, 212, 82, 0.9) !important;
+  background-color: rgba(26, 85, 139, 0.9) !important;
 }
 
 .hover\:bg-primary\/5:hover {
-  background-color: rgba(17, 212, 82, 0.05) !important;
+  background-color: rgba(26, 85, 139, 0.05) !important;
 }
 
 .dark\:hover\:bg-primary\/5:hover {
-  background-color: rgba(17, 212, 82, 0.05) !important;
+  background-color: rgba(26, 85, 139, 0.05) !important;
 }
 
 .hover\:text-primary\/80:hover {
-  color: rgba(17, 212, 82, 0.8) !important;
+  color: rgba(26, 85, 139, 0.8) !important;
 }
 
 /* Complex gradients */
@@ -425,7 +425,7 @@ body {
 }
 
 .hover\:bg-slate-100.dark\:hover\:bg-primary\/10:hover {
-  background-color: rgba(17, 212, 82, 0.1) !important;
+  background-color: rgba(26, 85, 139, 0.1) !important;
 }
 
 /* Group hover effects */
@@ -440,7 +440,7 @@ body {
 }
 
 .dark\:hover\:bg-primary\/5:hover {
-  background-color: rgba(17, 212, 82, 0.05) !important;
+  background-color: rgba(26, 85, 139, 0.05) !important;
 }
 
 /* Fix button text visibility */
