@@ -58,6 +58,7 @@ export default function AgentChat({ onClose }: { onClose?: () => void } = {}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -535,8 +536,6 @@ export default function AgentChat({ onClose }: { onClose?: () => void } = {}) {
           </div>
         </div>
         <div className="flex items-center gap-4 text-gray-400">
-          <button className="hover:text-[#1a558b] transition-colors"><Phone className="w-5 h-5" /></button>
-          <button className="hover:text-[#1a558b] transition-colors"><MoreVertical className="w-5 h-5" /></button>
         </div>
       </header>
 
@@ -634,7 +633,18 @@ export default function AgentChat({ onClose }: { onClose?: () => void } = {}) {
                   className="w-full bg-gray-100 border-none rounded-2xl py-3 px-4 pr-24 text-sm focus:ring-1 focus:ring-[#1a558b]/20 outline-none text-gray-900 disabled:opacity-50"
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                  <button type="button" className="p-2 text-gray-400 hover:text-[#1a558b] transition-colors"><Smile className="w-5 h-5" /></button>
+                  <div className="relative">
+                    <button type="button" onClick={() => setShowEmojiPicker(p => !p)} className="p-2 text-gray-400 hover:text-[#1a558b] transition-colors"><Smile className="w-5 h-5" /></button>
+                    {showEmojiPicker && (
+                      <div className="absolute bottom-10 right-0 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 z-50 w-64">
+                        <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
+                          {['😀','😂','😍','🥰','😎','🤔','😅','😭','😊','🙏','👍','👎','❤️','🔥','✅','⭐','🎉','💪','🤝','👋','😢','😡','🤣','😇','🥳','😴','🤯','😱','🙄','😏','💯','🚀','💡','📞','📧','🏥','💊','🩺','📋','✍️'].map(emoji => (
+                            <button key={emoji} type="button" onClick={() => { setInputText(prev => prev + emoji); setShowEmojiPicker(false); }} className="text-xl hover:bg-gray-100 rounded-lg p-1 transition-colors">{emoji}</button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <button 
                     type="button"
                     onClick={startRecording}

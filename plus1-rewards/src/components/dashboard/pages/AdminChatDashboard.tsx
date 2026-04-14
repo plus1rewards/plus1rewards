@@ -80,6 +80,7 @@ export default function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadingFile, setUploadingFile] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -95,6 +96,12 @@ export default function App() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
+  const selectedConversationRef = useRef<ChatConversation | null>(null);
+
+  // Keep ref in sync with state so realtime handlers can access it without re-subscribing
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -142,7 +149,7 @@ export default function App() {
         (payload) => {
           const deletedId = payload.old.id;
           setConversations(prev => prev.filter(c => c.id !== deletedId));
-          if (selectedConversation?.id === deletedId) {
+          if (selectedConversationRef.current?.id === deletedId) {
             setSelectedConversation(null);
             setMessages([]);
           }
@@ -180,7 +187,7 @@ export default function App() {
         (payload) => {
           const deletedId = payload.old.id;
           setConversations(prev => prev.filter(c => c.id !== deletedId));
-          if (selectedConversation?.id === deletedId) {
+          if (selectedConversationRef.current?.id === deletedId) {
             setSelectedConversation(null);
             setMessages([]);
           }
@@ -218,7 +225,7 @@ export default function App() {
         (payload) => {
           const deletedId = payload.old.id;
           setConversations(prev => prev.filter(c => c.id !== deletedId));
-          if (selectedConversation?.id === deletedId) {
+          if (selectedConversationRef.current?.id === deletedId) {
             setSelectedConversation(null);
             setMessages([]);
           }
@@ -233,7 +240,7 @@ export default function App() {
         },
         (payload) => {
           const newMsg = payload.new as ChatMessage;
-          if (selectedConversation && selectedConversation.conversation_type === 'member' && newMsg.conversation_id === selectedConversation.id) {
+          if (selectedConversationRef.current && selectedConversationRef.current.conversation_type === 'member' && newMsg.conversation_id === selectedConversationRef.current.id) {
             setMessages(prev => [...prev, newMsg]);
             scrollToBottom();
           }
@@ -249,7 +256,7 @@ export default function App() {
         },
         (payload) => {
           const newMsg = payload.new as ChatMessage;
-          if (selectedConversation && selectedConversation.conversation_type === 'partner' && newMsg.conversation_id === selectedConversation.id) {
+          if (selectedConversationRef.current && selectedConversationRef.current.conversation_type === 'partner' && newMsg.conversation_id === selectedConversationRef.current.id) {
             setMessages(prev => [...prev, newMsg]);
             scrollToBottom();
           }
@@ -265,7 +272,7 @@ export default function App() {
         },
         (payload) => {
           const newMsg = payload.new as ChatMessage;
-          if (selectedConversation && selectedConversation.conversation_type === 'agent' && newMsg.conversation_id === selectedConversation.id) {
+          if (selectedConversationRef.current && selectedConversationRef.current.conversation_type === 'agent' && newMsg.conversation_id === selectedConversationRef.current.id) {
             setMessages(prev => [...prev, newMsg]);
             scrollToBottom();
           }
@@ -277,7 +284,7 @@ export default function App() {
     return () => {
       supabaseAdmin.removeChannel(channel);
     };
-  }, [selectedConversation]);
+  }, []);
 
   useEffect(() => {
     if (selectedConversation) {
@@ -1055,9 +1062,6 @@ export default function App() {
               </div>
             </div>
             <div className="flex items-center gap-4 text-gray-400">
-              <button className="hover:text-[#1a558b] transition-colors"><Phone className="w-5 h-5" /></button>
-              <button className="hover:text-[#1a558b] transition-colors"><Search className="w-5 h-5" /></button>
-              <button className="hover:text-[#1a558b] transition-colors"><MoreVertical className="w-5 h-5" /></button>
             </div>
           </header>
 
@@ -1173,7 +1177,34 @@ export default function App() {
                         className="w-full bg-gray-100 border-none rounded-2xl py-3 px-4 pr-24 text-sm focus:ring-1 focus:ring-[#1a558b]/20 outline-none text-gray-900 disabled:opacity-50"
                       />
                       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                        <button type="button" className="p-2 text-gray-400 hover:text-[#1a558b] transition-colors"><Smile className="w-5 h-5" /></button>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setShowEmojiPicker(p => !p)}
+                            className="p-2 text-gray-400 hover:text-[#1a558b] transition-colors"
+                          >
+                            <Smile className="w-5 h-5" />
+                          </button>
+                          {showEmojiPicker && (
+                            <div className="absolute bottom-10 right-0 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 z-50 w-64">
+                              <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
+                                {['😀','😂','😍','🥰','😎','🤔','😅','😭','😊','🙏','👍','👎','❤️','🔥','✅','⭐','🎉','💪','🤝','👋','😢','😡','🤣','😇','🥳','😴','🤯','😱','🙄','😏','💯','🚀','💡','📞','📧','🏥','💊','🩺','📋','✍️'].map(emoji => (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => {
+                                      setInputText(prev => prev + emoji);
+                                      setShowEmojiPicker(false);
+                                    }}
+                                    className="text-xl hover:bg-gray-100 rounded-lg p-1 transition-colors"
+                                  >
+                                    {emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                         <button 
                           type="button"
                           onClick={startRecording}
@@ -1328,16 +1359,16 @@ function Message({ msg, selectedConversation, playingAudio, toggleAudioPlayback 
   const time = new Date(msg.created_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="flex gap-4 group">
-      <div className="w-10 h-10 rounded-full bg-gray-100 flex-shrink-0 flex items-center justify-center text-xs font-semibold text-gray-400 border border-gray-200">
+    <div className={`flex gap-4 group ${isAdmin ? 'flex-row-reverse' : 'flex-row'}`}>
+      <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-semibold border border-gray-200 bg-gray-100 text-gray-400">
         {initial}
       </div>
-      <div className="flex-1 space-y-1">
-        <div className="flex items-center gap-2">
+      <div className={`flex-1 space-y-1 ${isAdmin ? 'items-end' : 'items-start'} flex flex-col`}>
+        <div className={`flex items-center gap-2 ${isAdmin ? 'flex-row-reverse' : ''}`}>
           <span className="text-sm font-semibold text-gray-700">{senderName}</span>
         </div>
         <div className="text-sm leading-relaxed">
-          <div className={`${isAdmin ? 'bg-blue-50 border-blue-200' : 'bg-gray-100'} p-3 rounded-2xl rounded-tl-none max-w-md border`}>
+          <div className={`${isAdmin ? 'bg-[#1a558b] text-white border-[#1a558b] rounded-2xl rounded-tr-none' : 'bg-gray-100 border-gray-200 rounded-2xl rounded-tl-none'} p-3 max-w-md border`}>
             {msg.attachment_url ? (
               <div className="space-y-2">
                 {msg.attachment_type === 'image' && (
@@ -1404,11 +1435,11 @@ function Message({ msg, selectedConversation, playingAudio, toggleAudioPlayback 
                 )}
               </div>
             ) : (
-              <p className="text-gray-800">{msg.message}</p>
+              <p className={isAdmin ? 'text-white' : 'text-gray-800'}>{msg.message}</p>
             )}
           </div>
         </div>
-        <span className="text-[10px] text-gray-400 block pt-1">{time}</span>
+        <span className={`text-[10px] text-gray-400 block pt-1 ${isAdmin ? 'text-right' : ''}`}>{time}</span>
       </div>
     </div>
   );
