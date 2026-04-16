@@ -176,8 +176,11 @@ export default function PartnerSalesTerminal() {
 
       if (code) {
         console.log('✅ QR Code detected:', code.data);
-        handleQRCodeScanned(code.data);
+        // Stop scanner immediately
+        setScannerActive(false);
         stopQRScanner();
+        // Process the QR code
+        handleQRCodeScanned(code.data);
         return;
       }
     } catch (err) {
@@ -1177,73 +1180,103 @@ export default function PartnerSalesTerminal() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-            onClick={stopQRScanner}
+            className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-4"
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+            {/* Close Button */}
+            <motion.button
+              onClick={stopQRScanner}
+              className="absolute top-6 right-6 z-10 bg-red-500 hover:bg-red-600 text-white p-3 rounded-full shadow-lg"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
             >
-              {/* Header */}
-              <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <QrCode className="w-6 h-6 text-white" />
-                  <h3 className="text-xl font-bold text-white">Scan Member QR Code</h3>
-                </div>
-                <motion.button
-                  onClick={stopQRScanner}
-                  className="p-1 hover:bg-purple-500 rounded-lg transition-colors"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <X className="w-6 h-6 text-white" />
-                </motion.button>
-              </div>
+              <X className="w-6 h-6" />
+            </motion.button>
 
-              {/* Scanner */}
-              <div className="p-6">
-                <div className="relative bg-black rounded-xl overflow-hidden aspect-square mb-4">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    disablePictureInPicture
-                    className="w-full h-full object-cover"
-                  />
-                  <canvas ref={canvasRef} className="hidden" />
+            {/* Header */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-6 text-white"
+            >
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <QrCode className="w-8 h-8 text-green-400" />
+                <h2 className="text-3xl font-bold">Scan QR Code</h2>
+              </div>
+              <p className="text-gray-300 text-lg">Position member's QR code in the frame</p>
+            </motion.div>
+
+            {/* Video Container */}
+            <div className="relative w-full max-w-md aspect-square mb-6">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                disablePictureInPicture
+                className="w-full h-full object-cover rounded-2xl shadow-2xl"
+              />
+              <canvas ref={canvasRef} className="hidden" />
+              
+              {/* Scanning Frame Overlay */}
+              <div className="absolute inset-0 flex items-center justify-center rounded-2xl pointer-events-none">
+                <div className="relative w-64 h-64">
+                  {/* Corner markers */}
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-400"></div>
+                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-400"></div>
+                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-400"></div>
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-400"></div>
                   
-                  {/* QR Scanner Frame */}
+                  {/* Center crosshair */}
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-48 h-48 border-4 border-green-400 rounded-lg" style={{
-                      boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)'
-                    }}>
-                      <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-green-400"></div>
-                      <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-green-400"></div>
-                      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-green-400"></div>
-                      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-green-400"></div>
-                    </div>
+                    <div className="w-1 h-12 bg-green-400 opacity-50"></div>
+                    <div className="w-12 h-1 bg-green-400 opacity-50 absolute"></div>
                   </div>
-
-                  {/* Scanning indicator */}
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm font-semibold">
-                    <span className="inline-block animate-pulse">● </span>
-                    Scanning...
-                  </div>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
-                  <p className="font-semibold mb-2">📱 How to scan:</p>
-                  <ul className="space-y-1 text-xs">
-                    <li>• Position the member's QR code in the frame</li>
-                    <li>• Keep the code steady for 2-3 seconds</li>
-                    <li>• The scanner will automatically detect the code</li>
-                  </ul>
+                  
+                  {/* Animated scanning line */}
+                  <motion.div
+                    className="absolute left-0 right-0 h-1 bg-gradient-to-b from-green-400 to-transparent"
+                    animate={{ top: ['0%', '100%'] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
                 </div>
               </div>
+
+              {/* Vignette effect */}
+              <div className="absolute inset-0 rounded-2xl shadow-2xl pointer-events-none" style={{
+                boxShadow: 'inset 0 0 60px rgba(0, 0, 0, 0.8)'
+              }}></div>
+            </div>
+
+            {/* Instructions */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full max-w-md bg-white/10 backdrop-blur-md rounded-2xl p-6 text-white border border-white/20"
+            >
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-400 flex items-center justify-center text-black font-bold text-sm">1</div>
+                  <p className="text-sm">Hold the QR code steady in front of the camera</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-400 flex items-center justify-center text-black font-bold text-sm">2</div>
+                  <p className="text-sm">Make sure the code is well-lit and in focus</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-400 flex items-center justify-center text-black font-bold text-sm">3</div>
+                  <p className="text-sm">The scanner will automatically detect the code</p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Status Indicator */}
+            <motion.div
+              className="mt-6 flex items-center gap-2 text-green-400"
+              animate={{ opacity: [0.5, 1] }}
+              transition={{ duration: 1, repeat: Infinity }}
+            >
+              <div className="w-3 h-3 rounded-full bg-green-400"></div>
+              <span className="text-sm font-semibold">Scanning...</span>
             </motion.div>
           </motion.div>
         )}
