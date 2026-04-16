@@ -71,7 +71,53 @@ export default function PartnerCarousel() {
   }
 
   if (partners.length === 0) {
-    return null; // Don't show section if no partners
+    return (
+      <section className="py-20 px-6 lg:px-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <motion.div 
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+          >
+            <motion.span 
+              className="inline-block px-4 py-2 rounded-full text-sm font-bold uppercase tracking-wider mb-4"
+              style={{ backgroundColor: '#e0f2fe', color: BLUE }}
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              viewport={{ once: true }}
+            >
+              Partner Stores
+            </motion.span>
+            <motion.h2 
+              className="text-4xl md:text-5xl font-black text-gray-900 mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              viewport={{ once: true }}
+            >
+              Shop at Our Partners
+            </motion.h2>
+          </motion.div>
+
+          {/* Empty State */}
+          <motion.div 
+            className="text-center py-20"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            viewport={{ once: true }}
+          >
+            <span className="material-symbols-outlined text-6xl text-gray-300 block mb-4">store</span>
+            <p className="text-2xl font-bold text-gray-600 mb-2">No partners found</p>
+            <p className="text-gray-500">Partner stores will appear here soon. Check back later!</p>
+          </motion.div>
+        </div>
+      </section>
+    );
   }
 
   return (

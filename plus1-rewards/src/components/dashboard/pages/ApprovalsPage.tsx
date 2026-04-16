@@ -48,6 +48,7 @@ export default function ApprovalsPage() {
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [allAgents, setAllAgents] = useState<any[]>([]);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+  const [passportImageUrl, setPassportImageUrl] = useState<string | null>(null);
   
   // Confirmation modal states
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -203,7 +204,7 @@ export default function ApprovalsPage() {
         agents: agents?.length || 0,
         providers: insurers?.length || 0,
         coverPlans: 0,
-        linkedPeople: linkedPeople?.length || 0
+        linkedPeople: linkedPeopleRequests?.length || 0
       });
     } catch (error) {
       console.error('❌ Error fetching approvals:', error);
@@ -216,11 +217,13 @@ export default function ApprovalsPage() {
     fetchData();
   }, []);
 
-  // Fetch signature URL when modal opens
+  // Fetch signature URL and passport image when modal opens
   useEffect(() => {
     const fetchSignatureUrl = async () => {
       if (showDetailsModal && selectedItem) {
         try {
+          console.log('📋 Modal opened for:', selectedItem.type, 'ID:', selectedItem.id);
+          
           // For partners, use signature_url; for agents, use agreement_file
           const signaturePath = selectedItem.type === 'partner' 
             ? selectedItem.signature_url 
@@ -240,12 +243,33 @@ export default function ApprovalsPage() {
           } else {
             setSignatureUrl(null);
           }
+
+          // For agents, also fetch passport image
+          if (selectedItem.type === 'agent' && selectedItem.id_document_url) {
+            console.log('🖼️ Fetching passport image:', selectedItem.id_document_url);
+            const { data: passportData, error: passportError } = await supabaseAdmin.storage
+              .from('documents')
+              .createSignedUrl(selectedItem.id_document_url, 3600); // 1 hour expiry
+
+            if (passportError) {
+              console.error('❌ Error fetching passport image URL:', passportError);
+              setPassportImageUrl(null);
+            } else {
+              console.log('✅ Passport image URL fetched successfully');
+              setPassportImageUrl(passportData.signedUrl);
+            }
+          } else {
+            console.log('⚠️ Not fetching passport - type:', selectedItem.type, 'has id_document_url:', !!selectedItem.id_document_url);
+            setPassportImageUrl(null);
+          }
         } catch (error) {
           console.error('Error:', error);
           setSignatureUrl(null);
+          setPassportImageUrl(null);
         }
       } else {
         setSignatureUrl(null);
+        setPassportImageUrl(null);
       }
     };
 
@@ -725,7 +749,7 @@ export default function ApprovalsPage() {
                       <div key={agent.id} className="p-6 hover:bg-gray-50 transition-colors">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h4 className="text-lg font-bold text-gray-900 mb-2">{agent.full_name || 'Unknown'}</h4>
+                            <h4 className="text-lg font-bold text-gray-900 mb-2">{getOwnerName(agent)}</h4>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                               <div>
                                 <p className="text-xs text-gray-600 uppercase font-bold">ID Number</p>
@@ -864,7 +888,7 @@ export default function ApprovalsPage() {
                   </div>
                   <div>
                     <h2 className="text-2xl font-black text-gray-900">
-                      {selectedItem.type === 'partner' ? selectedItem.shop_name || selectedItem.name : selectedItem.users?.full_name || 'Unknown'}
+                      {selectedItem.type === 'partner' ? selectedItem.shop_name || selectedItem.name : getOwnerName(selectedItem)}
                     </h2>
                     <p className="text-sm text-gray-600">
                       {selectedItem.type === 'partner' ? 'Partner Application' : 'Agent Application'}
@@ -1101,6 +1125,55 @@ export default function ApprovalsPage() {
                           </div>
                         </div>
                       </div>
+
+                      {/* Rejection Reason - if rejected */}
+                      {selectedItem.status === 'rejected' && selectedItem.rejection_reason && (
+                        <div className="bg-white border border-red-200 rounded-xl p-6 bg-red-50">
+                          <h3 className="text-lg font-bold text-red-900 mb-4 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-red-600">cancel</span>
+                            Rejection Reason
+                          </h3>
+                          <p className="text-sm text-red-700 font-semibold">{selectedItem.rejection_reason}</p>
+                        </div>
+                      )}
+
+                      {/* Passport/ID Document */}
+                      {selectedItem.id_document_url && (
+                        <div className="bg-white border border-gray-200 rounded-xl p-6">
+                          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[#1a558b]">badge</span>
+                            ID Document / Passport
+                          </h3>
+                          <div className="space-y-3">
+                            <p className="text-sm text-gray-600">
+                              Uploaded on {new Date(selectedItem.created_at).toLocaleDateString()}
+                            </p>
+                            <div className="border-2 border-gray-200 rounded-xl p-4 bg-gray-50 min-h-[200px] flex items-center justify-center">
+                              {passportImageUrl ? (
+                                <img 
+                                  src={passportImageUrl}
+                                  alt="ID Document"
+                                  className="max-w-full h-auto max-h-64 mx-auto"
+                                  onError={(e) => {
+                                    console.error('Image load error:', e);
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <div className="text-center text-gray-500 text-sm">
+                                  <span className="material-symbols-outlined text-4xl mb-2 block">warning</span>
+                                  <p>Document file could not be retrieved</p>
+                                  <p className="text-xs mt-1">The agent may need to re-upload their document during re-registration</p>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-green-600">
+                              <span className="material-symbols-outlined text-sm">verified</span>
+                              <span>Document verified and uploaded</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Agreement Information with Digital Signature */}
                       <div className="bg-white border border-gray-200 rounded-xl p-6">

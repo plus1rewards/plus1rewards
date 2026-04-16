@@ -227,7 +227,7 @@ export default function BecomePartner() {
               style={{ backgroundColor: GREEN }}
             />
             <span className="text-xs font-bold uppercase tracking-[0.25em]" style={{ color: GREEN }}>
-              For Business Owners & Retailers
+              For South African businesses tired of one-time customers
             </span>
           </motion.div>
 
@@ -239,7 +239,7 @@ export default function BecomePartner() {
               transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
               className="text-white/50 text-lg md:text-xl font-medium mb-2"
             >
-              You're making R200K a year.
+              Your customers are already spending.
             </motion.p>
             <motion.h1
               initial={{ y: 80, opacity: 0 }}
@@ -247,18 +247,9 @@ export default function BecomePartner() {
               transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
               className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[1.0] text-white"
             >
-              When you could be<br />
-              making{' '}
-              <span className="relative inline-block">
-                <span style={{ color: GREEN }}>R600K.</span>
-                <motion.span
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: 1 }}
-                  transition={{ duration: 0.6, delay: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute -bottom-1 left-0 right-0 h-1 origin-left rounded-full"
-                  style={{ backgroundColor: GREEN, opacity: 0.5 }}
-                />
-              </span>
+              The problem?<br />
+              They're not always<br />
+              <span style={{ color: GREEN }}>coming back.</span>
             </motion.h1>
             <motion.p
               initial={{ y: 40, opacity: 0 }}
@@ -266,7 +257,7 @@ export default function BecomePartner() {
               transition={{ duration: 0.7, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
               className="text-white/40 text-2xl md:text-3xl font-black mt-2"
             >
-              You just haven't realized it yet.
+              And no… discounts aren't fixing it.
             </motion.p>
           </div>
 
@@ -278,19 +269,28 @@ export default function BecomePartner() {
             className="max-w-2xl mb-10 space-y-4"
           >
             <p className="text-white/60 text-base leading-relaxed">
-              Here's the hard truth: You think your current business model is solid. You think your margins are fine. You think your customers are loyal.
+              Let's be honest for a second.
+            </p>
+            <p className="text-white/60 text-base leading-relaxed">
+              You've got customers. They've bought from you before.
+            </p>
+            <p className="text-white/60 text-base leading-relaxed">
+              But then… they disappear. They try somewhere else. They forget about you. Or they only come back when it suits them.
             </p>
             <p className="text-white/80 text-base leading-relaxed font-medium">
-              But you're comparing yourself to your past — not to what's actually possible right now.
+              That's not because your business is bad. It's because nothing is pulling them back.
+            </p>
+            <p className="text-white/50 text-base leading-relaxed italic pt-2">
+              And that's where most businesses lose money… quietly.
             </p>
 
             {/* Bullet list */}
-            <div className="space-y-2 pt-2">
+            <div className="space-y-2 pt-4">
               {[
-                'Brings customers to you automatically (R0 cost)',
-                'Makes them visit 2–4× a month instead of 3–5× a year',
-                'Makes them spend R1,000–1,500 instead of R500 per visit',
-                'Keeps them coming back 80% of the time instead of 50%',
+                'Brings customers back without discounting your margins',
+                'Turns once-off buyers into regulars',
+                'Keeps your business in their daily spending habits',
+                'Gives customers a real reason to choose you again',
               ].map((item, i) => (
                 <motion.div
                   key={i}
@@ -321,19 +321,18 @@ export default function BecomePartner() {
               <div className="flex items-start gap-3 p-3 rounded-xl" style={{ backgroundColor: 'rgba(55,210,112,0.08)', border: '1px solid rgba(55,210,112,0.2)' }}>
                 <span className="text-xl mt-0.5">⚡</span>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: GREEN }}>Smart money joins now</p>
-                  <p className="text-white/60 text-xs leading-relaxed">12-month head start. Monopoly advantage. Compounding growth.</p>
+                  <p className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: GREEN }}>Smart businesses join early</p>
+                  <p className="text-white/60 text-xs leading-relaxed">Get ahead while your competitors are still figuring it out. Build loyalty before the market gets crowded.</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 p-3 rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <span className="text-xl mt-0.5">🐢</span>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-widest mb-1 text-white/40">Late money joins later</p>
-                  <p className="text-white/40 text-xs leading-relaxed">Plays catch-up forever. Saturated market. Competitor advantage.</p>
+                  <p className="text-xs font-black uppercase tracking-widest mb-1 text-white/40">Or join later…</p>
+                  <p className="text-white/40 text-xs leading-relaxed">When customers already have their preferred spots. And you're trying to win them back.</p>
                 </div>
               </div>
             </div>
-            <p className="text-center text-white/50 text-sm font-bold mt-4">Which one are you?</p>
           </motion.div>
 
           {/* CTAs */}
@@ -353,16 +352,16 @@ export default function BecomePartner() {
                 transition={{ duration: 2, repeat: Infinity, repeatDelay: 3, ease: 'easeInOut' }}
                 className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12 pointer-events-none"
               />
-              <span className="material-symbols-outlined text-base">calculate</span>
-              Show Me The Math
+              <span className="material-symbols-outlined text-base">trending_up</span>
+              Start Getting Repeat Customers
             </a>
             <Link
               to="/partner/register"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-black text-sm text-white border-2 transition-all hover:bg-white/10"
               style={{ borderColor: BLUE, backgroundColor: 'rgba(26,86,139,0.3)' }}
             >
-              <span className="material-symbols-outlined text-base">phone_in_talk</span>
-              Register Now
+              <span className="material-symbols-outlined text-base">info</span>
+              See How It Works
             </Link>
           </motion.div>
 
@@ -384,15 +383,16 @@ export default function BecomePartner() {
         </div>
       </div>
 
-      {/* Total impact banner */}
+      {/* What this actually changes in your business */}
       <div className="px-6 lg:px-20 py-8" style={{ backgroundColor: '#f5f8fc' }}>
         <div className="max-w-5xl mx-auto">
+          <h2 className="text-lg font-black text-gray-900 mb-6">What this actually changes in your business</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'Year 1 Combined Impact', value: 'R3.5–10M', icon: 'payments' },
-              { label: 'Foot Traffic Increase', value: '3–4x', icon: 'groups' },
-              { label: 'Customer Lifetime Value', value: '10–100x', icon: 'trending_up' },
-              { label: 'Customer Retention', value: '80–90%', icon: 'loyalty' },
+              { label: 'More Visits', value: '3–4x per month', icon: 'groups' },
+              { label: 'Bigger Baskets', value: 'R1,000–1,500 avg', icon: 'shopping_cart' },
+              { label: 'Better Retention', value: '80–90% stay', icon: 'loyalty' },
+              { label: 'Real Impact', value: 'R3.5–10M/year', icon: 'trending_up' },
             ].map((stat, i) => (
               <motion.div
                 key={i}

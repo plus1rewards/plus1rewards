@@ -102,6 +102,7 @@ const DashboardNew: React.FC = () => {
   const [upgradePlanInfo, setUpgradePlanInfo] = useState<{cost: number, currentPlan: string, newPlan: string} | null>(null);
   const [showPendingVerification, setShowPendingVerification] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<string>('');
+  const [profileModalDismissedByUser, setProfileModalDismissedByUser] = useState(false);
 
 
   // Debug: Log when showProfileIncomplete changes
@@ -411,6 +412,13 @@ const DashboardNew: React.FC = () => {
       if (mainCoverPlan.status === 'paused' && isProfileIncomplete) {
         console.log('⚠️ Plan is paused due to incomplete profile at 100%');
         
+        // Don't show if user manually dismissed it
+        if (profileModalDismissedByUser) {
+          console.log('⏭️ User dismissed modal, not showing again');
+          setShowProfileIncomplete(false);
+          return;
+        }
+        
         // Check if user can still change plan
         const planChangesCount = mainCoverPlan.plan_changes_count || 0;
         setCanChangePlan(planChangesCount < 1);
@@ -624,7 +632,7 @@ const DashboardNew: React.FC = () => {
     };
 
     checkProfileCompleteness();
-  }, [member, mainCoverPlan, progressPercent, isEditingProfile]);
+  }, [member, mainCoverPlan, progressPercent, isEditingProfile, profileModalDismissedByUser]);
 
   const handleUpgrade = async () => {
     if (!mainCoverPlan) return;
@@ -709,6 +717,7 @@ const DashboardNew: React.FC = () => {
 
       // Close the profile incomplete modal after successful save
       setShowProfileIncomplete(false);
+      setProfileModalDismissedByUser(false);
       setIsEditingProfile(false);
 
       showSuccess('Profile Updated', 'Profile updated successfully!', 3000);
@@ -1418,10 +1427,12 @@ const DashboardNew: React.FC = () => {
           onClose={() => {
             if (progressPercent < 100) {
               setShowProfileIncomplete(false);
+              setProfileModalDismissedByUser(true);
             }
           }}
           onForceClose={() => {
             setShowProfileIncomplete(false);
+            setProfileModalDismissedByUser(true);
           }}
           onChangePlan={() => {
             setShowProfileIncomplete(false);

@@ -1,9 +1,10 @@
 // plus1-rewards/src/pages/PartnerSalesTerminal.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, Check, AlertCircle, User, DollarSign, Sparkles, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Check, AlertCircle, User, DollarSign, Sparkles, ShoppingBag, QrCode, X } from 'lucide-react';
+import jsQR from 'jsqr';
 
 interface Partner {
   id: string;
@@ -24,6 +25,8 @@ const BLUE = '#1a558b';
 
 export default function PartnerSalesTerminal() {
   const navigate = useNavigate();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [partner, setPartner] = useState<Partner | null>(null);
   const [step, setStep] = useState<'input' | 'confirm' | 'success'>('input');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -32,6 +35,7 @@ export default function PartnerSalesTerminal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeField, setActiveField] = useState<'phone' | 'amount'>('phone');
+  const [scannerActive, setScannerActive] = useState(false);
 
   useEffect(() => {
     loadPartner();
@@ -64,6 +68,137 @@ export default function PartnerSalesTerminal() {
       setPartner(data);
     } catch (error) {
       console.error('Error loading partner:', error);
+    }
+  };
+
+  const startQRScanner = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setScannerActive(true);
+        scanQRCode();
+      }
+    } catch (err) {
+      console.error('Camera access denied:', err);
+      setError('Camera access denied. Please enable camera permissions in your browser settings.');
+    }
+  };
+
+  const stopQRScanner = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach(track => track.stop());
+      setScannerActive(false);
+    }
+  };
+
+  const scanQRCode = () => {
+    if (!videoRef.current || !canvasRef.current || !scannerActive) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+    if (code) {
+      console.log('✅ QR Code detected:', code.data);
+      handleQRCodeScanned(code.data);
+      stopQRScanner();
+    } else {
+      // Continue scanning
+      requestAnimationFrame(scanQRCode);
+    }
+  };
+
+  const handleQRCodeScanned = async (qrData: string) => {
+    console.log('📱 Processing QR code:', qrData);
+    
+    // QR code format: PLUS1-{phone}-{timestamp}
+    const qrPattern = /^PLUS1-(\d{10})-\d+$/;
+    const match = qrData.match(qrPattern);
+
+    if (!match) {
+      setError('Invalid QR code format. Please scan a valid Plus1 Rewards member QR code.');
+      return;
+    }
+
+    const memberPhone = match[1];
+    setPhoneNumber(memberPhone);
+    
+    // Search for member
+    setLoading(true);
+    setError('');
+    setMember(null);
+
+    try {
+      const { data, error: memberError } = await supabase
+        .from('members')
+        .select('id, first_name, last_name, cell_phone, status, role, email, sa_id, address_line_1')
+        .eq('cell_phone', memberPhone)
+        .single();
+
+      if (memberError || !data) {
+        setError('Member not found. Please ask them to register first.');
+        setLoading(false);
+        return;
+      }
+
+      if (data.status !== 'active') {
+        setError('Member account is not active');
+        setLoading(false);
+        return;
+      }
+
+      // Prevent transactions for sponsored members
+      if (data.role === 'sponsored_member') {
+        setError('This is a sponsored member. Only the sponsor can earn cashback, not the sponsored member.');
+        setLoading(false);
+        return;
+      }
+
+      // Check if member has any paused cover plans
+      const { data: pausedPlans, error: planError } = await supabase
+        .from('member_cover_plans')
+        .select('id, status')
+        .eq('member_id', data.id)
+        .eq('status', 'paused');
+
+      if (!planError && pausedPlans && pausedPlans.length > 0) {
+        // Check if profile is complete to determine the reason for pause
+        const isProfileComplete = 
+          data.email && 
+          !data.email.includes('@plus1rewards.local') && 
+          data.sa_id && 
+          data.address_line_1;
+
+        if (!isProfileComplete) {
+          // Profile incomplete - BLOCK transaction
+          setError('Member policy is PAUSED. Member needs to complete their profile information (email, ID number, address) in the +1 Rewards app before transactions can continue. Please ask them to update their information.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      setMember(data);
+      setActiveField('amount');
+      setError('');
+    } catch (err) {
+      setError('Error searching for member');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -578,30 +713,55 @@ export default function PartnerSalesTerminal() {
                         ? 'border-blue-500 bg-blue-50' 
                         : 'border-gray-200 bg-gray-50 hover:border-gray-300'
                     }`}
-                    onClick={() => setActiveField('phone')}
+                    onClick={() => {
+                      setActiveField('phone');
+                      if (scannerActive) stopQRScanner();
+                    }}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <User className="w-4 h-4 text-blue-600" />
                         <label className="text-sm font-semibold text-gray-700">Member Cell Phone</label>
                       </div>
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          try {
-                            const text = await navigator.clipboard.readText();
-                            const cleaned = text.replace(/\D/g, '').slice(0, 10);
-                            setPhoneNumber(cleaned);
-                            setActiveField('phone');
-                          } catch (err) {
-                            console.error('Failed to paste:', err);
-                          }
-                        }}
-                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1"
-                      >
-                        <span className="material-symbols-outlined text-sm">content_paste</span>
-                        Paste
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              const text = await navigator.clipboard.readText();
+                              const cleaned = text.replace(/\D/g, '').slice(0, 10);
+                              setPhoneNumber(cleaned);
+                              setActiveField('phone');
+                            } catch (err) {
+                              console.error('Failed to paste:', err);
+                            }
+                          }}
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-sm">content_paste</span>
+                          Paste
+                        </button>
+                        <motion.button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (scannerActive) {
+                              stopQRScanner();
+                            } else {
+                              startQRScanner();
+                            }
+                          }}
+                          className={`px-3 py-1 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1 ${
+                            scannerActive 
+                              ? 'bg-red-500 hover:bg-red-600' 
+                              : 'bg-purple-600 hover:bg-purple-700'
+                          }`}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <QrCode className="w-4 h-4" />
+                          {scannerActive ? 'Stop' : 'Scan'}
+                        </motion.button>
+                      </div>
                     </div>
                     <div className="text-3xl font-mono font-bold text-gray-900 tracking-wider">
                       {phoneNumber || '0XX XXX XXXX'}
@@ -941,6 +1101,84 @@ export default function PartnerSalesTerminal() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* QR Scanner Modal */}
+      <AnimatePresence>
+        {scannerActive && (
+          <motion.div
+            key="qr-scanner"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            onClick={stopQRScanner}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <QrCode className="w-6 h-6 text-white" />
+                  <h3 className="text-xl font-bold text-white">Scan Member QR Code</h3>
+                </div>
+                <motion.button
+                  onClick={stopQRScanner}
+                  className="p-1 hover:bg-purple-500 rounded-lg transition-colors"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <X className="w-6 h-6 text-white" />
+                </motion.button>
+              </div>
+
+              {/* Scanner */}
+              <div className="p-6">
+                <div className="relative bg-black rounded-xl overflow-hidden aspect-square mb-4">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                  <canvas ref={canvasRef} className="hidden" />
+                  
+                  {/* QR Scanner Frame */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-48 h-48 border-4 border-green-400 rounded-lg" style={{
+                      boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)'
+                    }}>
+                      <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-green-400"></div>
+                      <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-green-400"></div>
+                      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-green-400"></div>
+                      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-green-400"></div>
+                    </div>
+                  </div>
+
+                  {/* Scanning indicator */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm font-semibold">
+                    <span className="inline-block animate-pulse">● </span>
+                    Scanning...
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
+                  <p className="font-semibold mb-2">📱 How to scan:</p>
+                  <ul className="space-y-1 text-xs">
+                    <li>• Position the member's QR code in the frame</li>
+                    <li>• Keep the code steady for 2-3 seconds</li>
+                    <li>• The scanner will automatically detect the code</li>
+                  </ul>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

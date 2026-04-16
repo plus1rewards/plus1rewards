@@ -585,6 +585,12 @@ export default function AgentsPage() {
                         <p className="text-sm text-green-700 font-semibold">{new Date(selectedAgent.approved_at).toLocaleString()}</p>
                       </div>
                     )}
+                    {selectedAgent.status === 'rejected' && selectedAgent.rejection_reason && (
+                      <div className="bg-white border border-red-200 rounded-lg p-4 col-span-full">
+                        <p className="text-xs text-red-600 uppercase font-bold mb-2">Rejection Reason</p>
+                        <p className="text-sm text-red-700 font-semibold">{selectedAgent.rejection_reason}</p>
+                      </div>
+                    )}
                   </div>
                 </section>
 

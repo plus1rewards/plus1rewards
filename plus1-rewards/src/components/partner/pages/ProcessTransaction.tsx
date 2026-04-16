@@ -1,7 +1,8 @@
 // src/components/partner/pages/ProcessTransaction.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
+import jsQR from 'jsqr';
 
 interface Partner {
   id: string;
@@ -19,6 +20,8 @@ interface Member {
 
 export default function ProcessTransaction() {
   const navigate = useNavigate();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [partner, setPartner] = useState<Partner | null>(null);
   const [searchMethod, setSearchMethod] = useState<'phone' | 'qr'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -28,10 +31,113 @@ export default function ProcessTransaction() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [scannerActive, setScannerActive] = useState(false);
+  const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'pending'>('pending');
 
   useEffect(() => {
     loadPartner();
   }, []);
+
+  const startQRScanner = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setScannerActive(true);
+        setCameraPermission('granted');
+        scanQRCode();
+      }
+    } catch (err) {
+      console.error('Camera access denied:', err);
+      setCameraPermission('denied');
+      setError('Camera access denied. Please enable camera permissions in your browser settings.');
+    }
+  };
+
+  const stopQRScanner = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach(track => track.stop());
+      setScannerActive(false);
+    }
+  };
+
+  const scanQRCode = () => {
+    if (!videoRef.current || !canvasRef.current || !scannerActive) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+    if (code) {
+      console.log('✅ QR Code detected:', code.data);
+      handleQRCodeScanned(code.data);
+      stopQRScanner();
+    } else {
+      // Continue scanning
+      requestAnimationFrame(scanQRCode);
+    }
+  };
+
+  const handleQRCodeScanned = async (qrData: string) => {
+    console.log('📱 Processing QR code:', qrData);
+    
+    // QR code format: PLUS1-{phone}-{timestamp}
+    const qrPattern = /^PLUS1-(\d{10})-\d+$/;
+    const match = qrData.match(qrPattern);
+
+    if (!match) {
+      setError('Invalid QR code format. Please scan a valid Plus1 Rewards member QR code.');
+      return;
+    }
+
+    const memberPhone = match[1];
+    setPhoneNumber(memberPhone);
+    
+    // Search for member
+    setLoading(true);
+    setError('');
+    setMember(null);
+
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .select('id, first_name, last_name, cell_phone')
+        .eq('cell_phone', memberPhone)
+        .single();
+
+      if (error || !data) {
+        setError('Member not found. Please ask them to register first.');
+        return;
+      }
+
+      setMember({
+        id: data.id,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        phone: data.cell_phone
+      });
+      setSuccess(`✅ Member found: ${data.first_name} ${data.last_name}`);
+      setTimeout(() => setSuccess(''), 2000);
+    } catch (err) {
+      setError('Error searching for member');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadPartner = async () => {
     try {
@@ -307,10 +413,63 @@ export default function ProcessTransaction() {
 
         {/* QR Scan */}
         {searchMethod === 'qr' && (
-          <div className="text-center py-8 md:py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-            <span className="material-symbols-outlined text-gray-400 text-5xl md:text-6xl mb-3 md:mb-4 block">qr_code_scanner</span>
-            <p className="text-sm md:text-base text-gray-600">QR Scanner coming soon</p>
-            <p className="text-xs md:text-sm text-gray-500 mt-2">Use phone number search for now</p>
+          <div className="space-y-4">
+            {!scannerActive ? (
+              <button
+                onClick={startQRScanner}
+                className="w-full bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold py-3 md:py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm md:text-base"
+              >
+                <span className="material-symbols-outlined text-lg md:text-xl">qr_code_scanner</span>
+                <span>Start QR Scanner</span>
+              </button>
+            ) : (
+              <>
+                <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                  <canvas ref={canvasRef} className="hidden" />
+                  
+                  {/* QR Scanner Frame */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-64 h-64 border-4 border-green-400 rounded-lg shadow-lg" style={{
+                      boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)'
+                    }}>
+                      <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-400"></div>
+                      <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-400"></div>
+                      <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-400"></div>
+                      <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-400"></div>
+                    </div>
+                  </div>
+
+                  {/* Scanning indicator */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm font-semibold">
+                    <span className="inline-block animate-pulse">● </span>
+                    Scanning...
+                  </div>
+                </div>
+
+                <button
+                  onClick={stopQRScanner}
+                  className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 md:py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm md:text-base"
+                >
+                  <span className="material-symbols-outlined text-lg md:text-xl">close</span>
+                  <span>Stop Scanner</span>
+                </button>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 md:p-4 text-xs md:text-sm text-blue-700">
+                  <p className="font-semibold mb-2">📱 How to scan:</p>
+                  <ul className="space-y-1">
+                    <li>• Position the member's QR code in the frame</li>
+                    <li>• Keep the code steady for 2-3 seconds</li>
+                    <li>• The scanner will automatically detect and process the code</li>
+                  </ul>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

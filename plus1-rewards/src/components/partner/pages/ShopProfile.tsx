@@ -11,8 +11,10 @@ interface Partner {
   id: string;
   shop_name: string;
   category: string;
-  responsible_person: string;
-  phone: string;
+  responsible_person?: string;
+  first_name?: string;
+  phone?: string;
+  cell_phone?: string;
   email: string;
   address: string;
   cashback_percent: number;
@@ -24,6 +26,9 @@ interface Partner {
   pickup_enabled?: boolean;
   minimum_order_value?: number;
   suppliers?: Supplier[];
+  postal_code?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface Supplier {
@@ -659,7 +664,7 @@ export default function ShopProfile() {
                       placeholder="Full name of responsible person"
                     />
                   ) : (
-                    <p className="text-gray-900 font-medium py-3">{partner.responsible_person}</p>
+                    <p className="text-gray-900 font-medium py-3">{partner.responsible_person || partner.first_name || 'Not provided'}</p>
                   )}
                 </div>
 
@@ -668,13 +673,13 @@ export default function ShopProfile() {
                   {editMode ? (
                     <input
                       type="tel"
-                      value={formData.phone || ''}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      value={formData.phone || formData.cell_phone || ''}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value, cell_phone: e.target.value })}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
                       placeholder="e.g., 082 555 1234"
                     />
                   ) : (
-                    <p className="text-gray-900 font-medium py-3">{partner.phone}</p>
+                    <p className="text-gray-900 font-medium py-3">{partner.phone || partner.cell_phone || 'Not provided'}</p>
                   )}
                 </div>
 

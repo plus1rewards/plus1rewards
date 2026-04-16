@@ -1,7 +1,7 @@
 // plus1-rewards/src/pages/AgentRegister.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseAdmin } from '../lib/supabase';
 import AuthLayout from '../components/auth/AuthLayout';
 import { AuthInput, AuthButton, AuthError, AuthLink } from '../components/auth/AuthComponents';
 import { FileUpload } from '../components/auth/FileUpload';
@@ -105,28 +105,28 @@ export default function AgentRegister() {
       if (currentStep === 1 && validateStep1()) {
         setCurrentStep(2);
       } else if (currentStep === 2 && validateStep2()) {
-        // Check for duplicate phone number in agents table
+        // Allow rejected agents to re-register with same phone/email
         const cleanPhone = formData.mobileNumber.replace(/\D/g, '');
         const { data: existingPhone } = await supabase
           .from('agents')
-          .select('id')
-          .eq('mobile_number', cleanPhone)
+          .select('id, status')
+          .eq('cell_phone', cleanPhone)
           .maybeSingle();
 
-        if (existingPhone) {
+        if (existingPhone && existingPhone.status !== 'rejected') {
           setError('This mobile number is already registered');
           setIsSubmitting(false);
           return;
         }
 
-        // Check for duplicate email
+        // Check for duplicate email (allow rejected agents to re-register)
         const { data: existingEmail } = await supabase
           .from('agents')
-          .select('id')
+          .select('id, status')
           .eq('email', formData.email.trim())
           .maybeSingle();
 
-        if (existingEmail) {
+        if (existingEmail && existingEmail.status !== 'rejected') {
           setError('This email is already registered');
           setIsSubmitting(false);
           return;
@@ -164,27 +164,29 @@ export default function AgentRegister() {
     try {
       const cleanPhone = formData.mobileNumber.replace(/\D/g, '');
 
-      // Check if mobile number already exists
-      const { data: existingPhone } = await supabase
+      // Check if agent with this phone already exists (could be rejected)
+      const { data: existingAgent } = await supabase
         .from('agents')
-        .select('id')
-        .eq('mobile_number', cleanPhone)
+        .select('id, status')
+        .eq('cell_phone', cleanPhone)
         .maybeSingle();
 
-      if (existingPhone) {
+      // If agent exists and is NOT rejected, prevent re-registration
+      if (existingAgent && existingAgent.status !== 'rejected') {
         setError('This mobile number is already registered');
         setIsSubmitting(false);
         return;
       }
 
-      // Check if email already exists
+      // Check if email already exists (could be rejected)
       const { data: existingEmail } = await supabase
         .from('agents')
-        .select('id')
+        .select('id, status')
         .eq('email', formData.email)
         .maybeSingle();
 
-      if (existingEmail) {
+      // If email exists and is NOT rejected, prevent re-registration
+      if (existingEmail && existingEmail.status !== 'rejected') {
         setError('This email is already registered');
         setIsSubmitting(false);
         return;
@@ -196,14 +198,19 @@ export default function AgentRegister() {
       
       if (idDocBlob) {
         idDocFileName = `agent-documents/${Date.now()}_${formData.documentFile?.name}`;
-        const { error: idUploadError } = await supabase.storage
+        const { error: idUploadError } = await supabaseAdmin.storage
           .from('documents')
           .upload(idDocFileName, idDocBlob, {
             upsert: false
           });
 
         if (idUploadError) {
-          console.error('ID document upload error:', idUploadError);
+          console.error('❌ ID document upload error:', idUploadError);
+          setError('Failed to upload ID document. Please try again.');
+          setIsSubmitting(false);
+          return;
+        } else {
+          console.log('✅ ID document uploaded successfully:', idDocFileName);
         }
       }
 
@@ -213,7 +220,7 @@ export default function AgentRegister() {
       
       let signatureStoragePath = null;
       try {
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabaseAdmin.storage
           .from('documents')
           .upload(signatureFileName, signatureBlob, {
             contentType: 'image/png',
@@ -236,7 +243,43 @@ export default function AgentRegister() {
         return;
       }
 
-      // Create agent record directly in agents table
+      // If rejected agent is re-registering, update their record
+      if (existingAgent && existingAgent.status === 'rejected') {
+        const { error: updateError } = await supabase
+          .from('agents')
+          .update({
+            first_name: formData.firstName,
+            last_name: formData.surname,
+            pin_code: formData.pin,
+            sa_id: formData.idNumber,
+            agreement_file: signatureStoragePath,
+            id_document_url: idDocFileName,
+            status: 'pending',
+            rejection_reason: null
+          })
+          .eq('id', existingAgent.id);
+
+        if (updateError) throw updateError;
+
+        showSuccess(
+          'Registration Updated Successfully!',
+          'Your updated application is pending admin approval. You will be notified once approved.'
+        );
+
+        setTimeout(() => {
+          navigate('/agent/login');
+        }, 3000);
+        return;
+      }
+
+      // Create new agent record
+      console.log('📝 Creating agent record with:', {
+        first_name: formData.firstName,
+        last_name: formData.surname,
+        id_document_url: idDocFileName,
+        agreement_file: signatureStoragePath
+      });
+
       const { error: agentError } = await supabase
         .from('agents')
         .insert({
@@ -247,6 +290,7 @@ export default function AgentRegister() {
           email: formData.email,
           sa_id: formData.idNumber,
           agreement_file: signatureStoragePath,
+          id_document_url: idDocFileName,
           status: 'pending',
           role: 'agent'
         });
