@@ -74,17 +74,29 @@ export default function PartnerSalesTerminal() {
   const startQRScanner = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
       });
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setScannerActive(true);
-        scanQRCode();
+        
+        // Wait for video to be ready before starting scan
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(err => {
+            console.error('Error playing video:', err);
+          });
+          scanQRCode();
+        };
       }
     } catch (err) {
       console.error('Camera access denied:', err);
       setError('Camera access denied. Please enable camera permissions in your browser settings.');
+      setScannerActive(false);
     }
   };
 
@@ -97,13 +109,17 @@ export default function PartnerSalesTerminal() {
   };
 
   const scanQRCode = () => {
-    if (!videoRef.current || !canvasRef.current || !scannerActive) return;
+    if (!videoRef.current || !canvasRef.current) return;
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
-    if (!ctx) return;
+    if (!ctx || !video.videoWidth || !video.videoHeight) {
+      // Video not ready yet, try again
+      requestAnimationFrame(scanQRCode);
+      return;
+    }
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -116,7 +132,6 @@ export default function PartnerSalesTerminal() {
     if (code) {
       console.log('✅ QR Code detected:', code.data);
       handleQRCodeScanned(code.data);
-      stopQRScanner();
     } else {
       // Continue scanning
       requestAnimationFrame(scanQRCode);
@@ -1143,7 +1158,9 @@ export default function PartnerSalesTerminal() {
                     ref={videoRef}
                     autoPlay
                     playsInline
+                    muted
                     className="w-full h-full object-cover"
+                    style={{ transform: 'scaleX(-1)' }}
                   />
                   <canvas ref={canvasRef} className="hidden" />
                   
