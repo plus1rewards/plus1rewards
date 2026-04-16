@@ -94,6 +94,8 @@ export function AgentDashboard() {
   const loadDashboardData = async (agentId: string) => {
     setLoading(true);
     try {
+      console.log('🔍 Loading dashboard for agent:', agentId);
+      
       // Load partner shops linked to this agent through partner_agent_links
       const { data: links, error: linksError } = await supabase
         .from('partner_agent_links')
@@ -108,13 +110,17 @@ export function AgentDashboard() {
         return;
       }
 
+      console.log('📍 Partner links found:', links?.length || 0);
+
       if (!links || links.length === 0) {
+        console.log('⚠️ No partner links found for agent');
         setPartnerShops([]);
         setLoading(false);
         return;
       }
 
       const partnerIds = links.map(link => link.partner_id);
+      console.log('🏪 Partner IDs:', partnerIds);
 
       // Get partner details
       const { data: partners, error: partnersError } = await supabase
@@ -126,21 +132,23 @@ export function AgentDashboard() {
         console.error('Error loading partners:', partnersError);
         setPartnerShops([]);
       } else {
+        console.log('✅ Partners loaded:', partners?.length || 0);
+        
         // Calculate monthly commission for each partner
         const now = new Date();
         const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
         
-        console.log('Date range for commission:', {
+        console.log('📅 Date range for commission:', {
           start: currentMonthStart.toISOString(),
           end: nextMonthStart.toISOString()
         });
         
         const shopsWithCommission = await Promise.all((partners || []).map(async (partner) => {
-          // Get transactions for this partner this month
+          // Get transactions for this partner this month where agent_id matches
           const { data: transactions, error: txError } = await supabase
             .from('transactions')
-            .select('agent_amount')
+            .select('agent_amount, created_at')
             .eq('partner_id', partner.id)
             .eq('agent_id', agentId)
             .gte('created_at', currentMonthStart.toISOString())
@@ -151,9 +159,10 @@ export function AgentDashboard() {
             console.error(`Error fetching transactions for partner ${partner.id}:`, txError);
           }
           
-          console.log(`Transactions for partner ${partner.shop_name}:`, transactions);
+          console.log(`💰 Transactions for partner ${partner.shop_name}:`, transactions?.length || 0, transactions);
 
           const monthlyCommission = (transactions || []).reduce((sum, t) => sum + (parseFloat(t.agent_amount) || 0), 0);
+          console.log(`✅ Monthly commission for ${partner.shop_name}: R${monthlyCommission.toFixed(2)}`);
 
           return {
             id: partner.id,
@@ -181,7 +190,10 @@ export function AgentDashboard() {
           console.error('Error fetching monthly transactions:', monthlyTxError);
         }
 
+        console.log('📊 Monthly transactions:', monthlyTransactions?.length || 0);
+
         const monthlyTotal = (monthlyTransactions || []).reduce((sum, t) => sum + (parseFloat(t.agent_amount) || 0), 0);
+        console.log('💵 Monthly total commission: R' + monthlyTotal.toFixed(2));
         setMonthlyCommission(monthlyTotal);
 
         // Get total commission from ALL transactions (not just agent_commissions table)
@@ -195,9 +207,10 @@ export function AgentDashboard() {
           console.error('Error fetching all transactions:', allTxError);
         }
         
-        console.log('All transactions for agent:', allTransactions);
+        console.log('📈 All transactions for agent:', allTransactions?.length || 0);
 
         const total = (allTransactions || []).reduce((sum, t) => sum + (parseFloat(t.agent_amount) || 0), 0);
+        console.log('🎯 Total commission earned: R' + total.toFixed(2));
         setTotalCommission(total);
       }
     } catch (error) {
