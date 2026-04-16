@@ -92,7 +92,7 @@ const AddDependant: React.FC = () => {
     if (!validateForm() || !member || !memberCoverPlan) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('linked_people').insert({
+      const { error } = await supabase.from('dependants').insert({
         member_cover_plan_id: memberCoverPlan.id,
         linked_type: linkedType,
         full_name: fullName,
@@ -109,7 +109,7 @@ const AddDependant: React.FC = () => {
         member_phone: member.phone,
         message: `${member.name} (${member.phone}) requested to add ${fullName} (${idNumber}) as ${linkedType} — R${dependantCost}/month. Overflow: R${Number(memberCoverPlan.overflow_balance).toFixed(2)}.`,
         priority: 'medium',
-        metadata: { dependant_name: fullName, dependant_id: idNumber, linked_type: linkedType, dependant_cost: dependantCost },
+        metadata: { dependant_name: fullName, dependant_id: idNumber, dependant_type: linkedType, dependant_cost: dependantCost },
       });
 
       showSuccess('Request Submitted!', 'Your dependant request has been submitted for admin approval.', 5000);

@@ -42,8 +42,7 @@ interface LinkedPerson {
   id: string;
   full_name: string;
   id_number: string;
-  linked_type: string;
-  status: string;
+  dependant_type: string;
 }
 
 export default function MemberCoverPlans() {
@@ -150,18 +149,21 @@ export default function MemberCoverPlans() {
       if (allPlans.length > 0) {
         setCoverPlans(allPlans as any);
 
-        // Load linked people for each cover plan
+        // Load dependants for each cover plan
         const linkedPeopleMap: Record<string, LinkedPerson[]> = {};
         
         for (const plan of allPlans) {
           const { data: linkedData } = await supabase
-            .from('linked_people')
-            .select('id, first_name, last_name, id_number, linked_type, status')
+            .from('dependants')
+            .select('id, first_name, last_name, id_number, dependant_type')
             .eq('member_cover_plan_id', plan.id)
             .order('first_name', { ascending: true });
 
           if (linkedData && linkedData.length > 0) {
-            linkedPeopleMap[plan.id] = linkedData as LinkedPerson[];
+            linkedPeopleMap[plan.id] = linkedData.map((d: any) => ({
+              ...d,
+              full_name: `${d.first_name} ${d.last_name}`.trim()
+            })) as LinkedPerson[];
           }
         }
 
@@ -356,7 +358,7 @@ export default function MemberCoverPlans() {
                       </div>
                     )}
 
-                    {/* Linked People Dropdown */}
+                    {/* dependants Dropdown */}
                     {hasLinkedPeople && (
                       <div className="pt-3 border-t border-gray-200">
                         <button
@@ -366,7 +368,7 @@ export default function MemberCoverPlans() {
                           <div className="flex items-center gap-2">
                             <span className="material-symbols-outlined text-teal-600">group</span>
                             <span className="text-sm font-bold text-gray-900">
-                              Linked People ({linkedPeople.length})
+                              dependants ({linkedPeople.length})
                             </span>
                           </div>
                           <span className={`material-symbols-outlined text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
@@ -377,29 +379,33 @@ export default function MemberCoverPlans() {
                         {isExpanded && (
                           <div className="mt-3 space-y-2">
                             {linkedPeople.map((person) => (
-                              <div key={person.id} className="bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-lg p-3">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                                      <span className="material-symbols-outlined text-white text-sm">
-                                        {person.linked_type === 'child' ? 'child_care' : person.linked_type === 'spouse' ? 'favorite' : 'person'}
+                              <div key={person.id} className="bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-lg p-4">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                                      <span className="material-symbols-outlined text-white text-lg">
+                                        {person.dependant_type === 'child' ? 'child_care' : person.dependant_type === 'spouse' ? 'favorite' : 'person'}
                                       </span>
                                     </div>
-                                    <div>
-                                      <p className="font-bold text-sm text-gray-900">{person.full_name}</p>
-                                      <p className="text-xs text-teal-700 uppercase font-bold">
-                                        {person.linked_type}
+                                    <div className="flex-1">
+                                      <p className="font-bold text-base text-gray-900">{person.full_name}</p>
+                                      <p className="text-xs text-teal-700 uppercase font-bold tracking-wider">
+                                        {person.dependant_type}
                                       </p>
                                     </div>
                                   </div>
-                                  <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
-                                    person.status === 'active' ? 'bg-green-100 text-green-700' :
-                                    person.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                    person.status === 'approved' ? 'bg-blue-100 text-blue-700' :
-                                    'bg-gray-100 text-gray-700'
-                                  }`}>
-                                    {person.status.toUpperCase()}
-                                  </span>
+                                </div>
+                                
+                                {/* Details Grid */}
+                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                  <div className="bg-white/60 rounded p-2">
+                                    <p className="text-gray-500 font-semibold uppercase tracking-wider mb-0.5">ID Number</p>
+                                    <p className="font-bold text-gray-900">{person.id_number || 'N/A'}</p>
+                                  </div>
+                                  <div className="bg-white/60 rounded p-2">
+                                    <p className="text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Type</p>
+                                    <p className="font-bold text-gray-900 capitalize">{person.dependant_type}</p>
+                                  </div>
                                 </div>
                               </div>
                             ))}

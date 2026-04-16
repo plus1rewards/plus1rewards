@@ -232,9 +232,9 @@ export default function MembersPage() {
         .eq('member_id', memberId)
         .order('created_at', { ascending: false });
 
-      // Get linked people (dependants)
+      // Get dependants
       const { data: linkedPeople } = await supabaseAdmin
-        .from('linked_people')
+        .from('dependants')
         .select('*')
         .in('member_cover_plan_id', coverPlans?.map(cp => cp.id) || []);
 
@@ -1015,26 +1015,19 @@ export default function MembersPage() {
                       </div>
                     )}
 
-                    {/* Linked People */}
+                    {/* dependants */}
                     {memberDetails.linkedPeople.length > 0 && (
                       <div className="bg-white border border-gray-200 rounded-xl p-6">
                         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                           <span className="material-symbols-outlined text-[#1a558b]">group</span>
-                          Linked People ({memberDetails.linkedPeople.length})
+                          dependants ({memberDetails.linkedPeople.length})
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {memberDetails.linkedPeople.map((person: any) => (
                             <div key={person.id} className="border border-gray-200 rounded-lg p-3">
                               <p className="font-semibold text-gray-900">{getFullName(person)}</p>
-                              <p className="text-xs text-gray-600">{person.linked_type}</p>
+                              <p className="text-xs text-gray-600">{person.dependant_type}</p>
                               <p className="text-xs text-gray-600">ID: {person.sa_id}</p>
-                              <span className={`inline-block mt-2 px-2 py-1 rounded text-xs font-bold ${
-                                person.status === 'approved' ? 'bg-green-500/20 text-green-600' :
-                                person.status === 'rejected' ? 'bg-red-500/20 text-red-600' :
-                                'bg-yellow-500/20 text-yellow-600'
-                              }`}>
-                                {person.status}
-                              </span>
                             </div>
                           ))}
                         </div>

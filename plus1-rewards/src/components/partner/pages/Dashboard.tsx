@@ -156,15 +156,15 @@ export default function Dashboard() {
   return (
     <div className="max-w-4xl mx-auto space-y-4 md:space-y-6 px-2 md:px-0">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-[#1a558b] to-[#2563eb] rounded-xl p-6 md:p-8 shadow-lg">
+      <div className="bg-gradient-to-r from-[#1a558b] to-[#2563eb] rounded-[9px] p-6 md:p-8 shadow-lg">
         <div className="flex items-center gap-6">
-          {/* Logo - Larger and more prominent */}
-          <div className="w-24 h-24 md:w-32 md:h-32 flex-shrink-0">
+          {/* Logo - Fixed size 220x100 to match branding card */}
+          <div className="w-[220px] h-[100px] flex-shrink-0">
             {partner.store_logo_url ? (
               <img
                 src={partner.store_logo_url}
                 alt={`${partner.shop_name} Logo`}
-                className="w-full h-full object-contain rounded-xl border-2 border-white/30 bg-white shadow-md p-2"
+                className="w-full h-full object-cover rounded-[9px] border-2 border-white/30 shadow-md"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
                   const fallback = e.currentTarget.nextElementSibling as HTMLElement;
@@ -173,9 +173,9 @@ export default function Dashboard() {
               />
             ) : null}
             <div 
-              className={`w-full h-full bg-white/90 border-2 border-white/30 rounded-xl flex items-center justify-center shadow-md ${partner.store_logo_url ? 'hidden' : 'flex'}`}
+              className={`w-full h-full bg-white/10 border-2 border-white/30 rounded-[9px] flex items-center justify-center shadow-md backdrop-blur-sm ${partner.store_logo_url ? 'hidden' : 'flex'}`}
             >
-              <span className="material-symbols-outlined text-[#1a558b] text-4xl md:text-5xl">storefront</span>
+              <span className="material-symbols-outlined text-white text-5xl">storefront</span>
             </div>
           </div>
           
@@ -183,8 +183,8 @@ export default function Dashboard() {
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 truncate">Partner Dashboard</h1>
             <p className="text-base md:text-lg text-white/90 truncate">Welcome back, {partner?.shop_name || partner?.name}</p>
-            <div className="mt-3 flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] text-xs font-semibold ${
                 partner.status === 'active' 
                   ? 'bg-green-500/20 text-green-100 border border-green-400/30' 
                   : 'bg-yellow-500/20 text-yellow-100 border border-yellow-400/30'
@@ -194,10 +194,17 @@ export default function Dashboard() {
                 </span>
                 {partner.status}
               </span>
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white border border-white/30">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] text-xs font-semibold bg-white/20 text-white border border-white/30">
                 <span className="material-symbols-outlined text-sm">percent</span>
                 {partner.cashback_percent}% Cashback
               </span>
+              <button
+                onClick={() => navigate('/partner/profile')}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-[9px] text-xs font-bold bg-white text-[#1a558b] hover:bg-white/90 transition-all shadow-sm"
+              >
+                <span className="material-symbols-outlined text-base">person</span>
+                View Profile
+              </button>
             </div>
           </div>
         </div>
@@ -265,8 +272,55 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Quick Actions - Desktop Only */}
+      <div className="hidden md:block bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => navigate('/partner/sales-terminal')}
+            className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-[#1a558b] to-[#2563eb] text-white hover:shadow-lg transition-all"
+          >
+            <DollarSign className="w-6 h-6" />
+            <div className="text-left">
+              <p className="font-bold text-sm">Process Sale</p>
+              <p className="text-xs text-white/80">Record transaction</p>
+            </div>
+          </button>
+          <button
+            onClick={() => navigate('/partner/transaction-history')}
+            className="flex items-center gap-3 p-4 rounded-xl bg-white border-2 border-gray-200 hover:border-[#1a558b] hover:shadow-md transition-all"
+          >
+            <span className="material-symbols-outlined text-[#1a558b] text-2xl">history</span>
+            <div className="text-left">
+              <p className="font-bold text-sm text-gray-900">View History</p>
+              <p className="text-xs text-gray-600">Past transactions</p>
+            </div>
+          </button>
+          <button
+            onClick={() => navigate('/partner/statement')}
+            className="flex items-center gap-3 p-4 rounded-xl bg-white border-2 border-gray-200 hover:border-[#1a558b] hover:shadow-md transition-all"
+          >
+            <span className="material-symbols-outlined text-[#1a558b] text-2xl">analytics</span>
+            <div className="text-left">
+              <p className="font-bold text-sm text-gray-900">Monthly Statement</p>
+              <p className="text-xs text-gray-600">View invoices</p>
+            </div>
+          </button>
+          <button
+            onClick={() => navigate('/partner/support')}
+            className="flex items-center gap-3 p-4 rounded-xl bg-white border-2 border-gray-200 hover:border-[#1a558b] hover:shadow-md transition-all"
+          >
+            <span className="material-symbols-outlined text-[#1a558b] text-2xl">support_agent</span>
+            <div className="text-left">
+              <p className="font-bold text-sm text-gray-900">Get Support</p>
+              <p className="text-xs text-gray-600">Contact us</p>
+            </div>
+          </button>
+        </div>
+      </div>
+
       {/* Important Notices */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 shadow-sm">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 shadow-sm mb-20 md:mb-0">
         <h3 className="font-bold text-gray-900 mb-2 flex items-center gap-2 text-sm">
           <span className="material-symbols-outlined text-[#1a558b] text-lg">notifications</span>
           Important Notices
@@ -287,87 +341,44 @@ export default function Dashboard() {
         </ul>
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-gray-900">Quick Actions</h2>
-        </div>
-        <div className="p-4 space-y-3">
-          {/* Fullscreen Sales Terminal Button - Prominent */}
-          <button
-            onClick={() => navigate('/partner/sales-terminal')}
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-4 rounded-lg transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-base"
-          >
-            <DollarSign className="w-6 h-6" />
-            Open Sales Terminal
-          </button>
-
-          {/* Two column row */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => navigate('/partner/transaction-history')}
-              className="bg-white hover:bg-gray-50 border-2 border-gray-200 text-gray-900 font-semibold py-3 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 text-xs"
-            >
-              <span className="material-symbols-outlined text-lg">history</span>
-              View Transactions
-            </button>
-
-            <button
-              onClick={() => navigate('/partner/statement')}
-              className="bg-white hover:bg-gray-50 border-2 border-[#1a568b] text-[#1a568b] font-semibold py-3 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 text-xs"
-            >
-              <span className="material-symbols-outlined text-lg">analytics</span>
-              My Statement
-            </button>
-          </div>
-
-          {/* Support button - full width */}
-          <button
-            onClick={() => navigate('/partner/support')}
-            className="w-full bg-white hover:bg-gray-50 border-2 border-gray-200 text-gray-900 font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
-          >
-            <span className="material-symbols-outlined text-lg">support_agent</span>
-            Support
-          </button>
-
-          {/* View Partner Agreement - full width */}
-          <button
-            onClick={() => setShowAgreementPDF(true)}
-            className="w-full bg-white hover:bg-gray-50 border-2 border-gray-200 text-gray-900 font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
-          >
-            <span className="material-symbols-outlined text-lg">description</span>
-            View Partner Agreement
-          </button>
-        </div>
-      </div>
-
-      {/* Supplier References */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#1a558b]">local_shipping</span>
-            Supplier References
-          </h2>
-          <button
-            onClick={() => navigate('/partner/profile')}
-            className="text-blue-600 hover:text-blue-700 font-semibold text-xs md:text-sm"
-          >
-            Manage
-          </button>
-        </div>
-        <div className="p-4">
-          <p className="text-gray-600 text-xs md:text-sm mb-3">
-            Add suppliers you work with to help them join +1 Rewards
-          </p>
-          <button
-            onClick={() => navigate('/partner/profile')}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
-          >
-            <span className="material-symbols-outlined">add</span>
-            Add Supplier Reference
-          </button>
-        </div>
-      </div>
+      {/* Bottom Navigation Bar (Mobile Only) */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-2 bg-white shadow-[0px_-4px_20px_rgba(0,31,40,0.06)] border-t border-gray-200">
+        <button 
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} 
+          className="flex flex-col items-center justify-center px-3 py-1.5 rounded-lg bg-blue-50 text-[#1a558b] transition-transform active:scale-95"
+        >
+          <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>dashboard</span>
+          <span className="text-[9px] uppercase font-bold tracking-wider mt-0.5">Home</span>
+        </button>
+        <button 
+          onClick={() => navigate('/partner/sales-terminal')} 
+          className="flex flex-col items-center justify-center px-3 py-1.5 rounded-lg text-gray-500 hover:bg-gray-50 transition-all active:scale-95"
+        >
+          <DollarSign className="w-5 h-5" />
+          <span className="text-[9px] uppercase font-bold tracking-wider mt-0.5">Sales</span>
+        </button>
+        <button 
+          onClick={() => navigate('/partner/transaction-history')} 
+          className="flex flex-col items-center justify-center px-3 py-1.5 rounded-lg text-gray-500 hover:bg-gray-50 transition-all active:scale-95"
+        >
+          <span className="material-symbols-outlined text-xl">history</span>
+          <span className="text-[9px] uppercase font-bold tracking-wider mt-0.5">History</span>
+        </button>
+        <button 
+          onClick={() => navigate('/partner/statement')} 
+          className="flex flex-col items-center justify-center px-3 py-1.5 rounded-lg text-gray-500 hover:bg-gray-50 transition-all active:scale-95"
+        >
+          <span className="material-symbols-outlined text-xl">analytics</span>
+          <span className="text-[9px] uppercase font-bold tracking-wider mt-0.5">Statement</span>
+        </button>
+        <button 
+          onClick={() => navigate('/partner/support')} 
+          className="flex flex-col items-center justify-center px-3 py-1.5 rounded-lg text-gray-500 hover:bg-gray-50 transition-all active:scale-95"
+        >
+          <span className="material-symbols-outlined text-xl">support_agent</span>
+          <span className="text-[9px] uppercase font-bold tracking-wider mt-0.5">Support</span>
+        </button>
+      </nav>
 
       {/* PDF Viewer Modal */}
       {showAgreementPDF && (

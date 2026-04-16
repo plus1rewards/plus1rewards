@@ -138,7 +138,7 @@ export default function PartnerLayout({ children }: PartnerLayoutProps) {
       <div className="layout-container flex h-full grow flex-col w-full">
         {/* Shop Header */}
         <header
-          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4"
+          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-6 lg:px-10 py-3 md:py-4"
           style={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
             backdropFilter: 'blur(10px)',
@@ -148,17 +148,16 @@ export default function PartnerLayout({ children }: PartnerLayoutProps) {
           }}
         >
           {/* Left: Logo */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <a href="/" className="hover:opacity-80 transition-opacity">
-              <img src="/logo.png" alt="+1 Rewards" className="h-10 w-auto object-contain" />
+              <img src="/logo.png" alt="+1 Rewards" className="h-8 md:h-10 w-auto object-contain" />
             </a>
-            <div className="h-8 w-px bg-gray-300"></div>
-            <div className="w-4"></div>
+            <div className="hidden sm:block h-6 md:h-8 w-px bg-gray-300"></div>
           </div>
 
           {/* Right: Portal label, online badge, sign out, avatar */}
-          <div className="flex flex-1 justify-end items-center gap-6">
-            <div className="hidden md:flex items-center gap-2">
+          <div className="flex flex-1 justify-end items-center gap-2 md:gap-4 lg:gap-6">
+            <div className="hidden lg:flex items-center gap-2">
               <span className="text-sm font-medium text-gray-500">Partner Portal</span>
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(26, 85, 139, 0.1)', border: '1px solid rgba(26, 85, 139, 0.2)' }}>
                 <span className="flex h-2 w-2 rounded-full bg-[#1a558b]"></span>
@@ -167,12 +166,13 @@ export default function PartnerLayout({ children }: PartnerLayoutProps) {
             </div>
             <button
               onClick={handleSignOut}
-              className="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-9 px-4 text-sm font-bold transition-all hover:opacity-90 text-white bg-[#1a558b]"
+              className="flex min-w-[70px] md:min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-8 md:h-9 px-3 md:px-4 text-xs md:text-sm font-bold transition-all hover:opacity-90 text-white bg-[#1a558b]"
             >
-              Sign out
+              <span className="hidden sm:inline">Sign out</span>
+              <span className="sm:hidden">Exit</span>
             </button>
             <div
-              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
+              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 md:size-10"
               style={{
                 backgroundImage: `url("https://ui-avatars.com/api/?name=${encodeURIComponent(partner.name || 'P')}&background=1a558b&color=ffffff&size=128&bold=true")`,
                 border: '2px solid rgba(26, 85, 139, 0.25)'
@@ -182,7 +182,7 @@ export default function PartnerLayout({ children }: PartnerLayoutProps) {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 py-6 md:px-8 md:py-8 space-y-6 md:space-y-8" style={{ paddingTop: '5rem' }}>
+        <main className="flex-1 w-full max-w-[1400px] mx-auto px-3 py-4 sm:px-4 sm:py-6 md:px-8 md:py-8 space-y-4 sm:space-y-6 md:space-y-8" style={{ paddingTop: '4rem', paddingBottom: '2rem' }}>
           {children}
         </main>
 

@@ -290,76 +290,76 @@ export default function QuickTransaction() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Process Transaction</h1>
-          <p className="text-gray-600">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Process Transaction</h1>
+          <p className="text-sm sm:text-base text-gray-600">
             Quick transaction processing for {partner?.shop_name}
           </p>
-          <div className="mt-2 inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+          <div className="mt-2 inline-block bg-blue-100 text-blue-800 px-2.5 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
             Cashback Rate: {partner?.cashback_percent}%
           </div>
         </div>
 
         {/* Success Message */}
         {success && (
-          <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-            <p className="text-green-800">{success}</p>
+          <div className="mb-4 md:mb-6 bg-green-50 border border-green-200 rounded-xl p-3 md:p-4 flex items-start gap-2 md:gap-3">
+            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm sm:text-base text-green-800">{success}</p>
           </div>
         )}
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-            <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-red-800">{error}</p>
+          <div className="mb-4 md:mb-6 bg-red-50 border border-red-200 rounded-xl p-3 md:p-4 flex items-start gap-2 md:gap-3">
+            <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm sm:text-base text-red-800">{error}</p>
           </div>
         )}
 
         {/* Transaction Form */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">New Transaction</h2>
+        <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6 mb-6 md:mb-8">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 md:mb-6">New Transaction</h2>
 
           {/* Phone Number Input */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="mb-4 md:mb-6">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
               Member Phone Number
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                 <input
                   type="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   placeholder="0812345678"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                   maxLength={10}
                 />
               </div>
               <button
                 onClick={handleSearchMember}
                 disabled={loading || phoneNumber.length !== 10}
-                className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                className="px-4 sm:px-6 py-2.5 sm:py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm sm:text-base whitespace-nowrap"
               >
-                {loading ? <Loader className="w-5 h-5 animate-spin" /> : 'Search'}
+                {loading ? <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin mx-auto" /> : 'Search'}
               </button>
             </div>
           </div>
 
           {/* Member Info */}
           {member && (
-            <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
+            <div className="mb-4 md:mb-6 bg-green-50 border border-green-200 rounded-xl p-3 md:p-4">
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </div>
-                <div>
-                  <p className="font-semibold text-gray-900">{`${member.first_name} ${member.last_name}`.trim()}</p>
-                  <p className="text-sm text-gray-600">{member.phone}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-gray-900 text-sm sm:text-base truncate">{`${member.first_name} ${member.last_name}`.trim()}</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{member.phone}</p>
                 </div>
               </div>
             </div>
@@ -367,12 +367,12 @@ export default function QuickTransaction() {
 
           {/* Purchase Amount */}
           {member && (
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="mb-4 md:mb-6">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                 Purchase Amount
               </label>
               <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                 <input
                   type="number"
                   value={purchaseAmount}
@@ -380,11 +380,11 @@ export default function QuickTransaction() {
                   placeholder="0.00"
                   step="0.01"
                   min="0"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                 />
               </div>
               {purchaseAmount && parseFloat(purchaseAmount) > 0 && (
-                <p className="mt-2 text-sm text-gray-600">
+                <p className="mt-2 text-xs sm:text-sm text-gray-600">
                   Member will earn: {formatCurrency((parseFloat(purchaseAmount) * (partner?.cashback_percent || 0) - parseFloat(purchaseAmount) * 2) / 100)}
                 </p>
               )}
@@ -396,12 +396,12 @@ export default function QuickTransaction() {
             <button
               onClick={handleSubmitTransaction}
               disabled={submitting || !purchaseAmount || parseFloat(purchaseAmount) <= 0}
-              className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 sm:py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               {submitting ? (
                 <>
-                  <Loader className="w-5 h-5 animate-spin" />
-                  Processing...
+                  <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                  <span>Processing...</span>
                 </>
               ) : (
                 'Complete Transaction'
@@ -411,22 +411,22 @@ export default function QuickTransaction() {
         </div>
 
         {/* Recent Transactions */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Transactions</h2>
+        <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 md:mb-4">Recent Transactions</h2>
           {recentTransactions.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No transactions yet</p>
+            <p className="text-sm sm:text-base text-gray-500 text-center py-6 md:py-8">No transactions yet</p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-3">
               {recentTransactions.map((tx) => (
-                <div key={tx.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                  <div>
-                    <p className="font-medium text-gray-900">{`${tx.members?.first_name} ${tx.members?.last_name}`.trim()}</p>
-                    <p className="text-sm text-gray-600">{tx.members?.phone}</p>
-                    <p className="text-xs text-gray-500 mt-1">{formatDate(tx.created_at)}</p>
+                <div key={tx.id} className="flex items-center justify-between p-3 md:p-4 bg-gray-50 rounded-xl gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{`${tx.members?.first_name} ${tx.members?.last_name}`.trim()}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">{tx.members?.phone}</p>
+                    <p className="text-[10px] sm:text-xs text-gray-500 mt-1">{formatDate(tx.created_at)}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">{formatCurrency(tx.purchase_amount)}</p>
-                    <p className="text-sm text-green-600">+{formatCurrency(tx.member_amount)} cashback</p>
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-semibold text-gray-900 text-sm sm:text-base">{formatCurrency(tx.purchase_amount)}</p>
+                    <p className="text-xs sm:text-sm text-green-600 whitespace-nowrap">+{formatCurrency(tx.member_amount)}</p>
                   </div>
                 </div>
               ))}

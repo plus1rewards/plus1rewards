@@ -6,7 +6,7 @@ import StatCard from '../components/StatCard';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { Notification, useNotification } from '../../Notification';
 
-type ApprovalTab = 'partners' | 'agents' | 'cover_plans' | 'linked_people';
+type ApprovalTab = 'partners' | 'agents' | 'cover_plans' | 'dependants';
 
 // Helper function to get owner/agent name from first_name and last_name
 const getOwnerName = (person: any): string => {
@@ -167,20 +167,10 @@ export default function ApprovalsPage() {
         console.log('✅ Insurers:', insurers?.length || 0);
       }
 
-      // Fetch pending linked people/dependants
-      const { data: linkedPeople, error: linkedPeopleError } = await supabaseAdmin
-        .from('linked_people')
-        .select('*')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false});
-
-      if (linkedPeopleError) {
-        console.error('❌ Linked people error:', linkedPeopleError);
-        setLinkedPeopleRequests([]);
-      } else {
-        console.log('✅ Linked people:', linkedPeople?.length || 0);
-        setLinkedPeopleRequests(linkedPeople || []);
-      }
+      // Fetch pending dependants - NO LONGER NEEDED
+      // Day1Health handles all approvals on their side and only sends approved dependants
+      // This query is kept for reference but will always return empty
+      setLinkedPeopleRequests([]);
 
       setPendingPartners(allPartners || []);
       if (agentsError) {
@@ -490,15 +480,15 @@ export default function ApprovalsPage() {
               )}
             </button>
             <button
-              onClick={() => setActiveTab('linked_people')}
+              onClick={() => setActiveTab('dependants')}
               className={`px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
-                activeTab === 'linked_people' ? 'bg-[#1a558b] text-white shadow-lg' : 'text-gray-500 hover:bg-gray-50'
+                activeTab === 'dependants' ? 'bg-[#1a558b] text-white shadow-lg' : 'text-gray-500 hover:bg-gray-50'
               }`}
             >
-              Linked People
+              dependants
               {stats.linkedPeople > 0 && (
                 <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
-                  activeTab === 'linked_people' ? 'bg-white text-[#1a558b]' : 'bg-red-500 text-white'
+                  activeTab === 'dependants' ? 'bg-white text-[#1a558b]' : 'bg-red-500 text-white'
                 }`}>
                   {stats.linkedPeople}
                 </span>
@@ -822,108 +812,24 @@ export default function ApprovalsPage() {
               </div>
             )}
 
-            {/* Linked People Tab */}
-            {activeTab === 'linked_people' && (
+            {/* dependants Tab - DEPRECATED */}
+            {activeTab === 'dependants' && (
               <div>
                 <div className="px-6 py-5 border-b border-gray-200 bg-gray-50">
                   <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                     <span className="material-symbols-outlined text-[#1a558b]">group_add</span>
-                    Linked People / Dependant Requests ({stats.linkedPeople})
+                    dependants Requests ({stats.linkedPeople})
                   </h3>
                 </div>
                 
-                {loading ? (
-                  <div className="px-6 py-12 text-center">
-                    <p className="text-gray-600">Loading...</p>
-                  </div>
-                ) : linkedPeopleRequests.length === 0 ? (
-                  <div className="px-6 py-12 text-center">
-                    <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">group_add</span>
-                    <p className="text-gray-600">No pending linked people requests</p>
-                    <p className="text-sm text-gray-500 mt-2">
-                      <span className="material-symbols-outlined text-sm align-middle">info</span>
-                      Important: Telephonic conversation required before approval
-                    </p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-gray-200">
-                    {linkedPeopleRequests.map((linkedPerson) => (
-                      <div key={linkedPerson.id} className="p-6 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h4 className="text-lg font-bold text-gray-900 mb-2">{linkedPerson.full_name}</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                              <div>
-                                <p className="text-xs text-gray-600 uppercase font-bold">Relationship Type</p>
-                                <p className="text-sm text-gray-900 capitalize">{linkedPerson.linked_type}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-600 uppercase font-bold">ID Number</p>
-                                <p className="text-sm text-gray-900">{linkedPerson.sa_id}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-600 uppercase font-bold">Requested Date</p>
-                                <p className="text-sm text-gray-900">{new Date(linkedPerson.created_at).toLocaleDateString()}</p>
-                              </div>
-                            </div>
-                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-bold">
-                              <span className="material-symbols-outlined text-sm">pending</span>
-                              Awaiting Approval
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-2 ml-4">
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const { error } = await supabaseAdmin
-                                    .from('linked_people')
-                                    .update({ status: 'approved' })
-                                    .eq('id', linkedPerson.id);
-                                  if (error) throw error;
-                                  showSuccess('Approved!', 'Linked person has been approved.');
-                                  fetchData();
-                                } catch (error) {
-                                  console.error('Error approving linked person:', error);
-                                  showError('Error', 'Failed to approve linked person.');
-                                }
-                              }}
-                              className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
-                            >
-                              <span className="material-symbols-outlined text-lg">check_circle</span>
-                              Approve
-                            </button>
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const { error } = await supabaseAdmin
-                                    .from('linked_people')
-                                    .update({ status: 'rejected' })
-                                    .eq('id', linkedPerson.id);
-                                  if (error) throw error;
-                                  showSuccess('Rejected', 'Linked person request has been rejected.');
-                                  fetchData();
-                                } catch (error) {
-                                  console.error('Error rejecting linked person:', error);
-                                  showError('Error', 'Failed to reject linked person.');
-                                }
-                              }}
-                              className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
-                            >
-                              <span className="material-symbols-outlined text-lg">cancel</span>
-                              Reject
-                            </button>
-                            <button
-                              className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
-                            >
-                              <span className="material-symbols-outlined text-lg">phone</span>
-                              Call Required
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="px-6 py-12 text-center">
+                  <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">check_circle</span>
+                  <p className="text-gray-600 font-bold">All dependants are auto-approved by Day1Health</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    <span className="material-symbols-outlined text-sm align-middle">info</span>
+                    Day1Health handles all dependant verification and approval on their side. Approved dependants are automatically added to our system.
+                  </p>
+                </div>
               </div>
             )}
           </div>

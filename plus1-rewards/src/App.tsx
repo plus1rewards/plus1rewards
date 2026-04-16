@@ -137,12 +137,11 @@ export default function App() {
   return (
     <div className="min-h-screen w-full bg-white text-gray-900 antialiased font-display overflow-x-hidden">
       <Router>
-        <AnimatePresence mode="wait">
-          {isLoading && <LoadingPage key="loader" onLoadComplete={handleLoadComplete} />}
-        </AnimatePresence>
+        {isLoading && <LoadingPage key="loader" onLoadComplete={handleLoadComplete} />}
         {!isLoading && (
           <ChunkErrorBoundary>
           <Suspense fallback={<div className="fixed inset-0 bg-white" />}>
+          <AnimatePresence mode="wait">
           <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
@@ -288,6 +287,7 @@ export default function App() {
           } />
           <Route path="*" element={<NotFound />} />
         </Routes>
+          </AnimatePresence>
           </Suspense>
           </ChunkErrorBoundary>
         )}

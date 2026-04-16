@@ -17,8 +17,7 @@ interface LinkedPerson {
   id: string;
   full_name: string;
   id_number: string;
-  linked_type: string;
-  status: string;
+  dependant_type: string;
   created_at: string;
 }
 
@@ -73,16 +72,16 @@ export default function MemberLinkedPeople() {
         cover_plan_id: coverPlanData?.id
       });
 
-      // Load linked people using member.id
+      // Load dependants using member.id
       const { data: linkedData } = await supabase
-        .from('linked_people')
+        .from('dependants')
         .select('*')
         .eq('linked_to_main_member_id', memberData.id)
         .order('created_at', { ascending: false });
 
       if (linkedData) setLinkedPeople(linkedData as LinkedPerson[]);
     } catch (error) {
-      console.error('Error loading linked people:', error);
+      console.error('Error loading dependants:', error);
     } finally {
       setLoading(false);
     }
@@ -103,7 +102,7 @@ export default function MemberLinkedPeople() {
 
     try {
       const { error } = await supabase
-        .from('linked_people')
+        .from('dependants')
         .insert({
           linked_to_main_member_id: member.id,
           member_cover_plan_id: member.cover_plan_id,
@@ -116,7 +115,7 @@ export default function MemberLinkedPeople() {
 
       if (error) throw error;
 
-      alert('Linked person request submitted! Admin will contact you for telephonic approval.');
+      alert('Dependant request submitted! Admin will contact you for telephonic approval.');
       setShowAddForm(false);
       setFormData({ fullName: '', idNumber: '', relationship: '', notes: '' });
       loadData();
@@ -153,7 +152,7 @@ export default function MemberLinkedPeople() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Linked People & Dependants</h1>
+          <h1 className="text-2xl font-bold text-gray-900">dependants</h1>
           <p className="text-gray-600">Manage dependants and linked cover requests</p>
         </div>
         <button
@@ -171,21 +170,21 @@ export default function MemberLinkedPeople() {
           className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 rounded-xl transition-colors inline-flex items-center gap-2"
         >
           <span className="material-symbols-outlined">group_add</span>
-          Add Linked Person
+          Add Dependant
         </button>
       </div>
 
-      {/* Linked People List */}
+      {/* dependants List */}
       {linkedPeople.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-xl p-12 text-center shadow-sm">
           <span className="material-symbols-outlined text-gray-400 text-6xl mb-4 block">group</span>
-          <h3 className="text-gray-900 font-bold text-lg mb-2">No Linked People Yet</h3>
+          <h3 className="text-gray-900 font-bold text-lg mb-2">No dependants Yet</h3>
           <p className="text-gray-600 mb-6">Add dependants or family members to your cover plan</p>
           <button
             onClick={() => setShowAddForm(true)}
             className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 rounded-xl transition-colors"
           >
-            Add Linked Person
+            Add Dependant
           </button>
         </div>
       ) : (
@@ -199,17 +198,10 @@ export default function MemberLinkedPeople() {
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-gray-900">{`${person.first_name} ${person.last_name}`.trim()}</h3>
-                    <p className="text-sm text-gray-600">Relationship: {person.linked_type}</p>
+                    <p className="text-sm text-gray-600">Relationship: {person.dependant_type}</p>
                     <p className="text-sm text-gray-600">ID: {person.id_number}</p>
                   </div>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-bold ${
-                  person.status === 'approved' ? 'bg-green-100 text-green-700' :
-                  person.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-red-100 text-red-700'
-                }`}>
-                  {person.status === 'pending' ? 'PENDING APPROVAL' : person.status.toUpperCase()}
-                </span>
               </div>
             </div>
           ))}
@@ -220,7 +212,7 @@ export default function MemberLinkedPeople() {
       {showAddForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-xl">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Add Linked Person</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Add Dependant</h3>
             <p className="text-sm text-gray-600 mb-6">
               Note: Admin will contact you for telephonic approval before finalizing this request.
             </p>

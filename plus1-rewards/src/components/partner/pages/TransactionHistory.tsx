@@ -83,10 +83,10 @@ export default function TransactionHistory() {
         if (memberIds.length > 0) {
           const { data: members } = await supabase
             .from('members')
-            .select('id, first_name, last_name, phone')
+            .select('id, first_name, last_name, cell_phone')
             .in('id', memberIds);
 
-          const memberMap = new Map(members?.map(m => [m.id, { name: `${m.first_name} ${m.last_name}`.trim(), phone: m.phone }]) || []);
+          const memberMap = new Map(members?.map(m => [m.id, { name: `${m.first_name} ${m.last_name}`.trim(), phone: m.cell_phone }]) || []);
           
           setTransactions(txData.map(t => ({
             ...t,
@@ -136,55 +136,55 @@ export default function TransactionHistory() {
   return (
     <PartnerLayout>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 md:mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Transaction History</h1>
-          <p className="text-gray-600">View all your reward transactions</p>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Transaction History</h1>
+          <p className="text-sm md:text-base text-gray-600">View all your reward transactions</p>
         </div>
         <button
           onClick={() => navigate('/partner/dashboard')}
-          className="bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-4 py-2 rounded-xl transition-colors"
+          className="bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-4 py-2 rounded-xl transition-colors text-sm md:text-base w-full sm:w-auto"
         >
           ← Back to Dashboard
         </button>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-[#1a558b] text-2xl">receipt</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm">
+          <div className="flex items-center gap-2 md:gap-3">
+            <span className="material-symbols-outlined text-[#1a558b] text-xl md:text-2xl">receipt</span>
             <div>
-              <p className="text-gray-900 font-bold text-xl">{transactions.length}</p>
-              <p className="text-gray-600 text-sm">Total Transactions</p>
+              <p className="text-gray-900 font-bold text-lg md:text-xl">{transactions.length}</p>
+              <p className="text-gray-600 text-xs md:text-sm">Total Transactions</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-[#1a558b] text-2xl">shopping_cart</span>
+        <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm">
+          <div className="flex items-center gap-2 md:gap-3">
+            <span className="material-symbols-outlined text-[#1a558b] text-xl md:text-2xl">shopping_cart</span>
             <div>
-              <p className="text-gray-900 font-bold text-xl">R{totalPurchases.toFixed(2)}</p>
-              <p className="text-gray-600 text-sm">Total Sales</p>
+              <p className="text-gray-900 font-bold text-lg md:text-xl">R{totalPurchases.toFixed(2)}</p>
+              <p className="text-gray-600 text-xs md:text-sm">Total Sales</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-[#1a558b] text-2xl">payments</span>
+        <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm sm:col-span-2 md:col-span-1">
+          <div className="flex items-center gap-2 md:gap-3">
+            <span className="material-symbols-outlined text-[#1a558b] text-xl md:text-2xl">payments</span>
             <div>
-              <p className="text-gray-900 font-bold text-xl">R{totalRewards.toFixed(2)}</p>
-              <p className="text-gray-600 text-sm">Rewards Issued</p>
+              <p className="text-gray-900 font-bold text-lg md:text-xl">R{totalRewards.toFixed(2)}</p>
+              <p className="text-gray-600 text-xs md:text-sm">Rewards Issued</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm">
-        <div className="flex gap-2">
+      <div className="bg-white border border-gray-200 rounded-xl p-3 md:p-4 mb-4 md:mb-6 shadow-sm">
+        <div className="flex gap-2 overflow-x-auto pb-1">
           {[
             { id: 'today', label: 'Today', icon: 'today' },
             { id: 'week', label: 'Last 7 Days', icon: 'date_range' },
@@ -194,39 +194,40 @@ export default function TransactionHistory() {
             <button
               key={tab.id}
               onClick={() => setFilter(tab.id as FilterPeriod)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 rounded-lg font-medium text-xs md:text-sm whitespace-nowrap transition-colors ${
                 filter === tab.id
                   ? 'bg-[#1a558b] text-white'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >
               <span className="material-symbols-outlined text-sm">{tab.icon}</span>
-              {tab.label}
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">{tab.id === 'today' ? 'Today' : tab.id === 'week' ? '7d' : tab.id === 'month' ? '30d' : 'All'}</span>
             </button>
           ))}
         </div>
       </div>
 
       {/* Transactions List */}
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">
+      <div className="bg-white border border-gray-200 rounded-xl md:rounded-2xl overflow-hidden shadow-sm">
+        <div className="p-4 md:p-6 border-b border-gray-200">
+          <h2 className="text-lg md:text-xl font-bold text-gray-900">
             Transactions ({transactions.length})
           </h2>
         </div>
 
         {transactions.length === 0 ? (
-          <div className="p-12 text-center">
-            <span className="material-symbols-outlined text-gray-400 text-6xl mb-4 block">receipt_long</span>
-            <h3 className="text-gray-900 font-bold text-lg mb-2">No transactions found</h3>
-            <p className="text-gray-600 mb-6">
+          <div className="p-8 md:p-12 text-center">
+            <span className="material-symbols-outlined text-gray-400 text-5xl md:text-6xl mb-4 block">receipt_long</span>
+            <h3 className="text-gray-900 font-bold text-base md:text-lg mb-2">No transactions found</h3>
+            <p className="text-sm md:text-base text-gray-600 mb-4 md:mb-6">
               {filter === 'today' 
                 ? "You haven't issued any rewards today yet."
                 : `No transactions found for the selected period.`}
             </p>
             <button
               onClick={() => navigate('/partner/dashboard')}
-              className="bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-6 py-3 rounded-xl transition-colors"
+              className="bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-4 md:px-6 py-2 md:py-3 rounded-xl transition-colors text-sm md:text-base"
             >
               Back to Dashboard
             </button>
@@ -234,25 +235,25 @@ export default function TransactionHistory() {
         ) : (
           <div className="divide-y divide-gray-200">
             {transactions.map((tx) => (
-              <div key={tx.id} className="p-6 hover:bg-gray-50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-[#1a558b]/10 rounded-xl flex items-center justify-center">
-                      <span className="material-symbols-outlined text-[#1a558b] text-xl">shopping_cart</span>
+              <div key={tx.id} className="p-4 md:p-6 hover:bg-gray-50 transition-colors">
+                <div className="flex items-start md:items-center justify-between gap-3 md:gap-4">
+                  <div className="flex items-start md:items-center gap-3 md:gap-4 flex-1 min-w-0">
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-[#1a558b]/10 rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-[#1a558b] text-lg md:text-xl">shopping_cart</span>
                     </div>
-                    <div>
-                      <h3 className="text-gray-900 font-bold">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-sm md:text-base text-gray-900 font-bold truncate">
                         {tx.members?.name || 'Unknown Member'}
                       </h3>
-                      <p className="text-gray-600 text-sm">
+                      <p className="text-xs md:text-sm text-gray-600 truncate">
                         {formatDate(tx.created_at)} • {tx.members?.phone || 'N/A'}
                       </p>
                     </div>
                   </div>
 
-                  <div className="text-right">
-                    <p className="text-gray-900 font-bold text-lg">R{tx.purchase_amount.toFixed(2)}</p>
-                    <p className="text-[#1a558b] text-sm">+R{tx.member_reward.toFixed(2)} rewards</p>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-base md:text-lg text-gray-900 font-bold">R{tx.purchase_amount.toFixed(2)}</p>
+                    <p className="text-[#1a558b] text-xs md:text-sm whitespace-nowrap">+R{tx.member_reward.toFixed(2)} rewards</p>
                   </div>
                 </div>
               </div>

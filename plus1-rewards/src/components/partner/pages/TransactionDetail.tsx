@@ -92,34 +92,34 @@ export default function TransactionDetail() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 pb-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">Transaction Detail</h1>
-          <p className="text-sm text-gray-500 mt-1">View complete transaction information</p>
+          <h1 className="text-xl md:text-2xl font-black text-gray-900">Transaction Detail</h1>
+          <p className="text-xs md:text-sm text-gray-500 mt-1">View complete transaction information</p>
         </div>
         <button
           onClick={() => navigate('/partner/transaction-history')}
-          className="bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-4 py-2 rounded-xl transition-colors flex items-center gap-2"
+          className="bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-3 md:px-4 py-2 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm md:text-base w-full sm:w-auto"
         >
-          <span className="material-symbols-outlined text-lg">arrow_back</span>
-          Back
+          <span className="material-symbols-outlined text-base md:text-lg">arrow_back</span>
+          <span>Back</span>
         </button>
       </div>
 
       {/* Transaction ID Card */}
-      <div className="bg-gradient-to-br from-[#1a558b] to-[#2563eb] rounded-2xl p-6 text-white shadow-lg">
-        <div className="flex items-center gap-3 mb-2">
-          <span className="material-symbols-outlined text-3xl">receipt_long</span>
-          <div>
-            <p className="text-sm text-blue-100">Transaction ID</p>
-            <p className="text-xl font-black">{transaction.id.slice(0, 8)}...</p>
+      <div className="bg-gradient-to-br from-[#1a558b] to-[#2563eb] rounded-xl md:rounded-2xl p-4 md:p-6 text-white shadow-lg">
+        <div className="flex items-center gap-2 md:gap-3 mb-2">
+          <span className="material-symbols-outlined text-2xl md:text-3xl">receipt_long</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs md:text-sm text-blue-100">Transaction ID</p>
+            <p className="text-base md:text-xl font-black truncate">{transaction.id.slice(0, 8)}...</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-4">
-          <span className="material-symbols-outlined text-sm">schedule</span>
-          <p className="text-sm text-blue-100">
+        <div className="flex items-center gap-2 mt-3 md:mt-4">
+          <span className="material-symbols-outlined text-xs md:text-sm">schedule</span>
+          <p className="text-xs md:text-sm text-blue-100">
             {new Date(transaction.created_at).toLocaleString('en-ZA', {
               dateStyle: 'medium',
               timeStyle: 'short'
@@ -129,84 +129,84 @@ export default function TransactionDetail() {
       </div>
 
       {/* Member Information */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-gray-100">
-        <h2 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#1a558b]">person</span>
-          Member Information
+      <div className="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm border-2 border-gray-100">
+        <h2 className="text-base md:text-lg font-black text-gray-900 mb-3 md:mb-4 flex items-center gap-2">
+          <span className="material-symbols-outlined text-[#1a558b] text-lg md:text-xl">person</span>
+          <span>Member Information</span>
         </h2>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Name</span>
-            <span className="font-bold text-gray-900">{`${member?.first_name} ${member?.last_name}`.trim() || 'Unknown'}</span>
+        <div className="space-y-2 md:space-y-3">
+          <div className="flex justify-between items-start gap-2">
+            <span className="text-sm md:text-base text-gray-600">Name</span>
+            <span className="font-bold text-gray-900 text-sm md:text-base text-right">{`${member?.first_name} ${member?.last_name}`.trim() || 'Unknown'}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Phone</span>
-            <span className="font-bold text-gray-900">{member?.phone || 'N/A'}</span>
+          <div className="flex justify-between items-start gap-2">
+            <span className="text-sm md:text-base text-gray-600">Phone</span>
+            <span className="font-bold text-gray-900 text-sm md:text-base">{member?.phone || 'N/A'}</span>
           </div>
         </div>
       </div>
 
       {/* Transaction Amounts */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-gray-100">
-        <h2 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#1a558b]">payments</span>
-          Transaction Amounts
+      <div className="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm border-2 border-gray-100">
+        <h2 className="text-base md:text-lg font-black text-gray-900 mb-3 md:mb-4 flex items-center gap-2">
+          <span className="material-symbols-outlined text-[#1a558b] text-lg md:text-xl">payments</span>
+          <span>Transaction Amounts</span>
         </h2>
-        <div className="space-y-4">
-          <div className="flex justify-between items-center pb-3 border-b-2 border-gray-100">
-            <span className="text-gray-600">Purchase Amount</span>
-            <span className="text-2xl font-black text-gray-900">
+        <div className="space-y-3 md:space-y-4">
+          <div className="flex justify-between items-center pb-2 md:pb-3 border-b-2 border-gray-100">
+            <span className="text-sm md:text-base text-gray-600">Purchase Amount</span>
+            <span className="text-xl md:text-2xl font-black text-gray-900">
               R{transaction.purchase_amount.toFixed(2)}
             </span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Cashback Rate</span>
-            <span className="font-bold text-[#1a558b]">{transaction.cashback_percent}%</span>
+          <div className="flex justify-between items-center">
+            <span className="text-sm md:text-base text-gray-600">Cashback Rate</span>
+            <span className="font-bold text-[#1a558b] text-sm md:text-base">{transaction.cashback_percent}%</span>
           </div>
         </div>
       </div>
 
       {/* Cashback Split */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-gray-100">
-        <h2 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#1a558b]">pie_chart</span>
-          Cashback Split Breakdown
+      <div className="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm border-2 border-gray-100">
+        <h2 className="text-base md:text-lg font-black text-gray-900 mb-3 md:mb-4 flex items-center gap-2">
+          <span className="material-symbols-outlined text-[#1a558b] text-lg md:text-xl">pie_chart</span>
+          <span>Cashback Split Breakdown</span>
         </h2>
-        <div className="space-y-3">
-          <div className="flex justify-between items-center p-3 bg-blue-50 rounded-xl">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#1a558b]">settings</span>
-              <span className="text-gray-700 font-semibold">System Fee (1%)</span>
+        <div className="space-y-2 md:space-y-3">
+          <div className="flex justify-between items-center p-2.5 md:p-3 bg-blue-50 rounded-xl gap-2">
+            <div className="flex items-center gap-1.5 md:gap-2 min-w-0 flex-1">
+              <span className="material-symbols-outlined text-[#1a558b] text-base md:text-lg flex-shrink-0">settings</span>
+              <span className="text-gray-700 font-semibold text-xs md:text-sm">System Fee (1%)</span>
             </div>
-            <span className="font-black text-[#1a558b]">R{transaction.system_amount.toFixed(2)}</span>
+            <span className="font-black text-[#1a558b] text-sm md:text-base whitespace-nowrap">R{transaction.system_amount.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between items-center p-3 bg-blue-50 rounded-xl">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#1a558b]">support_agent</span>
-              <span className="text-gray-700 font-semibold">Agent Commission (1%)</span>
+          <div className="flex justify-between items-center p-2.5 md:p-3 bg-blue-50 rounded-xl gap-2">
+            <div className="flex items-center gap-1.5 md:gap-2 min-w-0 flex-1">
+              <span className="material-symbols-outlined text-[#1a558b] text-base md:text-lg flex-shrink-0">support_agent</span>
+              <span className="text-gray-700 font-semibold text-xs md:text-sm">Agent Commission (1%)</span>
             </div>
-            <span className="font-black text-[#1a558b]">R{transaction.agent_amount.toFixed(2)}</span>
+            <span className="font-black text-[#1a558b] text-sm md:text-base whitespace-nowrap">R{transaction.agent_amount.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between items-center p-3 bg-green-50 rounded-xl border-2 border-green-200">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-green-600">person</span>
-              <span className="text-gray-700 font-semibold">Member Reward</span>
+          <div className="flex justify-between items-center p-2.5 md:p-3 bg-green-50 rounded-xl border-2 border-green-200 gap-2">
+            <div className="flex items-center gap-1.5 md:gap-2 min-w-0 flex-1">
+              <span className="material-symbols-outlined text-green-600 text-base md:text-lg flex-shrink-0">person</span>
+              <span className="text-gray-700 font-semibold text-xs md:text-sm">Member Reward</span>
             </div>
-            <span className="font-black text-green-600 text-lg">R{transaction.member_amount.toFixed(2)}</span>
+            <span className="font-black text-green-600 text-base md:text-lg whitespace-nowrap">R{transaction.member_amount.toFixed(2)}</span>
           </div>
         </div>
       </div>
 
       {/* Status & Actions */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-gray-100">
-        <h2 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#1a558b]">info</span>
-          Status & Actions
+      <div className="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm border-2 border-gray-100">
+        <h2 className="text-base md:text-lg font-black text-gray-900 mb-3 md:mb-4 flex items-center gap-2">
+          <span className="material-symbols-outlined text-[#1a558b] text-lg md:text-xl">info</span>
+          <span>Status & Actions</span>
         </h2>
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Transaction Status</span>
-            <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+        <div className="space-y-3 md:space-y-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+            <span className="text-sm md:text-base text-gray-600">Transaction Status</span>
+            <span className={`px-2.5 md:px-3 py-1 rounded-full text-xs md:text-sm font-bold inline-block text-center ${
               transaction.status === 'synced' ? 'bg-green-100 text-green-700' :
               transaction.status === 'pending_sync' ? 'bg-yellow-100 text-yellow-700' :
               'bg-red-100 text-red-700'
@@ -215,10 +215,10 @@ export default function TransactionDetail() {
             </span>
           </div>
           <button
-            className="w-full bg-red-50 hover:bg-red-100 text-red-700 font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 border-2 border-red-200"
+            className="w-full bg-red-50 hover:bg-red-100 text-red-700 font-bold py-2.5 md:py-3 rounded-xl transition-colors flex items-center justify-center gap-2 border-2 border-red-200 text-sm md:text-base"
           >
-            <span className="material-symbols-outlined">report_problem</span>
-            Report Issue
+            <span className="material-symbols-outlined text-base md:text-lg">report_problem</span>
+            <span>Report Issue</span>
           </button>
         </div>
       </div>

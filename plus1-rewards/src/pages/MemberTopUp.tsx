@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { getSession, clearSession } from '../lib/session';
 import MemberLayout from '../components/member/MemberLayout';
-import MemberTopUpChat from './MemberTopUpChat';
 
 interface Member {
   id: string;
@@ -17,7 +16,6 @@ export default function MemberTopUp() {
   const navigate = useNavigate();
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -107,7 +105,7 @@ export default function MemberTopUp() {
         </p>
 
         <button
-          onClick={() => setShowChat(true)}
+          onClick={() => navigate('/member/chat', { state: { initialMessage: 'I would like to topup' } })}
           className="bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-4 rounded-xl transition-colors inline-flex items-center gap-2"
         >
           <span className="material-symbols-outlined">chat</span>
@@ -159,30 +157,6 @@ export default function MemberTopUp() {
           </div>
         </div>
       </div>
-
-      {/* Chat Modal */}
-      {showChat && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
-          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-2xl shadow-xl flex flex-col h-[85vh] sm:h-[600px]">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-[#1a558b] to-[#1a558b]/80 text-white p-4 rounded-t-xl flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold">Chat with Admin</h3>
-                <p className="text-sm text-[#1a558b]/80">Top-Up Payment Support</p>
-              </div>
-              <button
-                onClick={() => setShowChat(false)}
-                className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            {/* Chat Content */}
-            <MemberTopUpChat onClose={() => setShowChat(false)} />
-          </div>
-        </div>
-      )}
     </MemberLayout>
   );
 }

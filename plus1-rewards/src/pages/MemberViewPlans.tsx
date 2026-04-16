@@ -9,7 +9,7 @@ const ALL_PLANS = PLAN_CATEGORIES.flatMap((cat: any) =>
   cat.plans.map((plan: any) => ({ ...plan, categoryLabel: cat.label, categoryId: cat.id }))
 );
 
-export default function App() {
+export default function MemberViewPlans() {
   const [selectedPlanIds, setSelectedPlanIds] = useState<string[]>(['v-plus-h', 'plat-h', 'exec-h']);
   const [familyOption, setFamilyOption] = useState<FamilyOption>('Single');
   const [isPickerOpen, setIsPickerOpen] = useState(false);

@@ -216,14 +216,14 @@ export default function ProcessTransaction() {
   return (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 md:mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Process Transaction</h1>
-          <p className="text-gray-600">Capture member purchase and issue cashback</p>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Process Transaction</h1>
+          <p className="text-sm md:text-base text-gray-600">Capture member purchase and issue cashback</p>
         </div>
         <button
           onClick={() => navigate('/partner/dashboard')}
-          className="bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-4 py-2 rounded-xl transition-colors"
+          className="bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-bold px-4 py-2 rounded-xl transition-colors text-sm md:text-base w-full sm:w-auto"
         >
           ← Back to Dashboard
         </button>
@@ -231,50 +231,50 @@ export default function ProcessTransaction() {
 
       {/* Success Message */}
       {success && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-6 shadow-sm flex items-start gap-4">
-          <span className="material-symbols-outlined text-green-600 text-2xl">check_circle</span>
-          <div>
-            <h3 className="font-bold text-green-900 mb-1">Success!</h3>
-            <p className="text-sm text-green-700">{success}</p>
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 md:p-6 mb-4 md:mb-6 shadow-sm flex items-start gap-3 md:gap-4">
+          <span className="material-symbols-outlined text-green-600 text-xl md:text-2xl flex-shrink-0">check_circle</span>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-bold text-green-900 mb-1 text-sm md:text-base">Success!</h3>
+            <p className="text-xs md:text-sm text-green-700">{success}</p>
           </div>
         </div>
       )}
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6 shadow-sm flex items-start gap-4">
-          <span className="material-symbols-outlined text-red-600 text-2xl">error</span>
-          <div>
-            <h3 className="font-bold text-red-900 mb-1">Error</h3>
-            <p className="text-sm text-red-700">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 md:p-6 mb-4 md:mb-6 shadow-sm flex items-start gap-3 md:gap-4">
+          <span className="material-symbols-outlined text-red-600 text-xl md:text-2xl flex-shrink-0">error</span>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-bold text-red-900 mb-1 text-sm md:text-base">Error</h3>
+            <p className="text-xs md:text-sm text-red-700">{error}</p>
           </div>
         </div>
       )}
 
       {/* Search Method Toggle */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
-        <div className="flex gap-3 mb-6">
+      <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 mb-4 md:mb-6 shadow-sm">
+        <div className="flex gap-2 md:gap-3 mb-4 md:mb-6">
           <button
             onClick={() => setSearchMethod('phone')}
-            className={`flex-1 py-3 rounded-xl font-bold transition-all ${
+            className={`flex-1 py-2.5 md:py-3 rounded-xl font-bold transition-all text-sm md:text-base ${
               searchMethod === 'phone'
                 ? 'bg-[#1a558b] text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            <span className="material-symbols-outlined text-lg mr-2">phone</span>
-            Phone Number
+            <span className="material-symbols-outlined text-base md:text-lg mr-1 md:mr-2 align-middle">phone</span>
+            <span className="align-middle">Phone Number</span>
           </button>
           <button
             onClick={() => setSearchMethod('qr')}
-            className={`flex-1 py-3 rounded-xl font-bold transition-all ${
+            className={`flex-1 py-2.5 md:py-3 rounded-xl font-bold transition-all text-sm md:text-base ${
               searchMethod === 'qr'
                 ? 'bg-[#1a558b] text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            <span className="material-symbols-outlined text-lg mr-2">qr_code_scanner</span>
-            QR Scan
+            <span className="material-symbols-outlined text-base md:text-lg mr-1 md:mr-2 align-middle">qr_code_scanner</span>
+            <span className="align-middle">QR Scan</span>
           </button>
         </div>
 
@@ -285,18 +285,18 @@ export default function ProcessTransaction() {
               <label className="block text-sm font-bold text-gray-700 mb-2">
                 Member Mobile Number
               </label>
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
                 <input
                   type="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   placeholder="0812345678"
-                  className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#1a558b] focus:outline-none"
+                  className="flex-1 px-3 md:px-4 py-2.5 md:py-3 border-2 border-gray-200 rounded-xl focus:border-[#1a558b] focus:outline-none text-sm md:text-base"
                 />
                 <button
                   onClick={handleSearchMember}
                   disabled={loading || phoneNumber.length !== 10}
-                  className="bg-[#1a558b] hover:bg-[#1a558b]/90 disabled:bg-gray-300 text-white font-bold px-6 py-3 rounded-xl transition-colors"
+                  className="bg-[#1a558b] hover:bg-[#1a558b]/90 disabled:bg-gray-300 text-white font-bold px-4 md:px-6 py-2.5 md:py-3 rounded-xl transition-colors text-sm md:text-base whitespace-nowrap"
                 >
                   {loading ? 'Searching...' : 'Search'}
                 </button>
@@ -307,24 +307,24 @@ export default function ProcessTransaction() {
 
         {/* QR Scan */}
         {searchMethod === 'qr' && (
-          <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-            <span className="material-symbols-outlined text-gray-400 text-6xl mb-4">qr_code_scanner</span>
-            <p className="text-gray-600">QR Scanner coming soon</p>
-            <p className="text-sm text-gray-500 mt-2">Use phone number search for now</p>
+          <div className="text-center py-8 md:py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+            <span className="material-symbols-outlined text-gray-400 text-5xl md:text-6xl mb-3 md:mb-4 block">qr_code_scanner</span>
+            <p className="text-sm md:text-base text-gray-600">QR Scanner coming soon</p>
+            <p className="text-xs md:text-sm text-gray-500 mt-2">Use phone number search for now</p>
           </div>
         )}
       </div>
 
       {/* Member Details & Transaction Form */}
       {member && (
-        <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#1a558b]">person</span>
-            Member Found
+        <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 mb-4 md:mb-6 shadow-sm">
+          <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-3 md:mb-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#1a558b] text-xl md:text-2xl">person</span>
+            <span>Member Found</span>
           </h2>
-          <div className="bg-green-50 rounded-xl p-4 mb-6 border border-green-200">
-            <p className="font-bold text-gray-900">{`${member.first_name} ${member.last_name}`.trim()}</p>
-            <p className="text-sm text-gray-600">{member.phone}</p>
+          <div className="bg-green-50 rounded-xl p-3 md:p-4 mb-4 md:mb-6 border border-green-200">
+            <p className="font-bold text-gray-900 text-sm md:text-base">{`${member.first_name} ${member.last_name}`.trim()}</p>
+            <p className="text-xs md:text-sm text-gray-600">{member.phone}</p>
           </div>
 
           <div className="space-y-4">
@@ -338,14 +338,14 @@ export default function ProcessTransaction() {
                 value={purchaseAmount}
                 onChange={(e) => setPurchaseAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#1a558b] focus:outline-none text-2xl font-bold"
+                className="w-full px-3 md:px-4 py-2.5 md:py-3 border-2 border-gray-200 rounded-xl focus:border-[#1a558b] focus:outline-none text-xl md:text-2xl font-bold"
               />
             </div>
 
             {purchaseAmount && parseFloat(purchaseAmount) > 0 && partner && (
-              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                <p className="text-xs font-bold text-gray-700 mb-3">Cashback Split ({partner.cashback_percent}%):</p>
-                <div className="space-y-2 text-sm">
+              <div className="bg-blue-50 rounded-xl p-3 md:p-4 border border-blue-200">
+                <p className="text-xs font-bold text-gray-700 mb-2 md:mb-3">Cashback Split ({partner.cashback_percent}%):</p>
+                <div className="space-y-1.5 md:space-y-2 text-xs md:text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">System Fee (1%)</span>
                     <span className="font-bold text-[#1a558b]">R{systemAmount.toFixed(2)}</span>
@@ -356,23 +356,23 @@ export default function ProcessTransaction() {
                   </div>
                   <div className="flex justify-between pt-2 border-t-2 border-blue-300">
                     <span className="text-gray-700 font-semibold">Member Reward</span>
-                    <span className="font-black text-green-600 text-lg">R{memberAmount.toFixed(2)}</span>
+                    <span className="font-black text-green-600 text-base md:text-lg">R{memberAmount.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
             )}
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex flex-col sm:flex-row gap-2 md:gap-3 pt-2 md:pt-4">
               <button
                 onClick={handleClear}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl transition-colors"
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 md:py-3 rounded-xl transition-colors text-sm md:text-base"
               >
                 Clear
               </button>
               <button
                 onClick={handleSubmitTransaction}
                 disabled={submitting || !purchaseAmount || parseFloat(purchaseAmount) <= 0}
-                className="flex-1 bg-[#1a558b] hover:bg-[#1a558b]/90 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-colors"
+                className="flex-1 bg-[#1a558b] hover:bg-[#1a558b]/90 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-2.5 md:py-3 rounded-xl transition-colors text-sm md:text-base"
               >
                 {submitting ? 'Processing...' : 'Submit Transaction'}
               </button>
@@ -384,10 +384,10 @@ export default function ProcessTransaction() {
       {/* Contact Admin */}
       <button
         onClick={() => navigate('/partner/support')}
-        className="w-full bg-white hover:bg-gray-50 border border-gray-200 text-gray-900 font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-white hover:bg-gray-50 border border-gray-200 text-gray-900 font-bold py-2.5 md:py-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm md:text-base"
       >
-        <span className="material-symbols-outlined">support_agent</span>
-        Contact Admin
+        <span className="material-symbols-outlined text-lg md:text-xl">support_agent</span>
+        <span>Contact Admin</span>
       </button>
     </>
   );

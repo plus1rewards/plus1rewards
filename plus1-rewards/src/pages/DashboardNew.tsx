@@ -61,7 +61,7 @@ interface LinkedPerson {
   id: string;
   full_name: string;
   id_number: string;
-  linked_type: string;
+  dependant_type: string;
   status: string;
   member_cover_plans: {
     target_amount: number;
@@ -290,14 +290,14 @@ const DashboardNew: React.FC = () => {
         setWalletEntries(walletData as any);
       }
 
-      // Get linked people (dependants)
+      // Get dependants
       const { data: linkedData } = await supabase
-        .from('linked_people')
+        .from('dependants')
         .select(`
           id,
           full_name,
           id_number,
-          linked_type,
+          dependant_type,
           status,
           member_cover_plans (
             target_amount,
@@ -672,7 +672,7 @@ const DashboardNew: React.FC = () => {
   };
 
   const handleAddDependant = () => {
-    navigate('/member/add-dependant');
+    window.location.href = 'https://day1main.com/plus1adddependant';
   };
 
   const handleSponsorSomeone = () => {
@@ -824,7 +824,7 @@ const DashboardNew: React.FC = () => {
 
       <main className="pt-16 pb-24 md:pb-10 px-4 md:px-8 max-w-7xl mx-auto w-full">
         {/* Profile Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4 pt-4 md:pt-0 md:-mt-[10px]">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4 pt-4 md:pt-0 md:-mt-[30px]">
           <div className="flex items-center gap-4">
             <div className="relative">
               <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg object-cover border-2 border-gray-200 shadow-sm bg-gray-100 flex items-center justify-center overflow-hidden">
@@ -862,7 +862,7 @@ const DashboardNew: React.FC = () => {
         {/* Bento Grid Layout */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           {/* Main Balance & Metrics */}
-          <div className="md:col-span-8 flex flex-col gap-6 md:-mt-[60px]">
+          <div className="md:col-span-8 flex flex-col gap-6 md:-mt-[80px]">
             {/* Primary Balance Card */}
             <div className="bg-blue-700 text-white p-6 md:p-8 rounded-lg relative overflow-hidden flex flex-col justify-between min-h-[200px] md:min-h-[220px] mt-4 md:mt-0">
               <div className="absolute top-0 right-0 p-8 opacity-10">
@@ -955,7 +955,12 @@ const DashboardNew: React.FC = () => {
                   <h3 className="text-sm font-bold uppercase tracking-[0.1em] text-gray-500">
                     Recent Rewards History
                   </h3>
-                  <button className="text-blue-600 text-xs font-bold hover:underline">View Statement</button>
+                  <button 
+                    onClick={() => navigate('/member/transactions')}
+                    className="text-blue-600 text-xs font-bold hover:underline"
+                  >
+                    View Statement
+                  </button>
                 </div>
                 <div className="space-y-3">
                   {recentTransactions.length === 0 ? (
@@ -1153,12 +1158,12 @@ const DashboardNew: React.FC = () => {
               </button>
             </div>
 
-            {/* Linked People / Dependants */}
+            {/* dependants */}
             {linkedPeople.length > 0 && (
               <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-sm font-bold uppercase tracking-[0.1em] text-gray-500">
-                    Linked People & Dependants
+                    dependants
                   </h3>
                 </div>
                 <div className="space-y-3">
@@ -1174,23 +1179,16 @@ const DashboardNew: React.FC = () => {
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center flex-shrink-0">
                               <span className="material-symbols-outlined text-white text-xl">
-                                {person.linked_type === 'child' ? 'child_care' : person.linked_type === 'spouse' ? 'favorite' : 'person'}
+                                {person.dependant_type === 'child' ? 'child_care' : person.dependant_type === 'spouse' ? 'favorite' : 'person'}
                               </span>
                             </div>
                             <div>
                               <p className="font-bold text-sm text-gray-900">{person.full_name}</p>
                               <p className="text-[10px] text-teal-700 uppercase tracking-wider font-bold">
-                                {person.linked_type}
+                                {person.dependant_type}
                               </p>
                             </div>
                           </div>
-                          <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
-                            person.status === 'active' ? 'bg-green-100 text-green-700' :
-                            person.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-gray-100 text-gray-700'
-                          }`}>
-                            {person.status.toUpperCase()}
-                          </span>
                         </div>
                         
                         {planData && (

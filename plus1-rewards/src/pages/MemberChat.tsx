@@ -25,7 +25,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect, ChangeEvent } from 'react';
 import { supabase, supabaseAdmin } from '../lib/supabase';
 import { getSession } from '../lib/session';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import FeedbackModal from '../components/ui/FeedbackModal';
 
 interface ChatMessage {
@@ -53,9 +53,10 @@ interface ChatConversation {
 
 export default function MemberChat({ onClose }: { onClose?: () => void } = {}) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
-  const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState((location.state as any)?.initialMessage || '');
   const [conversation, setConversation] = useState<ChatConversation | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);

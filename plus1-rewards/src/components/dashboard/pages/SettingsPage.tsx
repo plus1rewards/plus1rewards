@@ -265,7 +265,7 @@ export default function SettingsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-2">Include Linked People</label>
+                <label className="block text-xs font-bold text-gray-700 mb-2">Include dependants</label>
                 <div className="flex items-center gap-3 mt-2">
                   <input
                     type="checkbox"

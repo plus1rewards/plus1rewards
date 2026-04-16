@@ -331,19 +331,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className={getTextClasses('/admin/settings')}>Settings / Config</span>
           </a>
         </nav>
-        
-        <div className="mt-10 px-4 pb-6">
-          <div className="p-4 rounded-xl bg-[#1a558b]/5 border border-[#1a558b]/10">
-            <p className="text-xs font-bold uppercase tracking-wider text-[#1a558b] mb-2">System Health</p>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-gray-600">All Entities Active</span>
-              <span className="text-xs font-bold text-[#1a558b]">100%</span>
-            </div>
-            <div className="w-full bg-[#1a558b]/10 rounded-full h-1.5">
-              <div className="bg-[#1a558b] h-1.5 rounded-full w-full"></div>
-            </div>
-          </div>
-        </div>
       </aside>
 
       {/* Mobile Sidebar */}
@@ -498,19 +485,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className={getTextClasses('/admin/settings')}>Settings / Config</span>
           </a>
         </nav>
-        
-        <div className="mt-6 px-4 pb-6">
-          <div className="p-4 rounded-xl bg-[#1a558b]/5 border border-[#1a558b]/10">
-            <p className="text-xs font-bold uppercase tracking-wider text-[#1a558b] mb-2">System Health</p>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-gray-600">All Entities Active</span>
-              <span className="text-xs font-bold text-[#1a558b]">100%</span>
-            </div>
-            <div className="w-full bg-[#1a558b]/10 rounded-full h-1.5">
-              <div className="bg-[#1a558b] h-1.5 rounded-full w-full"></div>
-            </div>
-          </div>
-        </div>
       </aside>
     </>
   );

@@ -25,7 +25,7 @@ interface CoverPlan {
   active_from: string | null;
   active_to: string | null;
   paused_at: string | null;
-  linked_people_count: number;
+  linked_dependants_count: number;
 }
 
 export function PolicyProviderDashboard() {
@@ -143,15 +143,15 @@ export function PolicyProviderDashboard() {
       const membersMap = new Map(members?.map(m => [m.id, m]) || []);
       const coverPlansMap = new Map(coverPlans?.map(cp => [cp.id, cp]) || []);
 
-      // Count linked people separately for each member_cover_plan
-      const plansWithLinkedPeople = await Promise.all((memberCoverPlans || []).map(async (mcp: any) => {
+      // Count dependants separately for each member_cover_plan
+      const plansWithDependants = await Promise.all((memberCoverPlans || []).map(async (mcp: any) => {
         const { data: linkedPeople, error: linkedError } = await supabase
-          .from('linked_people')
+          .from('dependants')
           .select('id')
           .eq('member_cover_plan_id', mcp.id);
 
         if (linkedError) {
-          console.error(`Error fetching linked people for ${mcp.id}:`, linkedError);
+          console.error(`Error fetching dependants for ${mcp.id}:`, linkedError);
         }
 
         const member = membersMap.get(mcp.member_id);
@@ -170,11 +170,11 @@ export function PolicyProviderDashboard() {
           active_from: mcp.active_from,
           active_to: mcp.active_to,
           paused_at: mcp.paused_at,
-          linked_people_count: linkedPeople?.length || 0
+          linked_dependants_count: linkedPeople?.length || 0
         };
       }));
 
-      console.log('Plans with linked people:', plansWithLinkedPeople);
+      console.log('Plans with dependants:', plansWithDependants);
 
       // Separate by status
       const activePlansData = plansWithLinkedPeople.filter(p => p.status === 'active');
@@ -198,7 +198,7 @@ export function PolicyProviderDashboard() {
     setExporting(true);
     try {
       const currentMonth = new Date().toISOString().slice(0, 7);
-      const headers = ['Member ID', 'Member Name', 'Phone', 'Plan Name', 'Plan Variant', 'Monthly Premium (R)', 'Funded Amount (R)', 'Status', 'Active From', 'Active To', 'Linked People', 'Month'];
+      const headers = ['Member ID', 'Member Name', 'Phone', 'Plan Name', 'Plan Variant', 'Monthly Premium (R)', 'Funded Amount (R)', 'Status', 'Active From', 'Active To', 'dependants', 'Month'];
       const rows = activePlans.map(plan => [
         plan.member_id,
         plan.member_name,
@@ -210,7 +210,7 @@ export function PolicyProviderDashboard() {
         'ACTIVE',
         plan.active_from || 'N/A',
         plan.active_to || 'N/A',
-        plan.linked_people_count.toString(),
+        plan.linked_dependants_count.toString(),
         currentMonth
       ]);
 
@@ -240,7 +240,7 @@ export function PolicyProviderDashboard() {
   const totalPausedPremium = pausedPlans.reduce((sum, p) => sum + p.target_amount, 0);
   const totalInProgressPremium = inProgressPlans.reduce((sum, p) => sum + p.target_amount, 0);
   const totalInProgressFunded = inProgressPlans.reduce((sum, p) => sum + p.funded_amount, 0);
-  const totalLinkedPeople = activePlans.reduce((sum, p) => sum + p.linked_people_count, 0);
+  const totalDependants = activePlans.reduce((sum, p) => sum + p.linked_dependants_count, 0);
   const currentMonth = new Date().toISOString().slice(0, 7);
 
   if (loading) {
@@ -317,9 +317,9 @@ export function PolicyProviderDashboard() {
           <div className="bg-white border border-gray-200 rounded-xl p-6">
             <div className="flex items-center justify-between mb-3">
               <span className="material-symbols-outlined text-cyan-600 text-2xl">people</span>
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Linked People</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">dependants</span>
             </div>
-            <p className="text-3xl font-black text-cyan-600 mb-1">{totalLinkedPeople}</p>
+            <p className="text-3xl font-black text-cyan-600 mb-1">{totalDependants}</p>
             <p className="text-sm text-gray-600">Dependants & Spouses</p>
             <p className="text-xs text-cyan-600 font-bold mt-2">On active plans</p>
           </div>
@@ -547,7 +547,7 @@ export function PolicyProviderDashboard() {
                         )}
                       </td>
                       <td className="px-4 py-4">
-                        <span className="text-sm font-semibold text-gray-900">{plan.linked_people_count}</span>
+                        <span className="text-sm font-semibold text-gray-900">{plan.linked_dependants_count}</span>
                       </td>
                     </tr>
                   ))}

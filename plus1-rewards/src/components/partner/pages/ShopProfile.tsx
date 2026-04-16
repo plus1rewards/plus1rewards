@@ -344,86 +344,87 @@ export default function ShopProfile() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
               <button
                 onClick={() => navigate('/partner/dashboard')}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
               >
-                <span className="material-symbols-outlined text-gray-600">arrow_back</span>
+                <span className="material-symbols-outlined text-gray-600 text-xl sm:text-2xl">arrow_back</span>
               </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Back to Dashboard</h1>
-                <p className="text-sm text-gray-600">Manage your business information</p>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 truncate">Back to Dashboard</h1>
+                <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">Manage your business information</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
         {/* Status Banner */}
-        <div className={`rounded-xl p-6 mb-8 ${
+        <div className={`rounded-xl p-4 sm:p-5 md:p-6 mb-6 sm:mb-8 ${
           partner.status === 'active' ? 'bg-gradient-to-r from-green-500 to-green-600' :
           partner.status === 'pending' ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' :
           'bg-gradient-to-r from-red-500 to-red-600'
         } text-white shadow-lg`}>
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-              <span className="material-symbols-outlined text-3xl">storefront</span>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-2xl sm:text-3xl">storefront</span>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold">{partner.shop_name}</h2>
-              <p className="text-white/90">Status: <span className="font-semibold capitalize">{partner.status}</span></p>
-              <p className="text-white/90">Cashback Rate: <span className="font-bold">{partner.cashback_percent}%</span></p>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold truncate">{partner.shop_name}</h2>
+              <p className="text-white/90 text-xs sm:text-sm">Status: <span className="font-semibold capitalize">{partner.status}</span></p>
+              <p className="text-white/90 text-xs sm:text-sm">Cashback Rate: <span className="font-bold">{partner.cashback_percent}%</span></p>
             </div>
           </div>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 sm:mb-8 overflow-hidden">
           <div className="flex items-center justify-between">
-            <div className="flex overflow-x-auto">
+            <div className="flex overflow-x-auto scrollbar-hide">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-4 font-medium whitespace-nowrap border-b-2 transition-colors ${
+                  className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-6 py-3 sm:py-4 font-medium whitespace-nowrap border-b-2 transition-colors text-xs sm:text-sm md:text-base ${
                     activeTab === tab.id
                       ? 'border-[#1a558b] text-[#1a558b] bg-blue-50'
                       : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-lg">{tab.icon}</span>
-                  {tab.label}
+                  <span className="material-symbols-outlined text-base sm:text-lg">{tab.icon}</span>
+                  <span className="hidden sm:inline">{tab.label}</span>
                 </button>
               ))}
             </div>
             
-            <div className="flex items-center gap-3 px-6">
+            <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 flex-shrink-0">
               {editMode ? (
                 <>
                   <button
                     onClick={handleCancel}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                    className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-gray-600 hover:text-gray-800 font-medium text-xs sm:text-sm"
                   >
-                    Cancel
+                    <span className="hidden sm:inline">Cancel</span>
+                    <span className="sm:hidden">✕</span>
                   </button>
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="px-6 py-2 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 disabled:opacity-50 flex items-center gap-2"
+                    className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 disabled:opacity-50 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
                   >
                     {saving ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        Saving...
+                        <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span className="hidden sm:inline">Saving...</span>
                       </>
                     ) : (
                       <>
-                        <span className="material-symbols-outlined text-lg">save</span>
-                        Save Changes
+                        <span className="material-symbols-outlined text-sm sm:text-lg">save</span>
+                        <span className="hidden sm:inline">Save</span>
                       </>
                     )}
                   </button>
@@ -431,10 +432,10 @@ export default function ShopProfile() {
               ) : (
                 <button
                   onClick={() => setEditMode(true)}
-                  className="px-6 py-2 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 flex items-center gap-2"
+                  className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
                 >
-                  <span className="material-symbols-outlined text-lg">edit</span>
-                  Edit Profile
+                  <span className="material-symbols-outlined text-sm sm:text-lg">edit</span>
+                  <span className="hidden sm:inline">Edit</span>
                 </button>
               )}
             </div>
