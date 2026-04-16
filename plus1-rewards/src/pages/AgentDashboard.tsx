@@ -161,8 +161,8 @@ export function AgentDashboard() {
             cashback_percent: partner.cashback_percent,
             status: partner.status,
             monthly_commission: monthlyCommission,
-            contact_person: partner.responsible_person,
-            phone: partner.phone
+            contact_person: partner.contact_person || partner.first_name || 'N/A',
+            phone: partner.cell_phone || partner.phone || 'N/A'
           };
         }));
 

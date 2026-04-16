@@ -466,6 +466,20 @@ export default function PartnerSalesTerminal() {
     setError('');
 
     try {
+      // Get the agent_id for this partner
+      const { data: partnerLink, error: linkError } = await supabase
+        .from('partner_agent_links')
+        .select('agent_id')
+        .eq('partner_id', partner.id)
+        .eq('status', 'active')
+        .single();
+
+      if (linkError || !partnerLink) {
+        console.warn('No active agent link found for partner:', partner.id);
+      }
+
+      const agentId = partnerLink?.agent_id || null;
+
       const amount = parseFloat(purchaseAmount);
       const cashbackPercent = partner.cashback_percent;
       const totalCashback = (amount * cashbackPercent) / 100;
@@ -478,6 +492,7 @@ export default function PartnerSalesTerminal() {
         .insert({
           partner_id: partner.id,
           member_id: member.id,
+          agent_id: agentId,
           purchase_amount: amount,
           cashback_percent: cashbackPercent,
           system_percent: 1,
