@@ -73,67 +73,119 @@ export default function PartnerSalesTerminal() {
 
   const startQRScanner = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      console.log('🎥 Starting QR scanner...');
+      setScannerActive(true);
+      setError('');
+      
+      // Request camera with mobile-friendly constraints
+      const constraints = {
         video: { 
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      });
+          facingMode: { ideal: 'environment' },
+          width: { min: 320, ideal: 640, max: 1280 },
+          height: { min: 240, ideal: 480, max: 720 }
+        },
+        audio: false
+      };
+      
+      console.log('📱 Requesting camera with constraints:', constraints);
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('✅ Camera stream obtained:', stream);
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        setScannerActive(true);
+        console.log('📹 Stream assigned to video element');
         
-        // Wait for video to be ready before starting scan
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play().catch(err => {
-            console.error('Error playing video:', err);
-          });
-          scanQRCode();
-        };
+        // Ensure video plays
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log('▶️ Video playing');
+              // Start scanning after a short delay to ensure video is ready
+              setTimeout(() => {
+                console.log('🔍 Starting scan loop');
+                scanQRCode();
+              }, 500);
+            })
+            .catch(err => {
+              console.error('❌ Error playing video:', err);
+              setError('Error starting video playback');
+            });
+        }
       }
-    } catch (err) {
-      console.error('Camera access denied:', err);
-      setError('Camera access denied. Please enable camera permissions in your browser settings.');
+    } catch (err: any) {
+      console.error('❌ Camera error:', err);
       setScannerActive(false);
+      
+      if (err.name === 'NotAllowedError') {
+        setError('Camera permission denied. Please enable camera access in your browser settings.');
+      } else if (err.name === 'NotFoundError') {
+        setError('No camera found on this device.');
+      } else if (err.name === 'NotReadableError') {
+        setError('Camera is already in use by another app.');
+      } else {
+        setError('Failed to access camera: ' + err.message);
+      }
     }
   };
 
   const stopQRScanner = () => {
+    console.log('🛑 Stopping QR scanner');
+    setScannerActive(false);
+    
     if (videoRef.current && videoRef.current.srcObject) {
       const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-      tracks.forEach(track => track.stop());
-      setScannerActive(false);
+      console.log(`📹 Stopping ${tracks.length} media tracks`);
+      tracks.forEach(track => {
+        track.stop();
+        console.log(`✅ Stopped ${track.kind} track`);
+      });
+      videoRef.current.srcObject = null;
     }
   };
 
   const scanQRCode = () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current || !canvasRef.current || !scannerActive) return;
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
-    if (!ctx || !video.videoWidth || !video.videoHeight) {
-      // Video not ready yet, try again
+    if (!ctx) {
+      console.error('❌ Canvas context not available');
+      return;
+    }
+
+    // Check if video has dimensions
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      console.log('⏳ Video not ready yet, retrying...');
       requestAnimationFrame(scanQRCode);
       return;
     }
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    try {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
 
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      // Draw video frame to canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = jsQR(imageData.data, imageData.width, imageData.height);
+      // Get image data and scan for QR code
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height);
 
-    if (code) {
-      console.log('✅ QR Code detected:', code.data);
-      handleQRCodeScanned(code.data);
-    } else {
-      // Continue scanning
+      if (code) {
+        console.log('✅ QR Code detected:', code.data);
+        handleQRCodeScanned(code.data);
+        stopQRScanner();
+        return;
+      }
+    } catch (err) {
+      console.error('❌ Error during scanning:', err);
+    }
+
+    // Continue scanning
+    if (scannerActive) {
       requestAnimationFrame(scanQRCode);
     }
   };
@@ -1159,8 +1211,8 @@ export default function PartnerSalesTerminal() {
                     autoPlay
                     playsInline
                     muted
+                    disablePictureInPicture
                     className="w-full h-full object-cover"
-                    style={{ transform: 'scaleX(-1)' }}
                   />
                   <canvas ref={canvasRef} className="hidden" />
                   
