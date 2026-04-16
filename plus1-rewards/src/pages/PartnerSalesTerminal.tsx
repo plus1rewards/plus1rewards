@@ -196,37 +196,71 @@ export default function PartnerSalesTerminal() {
   const handleQRCodeScanned = async (qrData: string) => {
     console.log('📱 Processing QR code:', qrData);
     
-    // QR code format: PLUS1-{phone}-{timestamp}
-    const qrPattern = /^PLUS1-(\d{10})-\d+$/;
-    const match = qrData.match(qrPattern);
-
-    if (!match) {
+    // Try to parse the QR code - it could be a URL or raw format
+    let memberIdentifier = null;
+    
+    // Check if it's a URL format: https://www.plus1rewards.com/member?id=PLUS1-{phone}-{timestamp}
+    try {
+      const url = new URL(qrData);
+      const id = url.searchParams.get('id');
+      if (id) {
+        memberIdentifier = decodeURIComponent(id);
+        console.log('✅ Parsed URL format QR code:', memberIdentifier);
+      }
+    } catch (e) {
+      // Not a URL, try raw format
+      console.log('⏳ Not a URL format, trying raw format');
+    }
+    
+    // If not a URL, try raw format: PLUS1-{phone}-{timestamp}
+    if (!memberIdentifier) {
+      const qrPattern = /^PLUS1-(\d{10})-\d+$/;
+      const match = qrData.match(qrPattern);
+      if (match) {
+        memberIdentifier = match[1];
+        console.log('✅ Parsed raw format QR code, phone:', memberIdentifier);
+      }
+    }
+    
+    // If still no match, try to extract phone from any PLUS1 format
+    if (!memberIdentifier) {
+      const plusMatch = qrData.match(/PLUS1-(\d{10})/);
+      if (plusMatch) {
+        memberIdentifier = plusMatch[1];
+        console.log('✅ Extracted phone from PLUS1 format:', memberIdentifier);
+      }
+    }
+    
+    if (!memberIdentifier) {
+      console.error('❌ Could not parse QR code:', qrData);
       setError('Invalid QR code format. Please scan a valid Plus1 Rewards member QR code.');
       return;
     }
 
-    const memberPhone = match[1];
-    setPhoneNumber(memberPhone);
-    
-    // Search for member
+    // Search for member by phone
     setLoading(true);
     setError('');
     setMember(null);
 
     try {
+      console.log('🔍 Searching for member with phone:', memberIdentifier);
       const { data, error: memberError } = await supabase
         .from('members')
         .select('id, first_name, last_name, cell_phone, status, role, email, sa_id, address_line_1')
-        .eq('cell_phone', memberPhone)
+        .eq('cell_phone', memberIdentifier)
         .single();
 
       if (memberError || !data) {
+        console.error('❌ Member not found:', memberError);
         setError('Member not found. Please ask them to register first.');
         setLoading(false);
         return;
       }
 
+      console.log('✅ Member found:', data.first_name, data.last_name);
+
       if (data.status !== 'active') {
+        console.warn('⚠️ Member status not active:', data.status);
         setError('Member account is not active');
         setLoading(false);
         return;
@@ -234,6 +268,7 @@ export default function PartnerSalesTerminal() {
 
       // Prevent transactions for sponsored members
       if (data.role === 'sponsored_member') {
+        console.warn('⚠️ Sponsored member detected');
         setError('This is a sponsored member. Only the sponsor can earn cashback, not the sponsored member.');
         setLoading(false);
         return;
@@ -256,6 +291,7 @@ export default function PartnerSalesTerminal() {
 
         if (!isProfileComplete) {
           // Profile incomplete - BLOCK transaction
+          console.warn('⚠️ Profile incomplete, blocking transaction');
           setError('Member policy is PAUSED. Member needs to complete their profile information (email, ID number, address) in the +1 Rewards app before transactions can continue. Please ask them to update their information.');
           setLoading(false);
           return;
@@ -263,9 +299,12 @@ export default function PartnerSalesTerminal() {
       }
 
       setMember(data);
+      setPhoneNumber(memberIdentifier);
       setActiveField('amount');
       setError('');
+      console.log('✅ QR scan successful, ready for amount entry');
     } catch (err) {
+      console.error('❌ Error searching for member:', err);
       setError('Error searching for member');
     } finally {
       setLoading(false);
