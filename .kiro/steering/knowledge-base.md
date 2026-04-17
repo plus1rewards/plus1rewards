@@ -46,10 +46,10 @@ Every transaction:
 
 ### Status Definitions
 - `in_progress`: 0-99% funded
-- `paused`: 100% funded BUT profile incomplete
-- `pending`: 100% funded AND profile complete (awaiting Day1Health verification)
+- `paused`: 100% funded BUT profile incomplete **OR** insufficient funds for 30-day renewal
+- `pending_day1health`: 100% funded AND profile complete (awaiting Day1Health verification)
+- `pending_upgrade`: Plan upgrade in progress (awaiting Day1Health approval)
 - `active`: Verified and active (30-day cycle)
-- `suspended`: Insufficient funds for next cycle
 
 ### Critical Status Rules
 ```
@@ -59,14 +59,30 @@ Every transaction:
     ↓
 Profile Complete?
     ↓ YES              ↓ NO
-[pending]          [paused]
+[pending_day1health]   [paused]
     ↓                  ↓
 Day1Health      Complete Profile
 Verification         ↓
-    ↓            [pending]
+    ↓            [pending_day1health]
 [active]             ↓
 (30 days)        [active]
+    ↓                  ↓
+[30-day cycle ends]   [Member clicks Upgrade]
+    ↓                  ↓
+Sufficient funds?  [pending_upgrade]
+    ↓ YES    ↓ NO      ↓
+[active]  [paused]  Day1Health
+(renew)   (wait)    Verification
+                      ↓
+                    [active]
 ```
+
+### CRITICAL: Overflow Means 100% Funded
+**IF A PLAN HAS OVERFLOW, IT MUST BE AT 100% (target_amount) FUNDED!**
+- Overflow only exists AFTER plan reaches target_amount
+- If `overflow_balance > 0`, then `funded_amount` MUST equal `target_amount`
+- Status should be `pending_day1health` (if profile complete) or `paused` (if incomplete)
+- **NEVER** have overflow with status `in_progress` - this is a bug!
 
 ### Profile Completion Requirements
 **Required for plan to become active:**
@@ -79,6 +95,13 @@ Verification         ↓
 - 95%: Mandatory modal (dismiss once)
 - 96%: Critical modal (cannot dismiss)
 - 100%: Plan PAUSES if incomplete, PENDING if complete
+
+### 30-Day Renewal Logic
+After 30 days of active coverage:
+- System checks if member has sufficient funds to renew
+- **If YES:** Plan automatically renews as `active` for another 30 days
+- **If NO:** Plan status changes to `paused` (insufficient funds)
+- When member earns enough cashback: Plan automatically reactivates as `active`
 
 ---
 
@@ -93,6 +116,19 @@ Verification         ↓
 - QR code auto-generated: `PLUS1-{phone}-{timestamp}`
 - Status: 'active'
 - **NO default cover plan assigned during registration**
+- **Members table has legacy fields:** `cover_plan_name`, `cover_plan_price`, `cover_plan_variant`
+  - These are populated when member selects their first plan
+  - Updated by `PlanSelectionModal` component
+
+### Plan Selection Process
+When a member selects their first plan (via PlanSelectionModal):
+1. Creates record in `member_cover_plans` table
+2. Updates `members` table with:
+   - `cover_plan_name` (e.g., "Hospital - Value Plus")
+   - `cover_plan_price` (e.g., "390")
+   - `cover_plan_variant` (always "Single")
+3. **Members can ONLY select a plan ONCE** - no plan changing allowed
+4. If they try to select again, they get error: "You already have a cover plan selected"
 
 ### Member Login
 - Credentials: `cell_phone` + `pin_code`
@@ -274,8 +310,13 @@ Status: Marked as paid
 - email, sa_id, date_of_birth
 - address_line_1, city, postal_code
 - status ('active', 'suspended')
-- role ('member', 'admin')
+- role ('member', 'admin', 'sponsored_member')
+- cover_plan_name (legacy field - populated when plan selected)
+- cover_plan_price (legacy field - populated when plan selected)
+- cover_plan_variant (legacy field - always 'Single')
 ```
+
+**Legacy Fields:** The `cover_plan_name`, `cover_plan_price`, and `cover_plan_variant` columns are legacy fields that mirror data from `member_cover_plans`. They are automatically populated by `PlanSelectionModal` and `UpgradePromptModal` when a member selects or upgrades their plan.
 
 ### partners
 ```sql
@@ -294,10 +335,13 @@ Status: Marked as paid
 - target_amount (e.g., R390)
 - funded_amount (current funded)
 - overflow_balance (excess cashback)
-- status ('in_progress', 'pending', 'active', 'paused', 'suspended')
+- status ('in_progress', 'pending_day1health', 'active', 'paused', 'pending_upgrade')
 - active_from, active_to (30-day cycle)
 - sponsored_by (if sponsored)
+- plan_changes_count (DEPRECATED - no longer used, always 0)
 ```
+
+**IMPORTANT:** The `plan_changes_count` column exists but is NO LONGER USED. Plan changing has been completely removed. Members can only select a plan once.
 
 ### transactions
 ```sql
@@ -337,7 +381,7 @@ Status: Marked as paid
 - Active plans last 30 days
 - After 30 days: check if sufficient funds
 - If YES: renew as active
-- If NO: suspend until funds available
+- If NO: status changes to 'paused' (insufficient funds)
 
 ### 4. Sponsorship
 - Deducts from sponsor's overflow
@@ -362,14 +406,26 @@ Status: Marked as paid
 4. Hardcode plan amounts - use database values
 5. Skip creation_order validation
 6. Allow plans to activate without profile completion
+7. Use 'suspended' for member cover plans - use 'paused'
+8. Forget 30-day renewal logic - plans need funds to renew
+9. **Allow overflow to exist with status 'in_progress'** - if overflow > 0, plan MUST be at 100%
+10. **Use 'pending' status** - correct status is 'pending_day1health'
+11. **Allow plan changing** - members can only select a plan ONCE
+12. **Forget to update members table legacy fields** - must update when plan is selected
 
 ### ✅ DO
 1. Always validate profile before setting 'active'
 2. Use 'paused' for incomplete profiles at 100%
-3. Respect creation_order for funding
-4. Store overflow in first plan only
-5. Validate cashback range (3-40%)
-6. Check member status before transactions
+3. Use 'paused' for insufficient funds at 30-day renewal
+4. Respect creation_order for funding
+5. Store overflow in first plan only
+6. Validate cashback range (3-40%)
+7. Check member status before transactions
+8. Automatically reactivate 'paused' plans when funds become available
+9. **Ensure funded_amount = target_amount when overflow_balance > 0**
+10. **Use 'pending_day1health' for plans awaiting verification**
+11. **Block plan changes** - show error if member tries to select again
+12. **Update both tables** - member_cover_plans AND members table when plan selected
 
 ---
 
@@ -452,16 +508,52 @@ VITE_APP_URL=https://www.plus1rewards.com
 
 1. **NO central users table** - each role is independent
 2. **Profile completion required** for active status
-3. **Paused ≠ Pending** - paused = incomplete profile, pending = awaiting verification
+3. **Paused ≠ Pending** - paused = incomplete profile OR insufficient funds for renewal, pending_day1health = awaiting verification
 4. **Creation order matters** - determines funding priority
 5. **Overflow stored in first plan** - not distributed
 6. **Cashback is real money** - not loyalty points
-7. **30-day cycles** - plans renew monthly if funded
+7. **30-day cycles** - plans renew monthly if funded, pause if insufficient funds
 8. **Sponsorship uses overflow** - deducted from sponsor
 9. **Status flow is strict** - follow the rules
 10. **Always validate before activating** - profile must be complete
+11. **NO 'suspended' status for member plans** - use 'paused' instead
+12. **Paused plans auto-reactivate** - when funds become available
+13. **Overflow = 100% funded** - if overflow exists, funded_amount MUST equal target_amount
+14. **Plan selection is ONE-TIME only** - no plan changing allowed
+15. **Update both tables** - member_cover_plans AND members table when plan selected
+16. **Use correct status names** - 'pending_day1health' not 'pending'
 
 ---
 
-**Last Updated:** 2026-04-09
-**Version:** 1.0
+## Recent Fixes & Changes (April 2026)
+
+### Fixed: Member Registration ID Generation
+- **Issue:** Members table `id` column had no default UUID generation
+- **Fix:** Added `gen_random_uuid()` as default value for `id` column
+- **Impact:** New member registrations now work correctly
+
+### Fixed: Cashback Allocation Bug
+- **Issue:** Cashback was being added to plan even after reaching 100%, causing incorrect funded_amount and overflow_balance
+- **Fix:** Updated transaction processing to stop adding to funded_amount once target is reached
+- **Impact:** Plans now correctly show 100% when they have overflow
+
+### Fixed: Plan Status Incorrect with Overflow
+- **Issue:** Plans showing 'in_progress' status even with overflow balance
+- **Fix:** Corrected status to 'pending_day1health' when plan reaches 100% with complete profile
+- **Impact:** Plans with overflow now show correct status
+
+### Removed: Plan Changing Feature
+- **Change:** Completely removed ability to change plans after initial selection
+- **Reason:** Caused confusion and code conflicts
+- **Impact:** Members can only select a plan once, must contact support to change
+- **Code:** Removed `plan_changes_count` logic, removed "Change Plan" button from ProfileIncompleteModal
+
+### Fixed: Legacy Fields Not Populated
+- **Issue:** `cover_plan_name`, `cover_plan_price`, `cover_plan_variant` in members table were NULL
+- **Fix:** PlanSelectionModal now updates members table when plan is selected
+- **Impact:** Legacy fields are now populated for all new plan selections
+
+---
+
+**Last Updated:** 2026-04-17
+**Version:** 1.2

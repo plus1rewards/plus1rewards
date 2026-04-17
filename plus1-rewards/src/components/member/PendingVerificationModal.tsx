@@ -119,7 +119,7 @@ export default function PendingVerificationModal({
 
           <div className="mt-4 text-center">
             <p className="text-xs text-gray-500">
-              Need help? Contact support at support@plus1rewards.com
+              Need help? Contact support at plus1rewards@gmail.com
             </p>
           </div>
         </div>

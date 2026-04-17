@@ -7,10 +7,6 @@ export default function HowItWorks() {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.2,
-        delayChildren: 0.1,
-      },
     },
   }
 
@@ -20,10 +16,6 @@ export default function HowItWorks() {
       opacity: 1,
       y: 0,
       rotateX: 0,
-      transition: {
-        duration: 0.8,
-        ease: "easeOut",
-      },
     },
   }
 
@@ -32,12 +24,6 @@ export default function HowItWorks() {
     visible: {
       scale: 1,
       rotate: 0,
-      transition: {
-        duration: 0.8,
-        ease: "easeOut",
-        type: "spring",
-        stiffness: 100,
-      },
     },
   }
 
@@ -108,6 +94,7 @@ export default function HowItWorks() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
+          transition={{ staggerChildren: 0.2, delayChildren: 0.1 }}
         >
           {/* Connector line */}
           <motion.div 
@@ -124,6 +111,7 @@ export default function HowItWorks() {
               key={i} 
               className="relative"
               variants={cardVariants}
+              transition={{ duration: 0.8, ease: "easeOut" }}
             >
               <motion.div 
                 className={`relative z-10 flex flex-col items-center text-center p-8 rounded-3xl transition-all duration-300 hover:-translate-y-2 ${step.highlight ? 'bg-[#1a558b] shadow-xl shadow-blue-900/20' : 'bg-gray-50 border border-gray-100'}`}
@@ -133,6 +121,7 @@ export default function HowItWorks() {
                 <motion.div 
                   className={`w-24 h-24 rounded-full flex items-center justify-center mb-6 shadow-sm ${step.highlight ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}
                   variants={iconVariants}
+                  transition={{ duration: 0.8, ease: "easeOut", type: "spring", stiffness: 100 }}
                 >
                   {step.icon}
                 </motion.div>

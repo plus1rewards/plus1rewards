@@ -153,11 +153,11 @@ export default function Dashboard() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-[#1a558b] to-[#2563eb] rounded-2xl p-8 shadow-lg">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="flex items-center gap-6">
-            {/* Logo */}
-            <div className="w-24 h-24 flex-shrink-0 bg-white/20 rounded-xl flex items-center justify-center border-2 border-white/30">
+      <div className="bg-gradient-to-r from-[#1a558b] to-[#2563eb] rounded-2xl p-6 sm:p-8 shadow-lg">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6">
+          <div className="flex items-center gap-4 sm:gap-6 min-w-0 flex-1">
+            {/* Logo/Banner */}
+            <div className="w-44 h-20 flex-shrink-0 bg-white/20 rounded-xl flex items-center justify-center border-2 border-white/30">
               {partner.store_logo_url ? (
                 <img
                   src={partner.store_logo_url}
@@ -168,14 +168,14 @@ export default function Dashboard() {
                   }}
                 />
               ) : (
-                <span className="material-symbols-outlined text-white text-5xl">storefront</span>
+                <span className="material-symbols-outlined text-white text-4xl sm:text-5xl">storefront</span>
               )}
             </div>
             
             {/* Info */}
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Partner Dashboard</h1>
-              <p className="text-white/90 text-lg mb-3">Welcome back, {partner.shop_name}</p>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2 truncate">Partner Dashboard</h1>
+              <p className="text-white/90 text-sm sm:text-lg mb-2 sm:mb-3 truncate">Welcome back, {partner.shop_name}</p>
               <div className="flex flex-wrap gap-2">
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
                   partner.status === 'active' 

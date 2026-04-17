@@ -82,7 +82,7 @@ const StatsCards = forwardRef<StatsCardsRef>((_, ref) => {
       const totalPolicies = coverPlansData?.length || 0;
       const activePolicies = coverPlansData?.filter(p => p.status === 'active').length || 0;
       const inProgressPolicies = coverPlansData?.filter(p => p.status === 'in_progress').length || 0;
-      const pendingDay1HealthApprovals = coverPlansData?.filter(p => p.status === 'pending').length || 0;
+      const pendingDay1HealthApprovals = coverPlansData?.filter(p => p.status === 'pending_day1health').length || 0;
 
       console.log('✅ Stats calculated:', {
         totalMembers,

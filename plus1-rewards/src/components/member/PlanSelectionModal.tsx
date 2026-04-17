@@ -68,33 +68,7 @@ export default function PlanSelectionModal({
   const [expandedBenefits, setExpandedBenefits] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [planChangesCount, setPlanChangesCount] = useState(0);
-  const [canChangePlan, setCanChangePlan] = useState(true);
   const { notification, showSuccess, hideNotification } = useNotification();
-
-  // Load plan changes count on mount
-  const loadPlanChangesCount = async () => {
-    try {
-      const { data: existingPlan } = await supabase
-        .from('member_cover_plans')
-        .select('plan_changes_count')
-        .eq('member_id', memberId)
-        .eq('creation_order', 1)
-        .single();
-
-      if (existingPlan) {
-        setPlanChangesCount(existingPlan.plan_changes_count || 0);
-        setCanChangePlan((existingPlan.plan_changes_count || 0) < 1);
-      }
-    } catch (err) {
-      console.error('Error loading plan changes count:', err);
-    }
-  };
-
-  // Load on component mount
-  React.useEffect(() => {
-    loadPlanChangesCount();
-  }, [memberId]);
 
   const handleSelectPlan = async () => {
     if (!selectedPlan) return;
@@ -124,47 +98,18 @@ export default function PlanSelectionModal({
       // Check if member already has a cover plan
       const { data: existingPlan } = await supabase
         .from('member_cover_plans')
-        .select('id, plan_changes_count')
+        .select('id')
         .eq('member_id', memberId)
         .eq('creation_order', 1)
         .single();
 
-      // Check if user has already changed their plan once
-      if (existingPlan && existingPlan.plan_changes_count >= 1) {
-        setError('You can only change your plan once. Please contact support if you need further assistance.');
+      if (existingPlan) {
+        // User already has a plan - don't allow changing
+        setError('You already have a cover plan selected. Please contact support if you need to change your plan.');
         setLoading(false);
         return;
-      }
-
-      if (existingPlan) {
-        // Get current plan data to preserve funded_amount and overflow_balance
-        const { data: currentPlanData } = await supabase
-          .from('member_cover_plans')
-          .select('funded_amount, overflow_balance')
-          .eq('id', existingPlan.id)
-          .single();
-
-        // Update existing plan while preserving user's earned money
-        console.log('Updating existing member cover plan');
-        const { error: updateError } = await supabase
-          .from('member_cover_plans')
-          .update({
-            cover_plan_id: coverPlanData.id,
-            target_amount: selectedPlan.price,
-            funded_amount: currentPlanData?.funded_amount || 0,
-            overflow_balance: currentPlanData?.overflow_balance || 0,
-            status: 'in_progress',
-            plan_changes_count: (existingPlan.plan_changes_count || 0) + 1
-          })
-          .eq('id', existingPlan.id);
-
-        if (updateError) {
-          console.error('Error updating member cover plan:', updateError);
-          throw updateError;
-        }
-        console.log('Member cover plan updated successfully!');
       } else {
-        // Create new plan - this is the initial selection, not a change
+        // Create new plan - this is the initial selection
         console.log('Creating new member cover plan');
         const { error: coverPlanError } = await supabase
           .from('member_cover_plans')
@@ -175,8 +120,7 @@ export default function PlanSelectionModal({
             target_amount: selectedPlan.price,
             funded_amount: 0,
             overflow_balance: 0,
-            status: 'in_progress',
-            plan_changes_count: 0
+            status: 'in_progress'
           });
 
         if (coverPlanError) {
@@ -184,24 +128,30 @@ export default function PlanSelectionModal({
           throw coverPlanError;
         }
         console.log('Member cover plan created successfully!');
+        
+        // Update legacy fields in members table
+        const { error: memberUpdateError } = await supabase
+          .from('members')
+          .update({
+            cover_plan_name: coverPlanData.plan_name,
+            cover_plan_price: selectedPlan.price.toString(),
+            cover_plan_variant: 'Single'
+          })
+          .eq('id', memberId);
+
+        if (memberUpdateError) {
+          console.error('Error updating member legacy fields:', memberUpdateError);
+          throw memberUpdateError; // Throw error instead of silently failing
+        }
+        console.log('Member legacy fields updated successfully!');
       }
 
       console.log('Plan selection successful, showing notification');
       
-      // Update local state based on whether this was a change or initial selection
-      const newChangesCount = existingPlan ? (existingPlan.plan_changes_count || 0) + 1 : 0;
-      setCanChangePlan(newChangesCount < 1);
-      setPlanChangesCount(newChangesCount);
-      
       // Show success notification
-      const notificationTitle = existingPlan ? 'Plan Changed Successfully!' : 'Plan Selected Successfully!';
-      const notificationMessage = existingPlan 
-        ? `You've switched to ${selectedPlan.name}. Your earned rewards have been preserved!`
-        : `You've selected ${selectedPlan.name}. Start earning rewards to activate your cover!`;
-      
       showSuccess(
-        notificationTitle,
-        notificationMessage,
+        'Plan Selected Successfully!',
+        `You've selected ${selectedPlan.name}. Start earning rewards to activate your cover!`,
         5000
       );
 

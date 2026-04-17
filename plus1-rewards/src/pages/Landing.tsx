@@ -18,25 +18,12 @@ const Footer = lazy(() => import('../components/landing/Footer'))
 export default function Landing() {
   const pageVariants = {
     initial: { opacity: 0 },
-    animate: { 
-      opacity: 1,
-      transition: {
-        duration: 0.3,
-        staggerChildren: 0.1
-      }
-    }
+    animate: { opacity: 1 }
   }
 
   const sectionVariants = {
     initial: { opacity: 0, y: 30 },
-    animate: { 
-      opacity: 1, 
-      y: 0,
-      transition: {
-        duration: 0.5,
-        ease: [0.25, 0.46, 0.45, 0.94]
-      }
-    }
+    animate: { opacity: 1, y: 0 }
   }
 
   // FAQ data for structured data
@@ -72,6 +59,7 @@ export default function Landing() {
       variants={pageVariants}
       initial="initial"
       animate="animate"
+      transition={{ duration: 0.3, staggerChildren: 0.1 }}
     >
       <SEO
         title="Plus1 Rewards | Earn Cashback Toward Medical Cover in South Africa"
@@ -85,25 +73,25 @@ export default function Landing() {
       <Navbar />
       <Hero />
       <Suspense fallback={<div className="h-20" />}>
-        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }}>
+        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}>
           <HowItWorks />
         </motion.div>
-        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }}>
+        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}>
           <CoverStatus />
         </motion.div>
-        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }}>
+        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}>
           <PartnerCarousel />
         </motion.div>
-        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }}>
+        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}>
           <Roles />
         </motion.div>
-        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }}>
+        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}>
           <OfflineFeature />
         </motion.div>
-        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }}>
+        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}>
           <FAQ />
         </motion.div>
-        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }}>
+        <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}>
           <Footer />
         </motion.div>
       </Suspense>

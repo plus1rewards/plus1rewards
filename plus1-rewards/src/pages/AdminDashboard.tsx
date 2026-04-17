@@ -247,7 +247,7 @@ export function AdminDashboard() {
         suspendedShops: shops.filter((s: any) => s.status === 'suspended').length,
         totalAgents: agents.length,
         totalPolicyProviders: insurers.length,
-        pendingDay1HealthApprovals: coverPlans.filter((p: any) => p.status === 'pending').length,
+        pendingDay1HealthApprovals: coverPlans.filter((p: any) => p.status === 'pending_day1health').length,
         
         // Policy stats
         totalPolicies: coverPlans.length,

@@ -186,7 +186,7 @@ export default function TermsOfService() {
       <Section title="14. Contact">
         <div className="bg-[#f5f8fc] rounded-xl p-6">
           <p className="font-semibold text-gray-800">Plus1 Rewards (Pty) Ltd</p>
-          <p>Email: <a href="mailto:support@plus1rewards.co.za" className="text-[#1a558b] hover:underline">support@plus1rewards.co.za</a></p>
+          <p>Email: <a href="mailto:plus1rewards@gmail.com" className="text-[#1a558b] hover:underline">plus1rewards@gmail.com</a></p>
           <p>Website: <a href="https://plus1rewards.com" className="text-[#1a558b] hover:underline">plus1rewards.com</a></p>
         </div>
       </Section>

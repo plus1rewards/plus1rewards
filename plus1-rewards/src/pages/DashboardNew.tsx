@@ -8,6 +8,7 @@ import DigitalPassCard from '../components/member/DigitalPassCard';
 import ProfileIncompleteModal from '../components/member/ProfileIncompleteModal';
 import PlanSelectionModal from '../components/member/PlanSelectionModal';
 import PendingVerificationModal from '../components/member/PendingVerificationModal';
+import UpgradePromptModal from '../components/member/UpgradePromptModal';
 import { Notification, useNotification } from '../components/Notification';
 
 interface Member {
@@ -34,7 +35,6 @@ interface MemberCoverPlan {
   status: string;
   active_from: string | null;
   active_to: string | null;
-  plan_changes_count: number;
   cover_plans: {
     plan_name: string;
   };
@@ -96,28 +96,31 @@ const DashboardNew: React.FC = () => {
   const [showProfileIncomplete, setShowProfileIncomplete] = useState(false);
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [showPlanSelection, setShowPlanSelection] = useState(false);
-  const [canChangePlan, setCanChangePlan] = useState(true);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradePlanInfo, setUpgradePlanInfo] = useState<{cost: number, currentPlan: string, newPlan: string} | null>(null);
   const [showPendingVerification, setShowPendingVerification] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<string>('');
-  const [profileModalDismissedByUser, setProfileModalDismissedByUser] = useState(false);
+  
+  // Check sessionStorage for dismissal flag on mount
+  const [profileModalDismissedByUser, setProfileModalDismissedByUser] = useState(() => {
+    return sessionStorage.getItem('profile_modal_dismissed_session') === 'true';
+  });
+
+  // Persist dismissal flag to sessionStorage
+  const dismissProfileModal = () => {
+    setProfileModalDismissedByUser(true);
+    sessionStorage.setItem('profile_modal_dismissed_session', 'true');
+  };
 
 
   // Debug: Log when showProfileIncomplete changes
   useEffect(() => {
-    console.log('📢 showProfileIncomplete changed:', showProfileIncomplete, 'missingFields:', missingFields);
+    // Removed console log
   }, [showProfileIncomplete, missingFields]);
 
   // Countdown timer for active plans
   useEffect(() => {
-    console.log('🕐 Countdown timer check:', {
-      hasPlan: !!mainCoverPlan,
-      status: mainCoverPlan?.status,
-      active_to: mainCoverPlan?.active_to
-    });
-
     if (!mainCoverPlan || mainCoverPlan.status !== 'active' || !mainCoverPlan.active_to) {
       setTimeRemaining('');
       return;
@@ -127,8 +130,6 @@ const DashboardNew: React.FC = () => {
       const now = new Date().getTime();
       const endTime = new Date(mainCoverPlan.active_to!).getTime();
       const distance = endTime - now;
-
-      console.log('⏱️ Countdown update:', { now, endTime, distance });
 
       // Show time even if negative (expired)
       const absDistance = Math.abs(distance);
@@ -141,7 +142,6 @@ const DashboardNew: React.FC = () => {
         ? `Expired ${days}d ${hours}h ${minutes}m ${seconds}s ago`
         : `${days}d ${hours}h ${minutes}m ${seconds}s`;
       
-      console.log('⏱️ Time remaining:', timeString);
       setTimeRemaining(timeString);
     };
 
@@ -235,12 +235,7 @@ const DashboardNew: React.FC = () => {
         .eq('member_id', memberData.id)
         .order('creation_order', { ascending: true });
 
-      console.log('Cover plans query result:', { coverPlansData, memberId: memberData.id });
-
       if (coverPlansData && coverPlansData.length > 0) {
-        console.log('Found cover plan:', coverPlansData[0]);
-        console.log('🔍 COVER PLAN STATUS:', coverPlansData[0].status);
-        console.log('🔍 COVER PLAN FULL DATA:', JSON.stringify(coverPlansData[0], null, 2));
         const planWithNumbers = {
           ...coverPlansData[0],
           target_amount: typeof coverPlansData[0].target_amount === 'string' 
@@ -253,10 +248,8 @@ const DashboardNew: React.FC = () => {
             ? parseFloat(coverPlansData[0].overflow_balance) 
             : (coverPlansData[0].overflow_balance || 0)
         };
-        console.log('🔍 PLAN WITH NUMBERS STATUS:', planWithNumbers.status);
         setMainCoverPlan(planWithNumbers);
       } else {
-        console.log('No cover plans found - showing plan selection modal');
         setShowPlanSelection(true);
       }
 
@@ -284,8 +277,6 @@ const DashboardNew: React.FC = () => {
         .select('id, amount, entry_type, created_at')
         .eq('member_id', memberData.id)
         .order('created_at', { ascending: false});
-
-      console.log('💳 Wallet entries loaded:', walletData);
 
       if (walletData) {
         setWalletEntries(walletData as any);
@@ -348,25 +339,84 @@ const DashboardNew: React.FC = () => {
     ? Math.min((fundedAmount / targetAmount) * 100, 100)
     : 0;
 
-  // Check if we should show upgrade prompt (when overflow >= plan amount on login)
+  // Check if we should show upgrade prompt
+  // Logic: Show if plan is ACTIVE and user has enough to upgrade to Comprehensive (R665)
+  // Show once, then repeat every 3 days
   useEffect(() => {
-    if (mainCoverPlan && overflowBalance >= targetAmount && mainCoverPlan.status === 'active') {
-      const lastPromptOverflow = sessionStorage.getItem('last_upgrade_prompt_overflow');
-      const currentOverflowKey = `${mainCoverPlan.id}_${Math.floor(overflowBalance)}`;
-      
-      if (lastPromptOverflow !== currentOverflowKey) {
+    if (!mainCoverPlan) {
+      return;
+    }
+
+    // Only show if plan status is 'active'
+    if (mainCoverPlan.status !== 'active') {
+      setShowUpgradePrompt(false);
+      return;
+    }
+
+    const currentTarget = Number(mainCoverPlan.target_amount);
+    
+    // Don't show if already on highest plan (R665)
+    if (currentTarget >= 665) {
+      setShowUpgradePrompt(false);
+      return;
+    }
+
+    // Check if user has enough overflow to upgrade to Comprehensive (R665)
+    let upgradeCost = 0;
+    if (currentTarget === 390) {
+      upgradeCost = 275; // Hospital to Comprehensive
+    } else if (currentTarget === 385) {
+      upgradeCost = 280; // Day to Day to Comprehensive
+    }
+
+    // Check if user has enough overflow
+    if (overflowBalance < upgradeCost) {
+      setShowUpgradePrompt(false);
+      return;
+    }
+
+    // User qualifies for upgrade - check if we should show based on 3-day interval
+    const lastPromptTime = localStorage.getItem(`last_upgrade_prompt_${mainCoverPlan.id}`);
+    const now = Date.now();
+    const threeDaysMs = 3 * 24 * 60 * 60 * 1000; // 3 days in milliseconds
+
+    if (!lastPromptTime) {
+      // First time showing - show immediately
+      setShowUpgradePrompt(true);
+      localStorage.setItem(`last_upgrade_prompt_${mainCoverPlan.id}`, now.toString());
+    } else {
+      const lastTime = parseInt(lastPromptTime);
+      const timeSinceLastPrompt = now - lastTime;
+
+      if (timeSinceLastPrompt >= threeDaysMs) {
+        // 3 days have passed - show again
         setShowUpgradePrompt(true);
-        sessionStorage.setItem('last_upgrade_prompt_overflow', currentOverflowKey);
+        localStorage.setItem(`last_upgrade_prompt_${mainCoverPlan.id}`, now.toString());
+      } else {
+        // Less than 3 days - don't show
+        setShowUpgradePrompt(false);
       }
     }
-  }, [mainCoverPlan, overflowBalance, targetAmount]);
+  }, [mainCoverPlan, overflowBalance]);
+
+  // DEBUG: Clear upgrade prompt timer on mount to show popup
+  useEffect(() => {
+    const keys = Object.keys(localStorage);
+    keys.forEach(key => {
+      if (key.startsWith('last_upgrade_prompt_')) {
+        localStorage.removeItem(key);
+      }
+    });
+  }, []);
+
+
 
   // Check if policy reached 100% and is pending verification
   useEffect(() => {
     if (!member || !mainCoverPlan) return;
 
-    // Show pending verification modal if status is pending (only once per session unless dismissed)
-    if (mainCoverPlan.status === 'pending' && progressPercent >= 100) {
+    // Show pending verification modal if status is pending_day1health (only once per session unless dismissed)
+    if (mainCoverPlan.status === 'pending_day1health' && progressPercent >= 100) {
       const hasSeenPendingModal = sessionStorage.getItem(`pending_modal_seen_${mainCoverPlan.id}`);
       const hasDismissedTemp = sessionStorage.getItem(`pending_modal_dismissed_temp`);
       
@@ -381,6 +431,9 @@ const DashboardNew: React.FC = () => {
   // Check profile completeness when plan reaches 90%+
   useEffect(() => {
     if (!member || !mainCoverPlan || isEditingProfile) return;
+    
+    // Don't show modal if user just dismissed it
+    if (profileModalDismissedByUser) return;
 
     const checkProfileCompleteness = async () => {
       const missing: string[] = [];
@@ -397,34 +450,14 @@ const DashboardNew: React.FC = () => {
       const isProfileIncomplete = missing.length > 0;
       const isProfileComplete = !isProfileIncomplete;
 
-      console.log('🔍 Profile check:', {
-        progressPercent,
-        isProfileIncomplete,
-        missing,
-        email: member.email,
-        sa_id: member.sa_id,
-        address_line_1: member.address_line_1,
-        status: mainCoverPlan.status,
-        shouldShow: isProfileIncomplete && progressPercent >= 90
-      });
-
       // If plan is paused (reached 100% with incomplete profile), show modal
       if (mainCoverPlan.status === 'paused' && isProfileIncomplete) {
-        console.log('⚠️ Plan is paused due to incomplete profile at 100%');
-        
-        // Don't show if user manually dismissed it
-        if (profileModalDismissedByUser) {
-          console.log('⏭️ User dismissed modal, not showing again');
-          setShowProfileIncomplete(false);
-          return;
-        }
-        
-        // Check if user can still change plan
-        const planChangesCount = mainCoverPlan.plan_changes_count || 0;
-        setCanChangePlan(planChangesCount < 1);
         
         setMissingFields(missing);
         setShowProfileIncomplete(true);
+        
+        // Reset dismissal flag when showing paused modal (always show when paused)
+        setProfileModalDismissedByUser(false);
         
         const lastPromptProgress = sessionStorage.getItem('last_profile_prompt_paused');
         const currentProgressKey = `${mainCoverPlan.id}_paused`;
@@ -454,20 +487,12 @@ const DashboardNew: React.FC = () => {
       }
       // At 96%+: Show warning modal
       else if (isProfileIncomplete && progressPercent >= 96 && progressPercent < 100) {
-        console.log('⚠️ At 96%+: Profile incomplete - showing warning');
         
         // Check if user has dismissed this modal at 96%
         const dismissedKey96 = `profile_modal_dismissed_96_${mainCoverPlan.id}`;
         const isDismissed96 = localStorage.getItem(dismissedKey96) === 'true';
         
-        console.log('96% dismissal check:', { dismissedKey96, isDismissed96, storedValue: localStorage.getItem(dismissedKey96) });
-        
         // Always show at 96%+ (mandatory, can't dismiss)
-        console.log('✅ Showing 96% modal (mandatory)');
-        // Check if user can still change plan
-        const planChangesCount = mainCoverPlan.plan_changes_count || 0;
-        setCanChangePlan(planChangesCount < 1);
-        
         setMissingFields(missing);
         setShowProfileIncomplete(true);
         
@@ -505,19 +530,12 @@ const DashboardNew: React.FC = () => {
         const dismissedKey95 = `profile_modal_dismissed_95_${mainCoverPlan.id}`;
         const isDismissed95 = localStorage.getItem(dismissedKey95) === 'true';
         
-        console.log('95% dismissal check:', { dismissedKey95, isDismissed95, storedValue: localStorage.getItem(dismissedKey95) });
-        
         // Only show if not dismissed
         if (!isDismissed95) {
           console.log('✅ Showing 95% modal');
-          // Check if user can still change plan
-          const planChangesCount = mainCoverPlan.plan_changes_count || 0;
-          setCanChangePlan(planChangesCount < 1);
-          
           setMissingFields(missing);
           setShowProfileIncomplete(true);
         } else {
-          console.log('⏭️ 95% modal dismissed, not showing');
           setShowProfileIncomplete(false);
         }
         
@@ -548,11 +566,6 @@ const DashboardNew: React.FC = () => {
       }
       // At 90-94%: Show with "Remind Me Later" option
       else if (isProfileIncomplete && progressPercent >= 90 && progressPercent < 95) {
-        console.log('✅ At 90% - showing modal');
-        
-        // Check if user can still change plan
-        const planChangesCount = mainCoverPlan.plan_changes_count || 0;
-        setCanChangePlan(planChangesCount < 1);
         
         setMissingFields(missing);
         setShowProfileIncomplete(true);
@@ -585,16 +598,14 @@ const DashboardNew: React.FC = () => {
       // If profile is complete and plan was paused, change to pending for Day1Health verification
       // BUT ONLY if it's never been active before (first time reaching 100%)
       else if (isProfileComplete && mainCoverPlan.status === 'paused' && progressPercent >= 100 && !mainCoverPlan.active_from) {
-        console.log('✅ Profile complete - changing paused plan to pending for verification (first time)');
         const { error: updateError } = await supabase
-          .from('member_cover_plans')
-          .update({ status: 'pending' })
-          .eq('id', mainCoverPlan.id);
+          .from('members')
+          .update({ plan_status: 'pending_day1health' })
+          .eq('id', member.id);
 
         if (updateError) {
           console.error('Error updating plan to pending:', updateError);
         } else {
-          console.log('✅ Plan changed to pending - ready for Day1Health verification');
           
           try {
             await supabase.from('admin_notifications').insert({
@@ -616,6 +627,9 @@ const DashboardNew: React.FC = () => {
           
           // Close the modal and reload data to show pending status
           setShowProfileIncomplete(false);
+          // Clear dismissal flag since profile is now complete
+          sessionStorage.removeItem('profile_modal_dismissed_session');
+          setProfileModalDismissedByUser(false);
           await loadDashboardData();
           
           // Show pending verification modal after data reload
@@ -624,10 +638,12 @@ const DashboardNew: React.FC = () => {
           }, 500);
         }
       }
-      // If profile is complete and plan is already pending, don't show profile incomplete modal
-      else if (isProfileComplete && mainCoverPlan.status === 'pending') {
-        console.log('✅ Profile complete and plan is pending - no action needed');
+      // If profile is complete and plan is already pending_day1health, don't show profile incomplete modal
+      else if (isProfileComplete && mainCoverPlan.status === 'pending_day1health') {
         setShowProfileIncomplete(false);
+        // Clear dismissal flag since profile is complete
+        sessionStorage.removeItem('profile_modal_dismissed_session');
+        setProfileModalDismissedByUser(false);
       }
     };
 
@@ -677,6 +693,10 @@ const DashboardNew: React.FC = () => {
 
   const handleDeclineUpgrade = () => {
     setShowUpgradePrompt(false);
+    // Reset the timer when user declines - they'll see it again in 3 days
+    if (mainCoverPlan) {
+      localStorage.setItem(`last_upgrade_prompt_${mainCoverPlan.id}`, Date.now().toString());
+    }
   };
 
   const handleAddDependant = () => {
@@ -740,9 +760,9 @@ const DashboardNew: React.FC = () => {
         if (isProfileComplete && progressPercent >= 100 && !mainCoverPlan.active_from) {
           // Profile now complete, change paused to pending
           const { error: updateError } = await supabase
-            .from('member_cover_plans')
-            .update({ status: 'pending' })
-            .eq('id', mainCoverPlan.id);
+            .from('members')
+            .update({ plan_status: 'pending_day1health' })
+            .eq('id', member.id);
           
           if (!updateError) {
             // Reload again to show pending status
@@ -902,9 +922,16 @@ const DashboardNew: React.FC = () => {
             {/* Manage Cashback Actions */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               <button 
-                onClick={handleUpgrade}
-                disabled={Number(mainCoverPlan?.target_amount) >= 665}
+                onClick={() => setShowUpgradePrompt(true)}
+                disabled={Number(mainCoverPlan?.target_amount) >= 665 || mainCoverPlan?.status !== 'active'}
                 className="!bg-blue-600 !text-white p-4 rounded-lg text-left hover:scale-[0.98] transition-all flex flex-col justify-between min-h-[100px] md:min-h-[120px] disabled:!bg-gray-400 disabled:cursor-not-allowed disabled:hover:scale-100"
+                title={
+                  Number(mainCoverPlan?.target_amount) >= 665 
+                    ? 'Already on highest plan' 
+                    : mainCoverPlan?.status !== 'active'
+                    ? 'Plan must be active to upgrade'
+                    : 'Upgrade to Comprehensive plan'
+                }
               >
                 <span className="material-symbols-outlined text-2xl !text-white">upgrade</span>
                 <span className="font-bold text-sm leading-tight !text-white">
@@ -1010,7 +1037,8 @@ const DashboardNew: React.FC = () => {
             {/* Active Policy Card */}
             <div className={`${
               mainCoverPlan?.status === 'paused' ? 'bg-orange-50 border-orange-300' : 
-              mainCoverPlan?.status === 'pending' ? 'bg-yellow-50 border-yellow-300' : 
+              mainCoverPlan?.status === 'pending_day1health' ? 'bg-yellow-50 border-yellow-300' : 
+              mainCoverPlan?.status === 'pending_upgrade' ? 'bg-blue-50 border-blue-300' :
               'bg-white border-gray-200'
             } border p-6 rounded-lg shadow-sm`}>
               <div className="flex justify-between items-start mb-4">
@@ -1024,12 +1052,14 @@ const DashboardNew: React.FC = () => {
                 </div>
                 <span className={`material-symbols-outlined ${
                   mainCoverPlan?.status === 'paused' ? 'text-orange-600' : 
-                  mainCoverPlan?.status === 'pending' ? 'text-yellow-600' : 
+                  mainCoverPlan?.status === 'pending_day1health' ? 'text-yellow-600' : 
+                  mainCoverPlan?.status === 'pending_upgrade' ? 'text-blue-600' :
                   mainCoverPlan?.status === 'active' ? 'text-green-600' :
                   'text-blue-600'
                 }`}>
                   {mainCoverPlan?.status === 'paused' ? 'pause_circle' : 
-                   mainCoverPlan?.status === 'pending' ? 'pending_actions' :
+                   mainCoverPlan?.status === 'pending_day1health' ? 'pending_actions' :
+                   mainCoverPlan?.status === 'pending_upgrade' ? 'upgrade' :
                    mainCoverPlan?.status === 'active' ? 'check_circle' :
                    'verified'}
                 </span>
@@ -1046,7 +1076,7 @@ const DashboardNew: React.FC = () => {
                     </p>
                   </div>
                 )}
-                {mainCoverPlan?.status === 'pending' && (
+                {mainCoverPlan?.status === 'pending_day1health' && (
                   <div className="bg-yellow-100 border-2 border-yellow-400 rounded-lg p-3 mb-4">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="material-symbols-outlined text-yellow-600 text-xl">pending_actions</span>
@@ -1072,6 +1102,26 @@ const DashboardNew: React.FC = () => {
                     </div>
                   </div>
                 )}
+                {mainCoverPlan?.status === 'pending_upgrade' && (
+                  <div className="bg-blue-100 border-2 border-blue-400 rounded-lg p-3 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="material-symbols-outlined text-blue-600 text-xl">upgrade</span>
+                      <p className="text-sm font-black text-blue-700">UPGRADE IN PROGRESS</p>
+                    </div>
+                    <p className="text-xs text-blue-700 font-semibold mb-3">
+                      Your plan upgrade is being processed. Complete verification at Day1Health to activate your new Comprehensive plan.
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => window.open('https://www.day1main.com/plus1upgrade', '_blank')}
+                        className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-sm">open_in_new</span>
+                        Complete Upgrade
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {mainCoverPlan?.status === 'active' && timeRemaining && (
                   <div className="bg-green-50 border-2 border-green-300 rounded-lg p-3 mb-4">
                     <div className="flex items-center gap-2 mb-2">
@@ -1090,18 +1140,19 @@ const DashboardNew: React.FC = () => {
                   <span className={`text-xs font-bold ${
                     mainCoverPlan?.status === 'active' ? 'text-green-600' : 
                     mainCoverPlan?.status === 'paused' ? 'text-orange-600' : 
-                    mainCoverPlan?.status === 'pending' ? 'text-yellow-600' :
+                    mainCoverPlan?.status === 'pending_day1health' ? 'text-yellow-600' :
+                    mainCoverPlan?.status === 'pending_upgrade' ? 'text-blue-600' :
                     'text-gray-600'
                   }`}>
                     Policy {
                       mainCoverPlan?.status === 'active' ? 'Active' : 
                       mainCoverPlan?.status === 'paused' ? 'PAUSED' : 
-                      mainCoverPlan?.status === 'pending' ? 'PENDING' :
+                      mainCoverPlan?.status === 'pending_day1health' ? 'PENDING' :
                       'In Progress'
                     }
                   </span>
                   <span className="text-xs font-bold text-slate-900">
-                    {mainCoverPlan?.status === 'active' || mainCoverPlan?.status === 'pending' ? '100' : progressPercent.toFixed(2)}% Utilization
+                    {mainCoverPlan?.status === 'active' || mainCoverPlan?.status === 'pending_day1health' ? '100' : progressPercent.toFixed(2)}% Utilization
                   </span>
                 </div>
                 {/* Precision Progress Bar */}
@@ -1110,10 +1161,11 @@ const DashboardNew: React.FC = () => {
                     className={`h-full ${
                       mainCoverPlan?.status === 'active' ? 'bg-green-500' : 
                       mainCoverPlan?.status === 'paused' ? 'bg-orange-500' : 
-                      mainCoverPlan?.status === 'pending' ? 'bg-yellow-500' :
+                      mainCoverPlan?.status === 'pending_day1health' ? 'bg-yellow-500' :
+                      mainCoverPlan?.status === 'pending_upgrade' ? 'bg-blue-500' :
                       'bg-blue-500'
                     }`} 
-                    style={{ width: `${mainCoverPlan?.status === 'active' || mainCoverPlan?.status === 'pending' ? 100 : progressPercent}%` }}
+                    style={{ width: `${mainCoverPlan?.status === 'active' || mainCoverPlan?.status === 'pending_day1health' || mainCoverPlan?.status === 'pending_upgrade' ? 100 : progressPercent}%` }}
                   ></div>
                 </div>
                 <div className="pt-2 border-t border-gray-100 grid grid-cols-2 gap-4">
@@ -1403,17 +1455,19 @@ const DashboardNew: React.FC = () => {
         />
       )}
 
-      {/* Upgrade Prompt Modal - Commented out as component not found */}
-      {/* {showUpgradePrompt && mainCoverPlan && (
+      {/* Upgrade Prompt Modal */}
+      {showUpgradePrompt && mainCoverPlan && member && (
         <UpgradePromptModal
           currentPlanName={mainCoverPlan.cover_plans.plan_name}
           currentTarget={targetAmount}
           fundedAmount={fundedAmount}
           overflowAmount={overflowBalance}
+          memberId={member.id}
+          coverPlanId={mainCoverPlan.id}
           onUpgrade={handleUpgrade}
           onDecline={handleDeclineUpgrade}
         />
-      )} */}
+      )}
 
       {/* Profile Incomplete Modal */}
       {showProfileIncomplete && member && (
@@ -1421,22 +1475,20 @@ const DashboardNew: React.FC = () => {
           memberName={member.name}
           percentComplete={progressPercent}
           missingFields={missingFields}
-          currentPlanName={mainCoverPlan?.cover_plans?.plan_name}
-          canChangePlan={canChangePlan}
           planId={mainCoverPlan?.id}
           onClose={() => {
+            // Only allow dismissal if not at 100% (paused status)
             if (progressPercent < 100) {
               setShowProfileIncomplete(false);
-              setProfileModalDismissedByUser(true);
+              dismissProfileModal();
             }
+            // If at 100% (paused), don't dismiss - keep showing until profile is complete
           }}
           onForceClose={() => {
+            // Force close always - user explicitly clicked "Go to Member Dashboard"
+            // This allows them to navigate to profile section even when paused
             setShowProfileIncomplete(false);
-            setProfileModalDismissedByUser(true);
-          }}
-          onChangePlan={() => {
-            setShowProfileIncomplete(false);
-            setShowPlanSelection(true);
+            dismissProfileModal();
           }}
         />
       )}

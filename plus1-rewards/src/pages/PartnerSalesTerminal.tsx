@@ -73,7 +73,6 @@ export default function PartnerSalesTerminal() {
 
   const startQRScanner = async () => {
     try {
-      console.log('🎥 Starting QR scanner...');
       setScannerActive(true);
       setError('');
       
@@ -87,34 +86,29 @@ export default function PartnerSalesTerminal() {
         audio: false
       };
       
-      console.log('📱 Requesting camera with constraints:', constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      console.log('✅ Camera stream obtained:', stream);
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        console.log('📹 Stream assigned to video element');
         
         // Ensure video plays
         const playPromise = videoRef.current.play();
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
-              console.log('▶️ Video playing');
               // Start scanning after a short delay to ensure video is ready
               setTimeout(() => {
-                console.log('🔍 Starting scan loop');
                 scanQRCode();
               }, 500);
             })
             .catch(err => {
-              console.error('❌ Error playing video:', err);
+              console.error('Error playing video:', err);
               setError('Error starting video playback');
             });
         }
       }
     } catch (err: any) {
-      console.error('❌ Camera error:', err);
+      console.error('Camera error:', err);
       setScannerActive(false);
       
       if (err.name === 'NotAllowedError') {
@@ -130,15 +124,12 @@ export default function PartnerSalesTerminal() {
   };
 
   const stopQRScanner = () => {
-    console.log('🛑 Stopping QR scanner');
     setScannerActive(false);
     
     if (videoRef.current && videoRef.current.srcObject) {
       const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-      console.log(`📹 Stopping ${tracks.length} media tracks`);
       tracks.forEach(track => {
         track.stop();
-        console.log(`✅ Stopped ${track.kind} track`);
       });
       videoRef.current.srcObject = null;
     }
@@ -152,13 +143,12 @@ export default function PartnerSalesTerminal() {
     const ctx = canvas.getContext('2d');
 
     if (!ctx) {
-      console.error('❌ Canvas context not available');
+      console.error('Canvas context not available');
       return;
     }
 
     // Check if video has dimensions
     if (video.videoWidth === 0 || video.videoHeight === 0) {
-      console.log('⏳ Video not ready yet, retrying...');
       requestAnimationFrame(scanQRCode);
       return;
     }
@@ -175,7 +165,6 @@ export default function PartnerSalesTerminal() {
       const code = jsQR(imageData.data, imageData.width, imageData.height);
 
       if (code) {
-        console.log('✅ QR Code detected:', code.data);
         // Stop scanner immediately
         setScannerActive(false);
         stopQRScanner();
@@ -184,7 +173,7 @@ export default function PartnerSalesTerminal() {
         return;
       }
     } catch (err) {
-      console.error('❌ Error during scanning:', err);
+      console.error('Error during scanning:', err);
     }
 
     // Continue scanning
@@ -194,8 +183,6 @@ export default function PartnerSalesTerminal() {
   };
 
   const handleQRCodeScanned = async (qrData: string) => {
-    console.log('📱 Processing QR code:', qrData);
-    
     // Try to parse the QR code - it could be a URL or raw format
     let memberIdentifier = null;
     
@@ -205,11 +192,9 @@ export default function PartnerSalesTerminal() {
       const id = url.searchParams.get('id');
       if (id) {
         memberIdentifier = decodeURIComponent(id);
-        console.log('✅ Parsed URL format QR code:', memberIdentifier);
       }
     } catch (e) {
       // Not a URL, try raw format
-      console.log('⏳ Not a URL format, trying raw format');
     }
     
     // If not a URL, try raw format: PLUS1-{phone}-{timestamp}
@@ -218,7 +203,6 @@ export default function PartnerSalesTerminal() {
       const match = qrData.match(qrPattern);
       if (match) {
         memberIdentifier = match[1];
-        console.log('✅ Parsed raw format QR code, phone:', memberIdentifier);
       }
     }
     
@@ -227,12 +211,11 @@ export default function PartnerSalesTerminal() {
       const plusMatch = qrData.match(/PLUS1-(\d{10})/);
       if (plusMatch) {
         memberIdentifier = plusMatch[1];
-        console.log('✅ Extracted phone from PLUS1 format:', memberIdentifier);
       }
     }
     
     if (!memberIdentifier) {
-      console.error('❌ Could not parse QR code:', qrData);
+      console.error('Could not parse QR code:', qrData);
       setError('Invalid QR code format. Please scan a valid Plus1 Rewards member QR code.');
       return;
     }
@@ -243,7 +226,6 @@ export default function PartnerSalesTerminal() {
     setMember(null);
 
     try {
-      console.log('🔍 Searching for member with phone:', memberIdentifier);
       const { data, error: memberError } = await supabase
         .from('members')
         .select('id, first_name, last_name, cell_phone, status, role, email, sa_id, address_line_1')
@@ -251,16 +233,13 @@ export default function PartnerSalesTerminal() {
         .single();
 
       if (memberError || !data) {
-        console.error('❌ Member not found:', memberError);
+        console.error('Member not found:', memberError);
         setError('Member not found. Please ask them to register first.');
         setLoading(false);
         return;
       }
 
-      console.log('✅ Member found:', data.first_name, data.last_name);
-
       if (data.status !== 'active') {
-        console.warn('⚠️ Member status not active:', data.status);
         setError('Member account is not active');
         setLoading(false);
         return;
@@ -268,7 +247,6 @@ export default function PartnerSalesTerminal() {
 
       // Prevent transactions for sponsored members
       if (data.role === 'sponsored_member') {
-        console.warn('⚠️ Sponsored member detected');
         setError('This is a sponsored member. Only the sponsor can earn cashback, not the sponsored member.');
         setLoading(false);
         return;
@@ -291,7 +269,6 @@ export default function PartnerSalesTerminal() {
 
         if (!isProfileComplete) {
           // Profile incomplete - BLOCK transaction
-          console.warn('⚠️ Profile incomplete, blocking transaction');
           setError('Member policy is PAUSED. Member needs to complete their profile information (email, ID number, address) in the +1 Rewards app before transactions can continue. Please ask them to update their information.');
           setLoading(false);
           return;
@@ -302,9 +279,8 @@ export default function PartnerSalesTerminal() {
       setPhoneNumber(memberIdentifier);
       setActiveField('amount');
       setError('');
-      console.log('✅ QR scan successful, ready for amount entry');
     } catch (err) {
-      console.error('❌ Error searching for member:', err);
+      console.error('Error searching for member:', err);
       setError('Error searching for member');
     } finally {
       setLoading(false);
@@ -404,8 +380,6 @@ export default function PartnerSalesTerminal() {
         .eq('member_id', data.id)
         .eq('status', 'paused');
 
-      console.log('🔍 Paused plans check:', { pausedPlans, planError });
-
       if (!planError && pausedPlans && pausedPlans.length > 0) {
         // Check if profile is complete to determine the reason for pause
         const isProfileComplete = 
@@ -414,18 +388,8 @@ export default function PartnerSalesTerminal() {
           data.sa_id && 
           data.address_line_1;
 
-        console.log('🔍 Profile check:', {
-          email: data.email,
-          hasEmail: !!data.email,
-          notPlusRewards: !data.email?.includes('@plus1rewards.local'),
-          sa_id: data.sa_id,
-          address: data.address_line_1,
-          isProfileComplete
-        });
-
         if (!isProfileComplete) {
           // Profile incomplete - BLOCK transaction
-          console.log('❌ Blocking: Profile incomplete');
           setError('Member policy is PAUSED. Member needs to complete their profile information (email, ID number, address) in the +1 Rewards app before transactions can continue. Please ask them to update their information.');
           setLoading(false);
           setActiveField('phone');
@@ -433,7 +397,6 @@ export default function PartnerSalesTerminal() {
         }
         // If profile is complete but paused (insufficient funds), ALLOW transaction to continue
         // They need to earn cashback to reactivate their plan
-        console.log('✅ Allowing: Profile complete, paused due to insufficient funds');
       }
 
       setMember(data);
@@ -475,7 +438,7 @@ export default function PartnerSalesTerminal() {
         .single();
 
       if (linkError || !partnerLink) {
-        console.warn('No active agent link found for partner:', partner.id);
+        // No active agent link found for this partner
       }
 
       const agentId = partnerLink?.agent_id || null;
@@ -546,9 +509,9 @@ export default function PartnerSalesTerminal() {
           };
           
           if (newFundedAmount >= plan.target_amount) {
-            // When plan reaches 100%, it goes to PENDING (not active)
+            // When plan reaches 100%, it goes to pending_day1health (not active)
             // Day1Health will change it to active after verification
-            newStatus = isProfileComplete ? 'pending' : 'paused';
+            newStatus = isProfileComplete ? 'pending_day1health' : 'paused';
             updateData.status = newStatus;
           }
 

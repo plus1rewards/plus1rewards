@@ -6,9 +6,6 @@ interface ProfileIncompleteModalProps {
   missingFields: string[];
   onClose: () => void;
   onForceClose?: () => void; // Force close even when blocking
-  onChangePlan?: () => void; // Option to change plan at 90%
-  currentPlanName?: string;
-  canChangePlan?: boolean; // Whether user can still change plan
   planId?: string; // Plan ID for dismissal tracking
 }
 
@@ -17,9 +14,6 @@ export default function ProfileIncompleteModal({
   missingFields,
   onClose,
   onForceClose,
-  onChangePlan,
-  currentPlanName,
-  canChangePlan = true,
   planId
 }: ProfileIncompleteModalProps) {
   const handleGoToProfile = () => {
@@ -49,6 +43,10 @@ export default function ProfileIncompleteModal({
   };
 
   const handleCloseModal = () => {
+    // Don't allow closing if paused (100% with incomplete profile)
+    if (isBlocking) {
+      return;
+    }
     if (onForceClose) {
       onForceClose();
     } else {
@@ -165,25 +163,9 @@ export default function ProfileIncompleteModal({
                   : 'bg-gradient-to-r from-[#1a558b] to-[#2d7ab8] hover:from-[#1a558b]/90 hover:to-[#2d7ab8]/90'
               } text-white font-black py-4 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2`}
             >
-              <span className="material-symbols-outlined text-2xl">dashboard</span>
-              <span>{isCritical95 ? 'Complete Profile NOW' : 'Go to Member Dashboard'}</span>
+              <span className="material-symbols-outlined text-2xl">edit</span>
+              <span>Fill Out Details</span>
             </button>
-
-            {!isBlocking && !isSuspended && !isCritical95 && onChangePlan && (
-              <button
-                onClick={onChangePlan}
-                disabled={!canChangePlan}
-                className={`w-full ${
-                  canChangePlan
-                    ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-black py-4 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2'
-                    : 'bg-gray-400 text-gray-600 py-4 rounded-xl cursor-not-allowed flex items-center justify-center gap-2'
-                }`}
-                title={!canChangePlan ? 'You can only change your plan once' : ''}
-              >
-                <span className="material-symbols-outlined text-2xl">swap_horiz</span>
-                <span>{canChangePlan ? 'Change Plan' : 'Plan Already Changed'}</span>
-              </button>
-            )}
 
             {!isBlocking && !isSuspended && percentComplete < 95 && (
               <button

@@ -186,7 +186,7 @@ export default function InsuranceDisclosure() {
         </p>
         <div className="bg-[#f5f8fc] rounded-xl p-5 mb-4">
           <p className="font-semibold text-gray-800">Plus1 Rewards Support</p>
-          <p>Email: <a href="mailto:support@plus1rewards.co.za" className="text-[#1a558b] hover:underline">support@plus1rewards.co.za</a></p>
+          <p>Email: <a href="mailto:plus1rewards@gmail.com" className="text-[#1a558b] hover:underline">plus1rewards@gmail.com</a></p>
         </div>
         <p>For complaints about your cover plan or claims, contact Day1Health directly.</p>
         <p className="mt-3">

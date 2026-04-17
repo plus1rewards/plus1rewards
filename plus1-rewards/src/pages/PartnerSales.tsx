@@ -299,9 +299,9 @@ export default function PartnerSales() {
           };
           
           if (newFundedAmount >= plan.target_amount) {
-            // When plan reaches 100%, it goes to PENDING (not active)
+            // When plan reaches 100%, it goes to pending_day1health (not active)
             // Day1Health will change it to active after verification
-            newStatus = isProfileComplete ? 'pending' : 'paused';
+            newStatus = isProfileComplete ? 'pending_day1health' : 'paused';
             updateData.status = newStatus;
           }
 

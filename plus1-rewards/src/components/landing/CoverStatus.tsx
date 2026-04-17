@@ -2,41 +2,16 @@
 import { motion } from 'framer-motion'
 
 export default function CoverStatus() {
-  const pulseVariants = {
-    initial: { scale: 1, opacity: 0.8 },
-    animate: {
-      scale: [1, 1.2, 1],
-      opacity: [0.8, 0.4, 0.8],
-      transition: {
-        duration: 2,
-        repeat: Infinity,
-        ease: "easeInOut"
-      }
-    }
-  }
-
   const cardVariants = {
     hidden: { opacity: 0, y: 50, rotateX: -15 },
-    visible: (i: number) => ({
-      opacity: 1,
-      y: 0,
-      rotateX: 0,
-      transition: {
-        duration: 0.8,
-        delay: i * 0.2,
-        ease: [0.25, 0.46, 0.45, 0.94]
-      }
-    })
+    visible: { opacity: 1, y: 0, rotateX: 0 }
   }
 
-  const floatVariants = {
-    animate: {
-      y: [0, -10, 0],
-      transition: {
-        duration: 3,
-        repeat: Infinity,
-        ease: "easeInOut"
-      }
+  const pulseVariants = {
+    initial: { scale: 1, opacity: 0.5 },
+    animate: { 
+      scale: 2, 
+      opacity: 0
     }
   }
 
@@ -76,11 +51,11 @@ export default function CoverStatus() {
           {/* Active Status */}
           <motion.div 
             className="bg-white rounded-2xl p-8 shadow-xl border-2 border-green-200 relative overflow-hidden"
-            custom={0}
             variants={cardVariants}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0, ease: [0.25, 0.46, 0.45, 0.94] }}
             whileHover={{ 
               y: -10, 
               boxShadow: '0 25px 50px -12px rgba(34, 197, 94, 0.25)',
@@ -104,8 +79,14 @@ export default function CoverStatus() {
             
             <motion.div 
               className="flex items-center justify-center mb-6 relative z-10"
-              variants={floatVariants}
-              animate="animate"
+              animate={{
+                y: [0, -10, 0]
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
             >
               <div className="size-20 rounded-full bg-green-100 flex items-center justify-center relative">
                 {/* Pulse rings */}
@@ -114,13 +95,23 @@ export default function CoverStatus() {
                   variants={pulseVariants}
                   initial="initial"
                   animate="animate"
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeOut"
+                  }}
                 />
                 <motion.div
                   className="absolute inset-0 rounded-full bg-green-500"
                   variants={pulseVariants}
                   initial="initial"
                   animate="animate"
-                  transition={{ delay: 0.5 }}
+                  transition={{ 
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeOut",
+                    delay: 0.5 
+                  }}
                 />
                 <motion.div 
                   className="size-12 rounded-full bg-green-500 flex items-center justify-center relative z-10"
@@ -200,9 +191,15 @@ export default function CoverStatus() {
             
             <motion.div 
               className="flex items-center justify-center mb-6 relative z-10"
-              variants={floatVariants}
-              animate="animate"
-              transition={{ delay: 0.5 }}
+              animate={{
+                y: [0, -10, 0]
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 0.5
+              }}
             >
               <div className="size-20 rounded-full bg-red-100 flex items-center justify-center relative">
                 <motion.div 

@@ -143,10 +143,10 @@ export default function Maintenance() {
         >
           Questions?{' '}
           <a
-            href="mailto:support@plus1rewards.co.za"
+            href="mailto:plus1rewards@gmail.com"
             style={{ color: 'rgba(55,210,112,0.8)', textDecoration: 'none', fontWeight: 600 }}
           >
-            support@plus1rewards.co.za
+            plus1rewards@gmail.com
           </a>
         </motion.p>
       </motion.div>

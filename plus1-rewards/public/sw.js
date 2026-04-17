@@ -1,7 +1,7 @@
-const CACHE_NAME = '+1-rewards-v2'
-const STATIC_CACHE = '+1-rewards-static-v2'
-const DYNAMIC_CACHE = '+1-rewards-dynamic-v2'
-const IMAGE_CACHE = '+1-rewards-images-v2'
+const CACHE_NAME = '+1-rewards-v4'
+const STATIC_CACHE = '+1-rewards-static-v4'
+const DYNAMIC_CACHE = '+1-rewards-dynamic-v4'
+const IMAGE_CACHE = '+1-rewards-images-v4'
 
 // Critical resources to cache immediately
 const urlsToCache = [
@@ -28,10 +28,9 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== STATIC_CACHE && 
-              cacheName !== DYNAMIC_CACHE && 
-              cacheName !== IMAGE_CACHE &&
-              cacheName !== CACHE_NAME) {
+          // Delete all old cache versions
+          if (!cacheName.includes('-v4')) {
+            console.log('Deleting old cache:', cacheName)
             return caches.delete(cacheName)
           }
         })
@@ -112,9 +111,9 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // HTML pages: Network first, cache fallback
+  // HTML pages: Always fetch fresh, only cache on success
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: 'no-store' })
       .then((response) => {
         if (!response || response.status !== 200 || response.type === 'error') {
           return response
@@ -128,6 +127,7 @@ self.addEventListener('fetch', (event) => {
         return response
       })
       .catch(() => {
+        // Only use cache if network fails
         return caches.match(request).then((response) => {
           return response || caches.match('/index.html')
         })

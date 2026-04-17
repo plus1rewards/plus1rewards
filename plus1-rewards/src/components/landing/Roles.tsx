@@ -1,6 +1,6 @@
 // plus1-rewards/src/components/landing/Roles.tsx
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 const BLUE = '#1a558b'
 const BLUE_LIGHT = 'rgba(26,85,139,0.08)'
@@ -37,6 +37,9 @@ export default function Roles() {
       buttonType: 'login-register',
       loginText: 'Member Login',
       registerText: 'Join as a Member',
+      logoColor: undefined as string | undefined,
+      isLogo: false,
+      buttonText: undefined as string | undefined,
     },
     {
       icon: 'storefront',
@@ -51,6 +54,9 @@ export default function Roles() {
       buttonType: 'login-register',
       loginText: 'Partner Login',
       registerText: 'Join as a Partner',
+      logoColor: undefined as string | undefined,
+      isLogo: false,
+      buttonText: undefined as string | undefined,
     },
   ]
 

@@ -45,6 +45,47 @@ interface LinkedPerson {
   dependant_type: string;
 }
 
+// Get pricing based on plan name
+const getPlanPricing = (planName: string) => {
+  const lowerPlanName = planName.toLowerCase();
+  
+  // Comprehensive plans
+  if (lowerPlanName.includes('comprehensive')) {
+    if (lowerPlanName.includes('value plus')) {
+      return { single: 665, couple: 1151, childCost: 266 };
+    } else if (lowerPlanName.includes('platinum')) {
+      return { single: 896, couple: 1611, childCost: 358 };
+    } else if (lowerPlanName.includes('executive')) {
+      return { single: 985, couple: 1724, childCost: 394 };
+    }
+  }
+  
+  // Hospital plans
+  if (lowerPlanName.includes('hospital')) {
+    return { single: 390, couple: 624, childCost: 156 };
+  }
+  
+  // Day to Day plans
+  if (lowerPlanName.includes('day')) {
+    return { single: 385, couple: 578, childCost: 193 };
+  }
+  
+  // Default fallback (shouldn't happen)
+  return { single: 0, couple: 0, childCost: 0 };
+};
+
+// Calculate dependant cost based on plan name and dependant type
+const calculateDependantCost = (planName: string, dependantType: string): number => {
+  const pricing = getPlanPricing(planName);
+  
+  if (dependantType === 'child') {
+    return pricing.childCost;
+  } else {
+    // Adult dependant (spouse/partner/other) = couple price - single price
+    return pricing.couple - pricing.single;
+  }
+};
+
 export default function MemberCoverPlans() {
   const navigate = useNavigate();
   const [member, setMember] = useState<Member | null>(null);
@@ -376,39 +417,74 @@ export default function MemberCoverPlans() {
                           </span>
                         </button>
 
+                        {/* Total Cost Summary */}
+                        {(() => {
+                          const pricing = getPlanPricing(plan.cover_plans.plan_name);
+                          const mainMemberCost = pricing.single;
+                          const totalDependantCost = linkedPeople.reduce((sum, person) => 
+                            sum + calculateDependantCost(plan.cover_plans.plan_name, person.dependant_type), 0
+                          );
+                          const totalMonthlyCost = mainMemberCost + totalDependantCost;
+                          
+                          return (
+                            <div className="mt-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-bold text-gray-600">Main Member</span>
+                                <span className="text-sm font-bold text-gray-900">R{mainMemberCost.toFixed(2)}</span>
+                              </div>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-bold text-gray-600">Dependants ({linkedPeople.length})</span>
+                                <span className="text-sm font-bold text-gray-900">R{totalDependantCost.toFixed(2)}</span>
+                              </div>
+                              <div className="pt-2 border-t border-blue-300 flex items-center justify-between">
+                                <span className="text-sm font-black text-[#1a558b]">Total Monthly Cost</span>
+                                <span className="text-lg font-black text-[#1a558b]">R{totalMonthlyCost.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
                         {isExpanded && (
                           <div className="mt-3 space-y-2">
-                            {linkedPeople.map((person) => (
-                              <div key={person.id} className="bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-lg p-4">
-                                <div className="flex items-start justify-between mb-3">
-                                  <div className="flex items-start gap-3">
-                                    <div className="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-                                      <span className="material-symbols-outlined text-white text-lg">
-                                        {person.dependant_type === 'child' ? 'child_care' : person.dependant_type === 'spouse' ? 'favorite' : 'person'}
-                                      </span>
+                            {linkedPeople.map((person) => {
+                              const dependantCost = calculateDependantCost(plan.cover_plans.plan_name, person.dependant_type);
+                              
+                              return (
+                                <div key={person.id} className="bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-lg p-4">
+                                  <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-start gap-3">
+                                      <div className="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                                        <span className="material-symbols-outlined text-white text-lg">
+                                          {person.dependant_type === 'child' ? 'child_care' : person.dependant_type === 'spouse' ? 'favorite' : 'person'}
+                                        </span>
+                                      </div>
+                                      <div className="flex-1">
+                                        <p className="font-bold text-base text-gray-900">{person.full_name}</p>
+                                        <p className="text-xs text-teal-700 uppercase font-bold tracking-wider">
+                                          {person.dependant_type}
+                                        </p>
+                                      </div>
                                     </div>
-                                    <div className="flex-1">
-                                      <p className="font-bold text-base text-gray-900">{person.full_name}</p>
-                                      <p className="text-xs text-teal-700 uppercase font-bold tracking-wider">
-                                        {person.dependant_type}
-                                      </p>
+                                  </div>
+                                  
+                                  {/* Details Grid */}
+                                  <div className="grid grid-cols-2 gap-3 text-xs">
+                                    <div className="bg-white/60 rounded p-2">
+                                      <p className="text-gray-500 font-semibold uppercase tracking-wider mb-0.5">ID Number</p>
+                                      <p className="font-bold text-gray-900">{person.id_number || 'N/A'}</p>
+                                    </div>
+                                    <div className="bg-white/60 rounded p-2">
+                                      <p className="text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Type</p>
+                                      <p className="font-bold text-gray-900 capitalize">{person.dependant_type}</p>
+                                    </div>
+                                    <div className="col-span-2 bg-gradient-to-r from-teal-600 to-emerald-600 rounded p-2">
+                                      <p className="text-white/80 font-semibold uppercase tracking-wider mb-0.5 text-[10px]">Monthly Cost</p>
+                                      <p className="font-black text-white text-lg">R{dependantCost.toFixed(2)}</p>
                                     </div>
                                   </div>
                                 </div>
-                                
-                                {/* Details Grid */}
-                                <div className="grid grid-cols-2 gap-3 text-xs">
-                                  <div className="bg-white/60 rounded p-2">
-                                    <p className="text-gray-500 font-semibold uppercase tracking-wider mb-0.5">ID Number</p>
-                                    <p className="font-bold text-gray-900">{person.id_number || 'N/A'}</p>
-                                  </div>
-                                  <div className="bg-white/60 rounded p-2">
-                                    <p className="text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Type</p>
-                                    <p className="font-bold text-gray-900 capitalize">{person.dependant_type}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>

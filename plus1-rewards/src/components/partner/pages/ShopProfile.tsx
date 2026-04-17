@@ -347,89 +347,48 @@ export default function ShopProfile() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+      {/* Header Banner - Matching Dashboard */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 mt-6">
+        <div className="bg-gradient-to-r from-[#1a558b] to-[#2563eb] rounded-2xl shadow-lg p-6 sm:p-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6 mb-6">
+            <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate('/partner/dashboard')}
-                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                className="p-2 hover:bg-white/20 rounded-lg transition-all"
               >
-                <span className="material-symbols-outlined text-gray-600 text-xl sm:text-2xl">arrow_back</span>
+                <span className="material-symbols-outlined text-white text-2xl">arrow_back</span>
               </button>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 truncate">Back to Dashboard</h1>
-                <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">Manage your business information</p>
+              
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Business Profile</h1>
+                <p className="text-white/90 text-sm">Manage your shop information and settings</p>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
-        {/* Status Banner */}
-        <div className={`rounded-xl p-4 sm:p-5 md:p-6 mb-6 sm:mb-8 ${
-          partner.status === 'active' ? 'bg-gradient-to-r from-green-500 to-green-600' :
-          partner.status === 'pending' ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' :
-          'bg-gradient-to-r from-red-500 to-red-600'
-        } text-white shadow-lg`}>
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined text-2xl sm:text-3xl">storefront</span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-lg sm:text-xl md:text-2xl font-bold truncate">{partner.shop_name}</h2>
-              <p className="text-white/90 text-xs sm:text-sm">Status: <span className="font-semibold capitalize">{partner.status}</span></p>
-              <p className="text-white/90 text-xs sm:text-sm">Cashback Rate: <span className="font-bold">{partner.cashback_percent}%</span></p>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation Tabs */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 sm:mb-8 overflow-hidden">
-          <div className="flex items-center justify-between">
-            <div className="flex overflow-x-auto scrollbar-hide">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-6 py-3 sm:py-4 font-medium whitespace-nowrap border-b-2 transition-colors text-xs sm:text-sm md:text-base ${
-                    activeTab === tab.id
-                      ? 'border-[#1a558b] text-[#1a558b] bg-blue-50'
-                      : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-base sm:text-lg">{tab.icon}</span>
-                  <span className="hidden sm:inline">{tab.label}</span>
-                </button>
-              ))}
-            </div>
-            
-            <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 flex-shrink-0">
+            {/* Edit/Save Buttons */}
+            <div className="flex items-center gap-2 flex-shrink-0">
               {editMode ? (
                 <>
                   <button
                     onClick={handleCancel}
-                    className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-gray-600 hover:text-gray-800 font-medium text-xs sm:text-sm"
+                    className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-semibold rounded-lg transition-all text-sm"
                   >
-                    <span className="hidden sm:inline">Cancel</span>
-                    <span className="sm:hidden">✕</span>
+                    Cancel
                   </button>
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 disabled:opacity-50 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+                    className="px-4 py-2 bg-white text-[#1a558b] font-semibold rounded-lg hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2 text-sm transition-all"
                   >
                     {saving ? (
                       <>
-                        <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        <span className="hidden sm:inline">Saving...</span>
+                        <div className="w-4 h-4 border-2 border-[#1a558b]/30 border-t-[#1a558b] rounded-full animate-spin"></div>
+                        Saving...
                       </>
                     ) : (
                       <>
-                        <span className="material-symbols-outlined text-sm sm:text-lg">save</span>
-                        <span className="hidden sm:inline">Save</span>
+                        <span className="material-symbols-outlined text-lg">save</span>
+                        Save
                       </>
                     )}
                   </button>
@@ -437,48 +396,93 @@ export default function ShopProfile() {
               ) : (
                 <button
                   onClick={() => setEditMode(true)}
-                  className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+                  className="px-4 py-2 bg-white text-[#1a558b] font-semibold rounded-lg hover:bg-gray-100 flex items-center gap-2 text-sm transition-all"
                 >
-                  <span className="material-symbols-outlined text-sm sm:text-lg">edit</span>
-                  <span className="hidden sm:inline">Edit</span>
+                  <span className="material-symbols-outlined text-lg">edit</span>
+                  Edit
                 </button>
               )}
             </div>
           </div>
+
+          {/* Stats Cards - Simple inline display */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white/10 rounded-xl p-4 border border-white/20">
+              <p className="text-white/80 text-xs font-semibold mb-1">STATUS</p>
+              <p className="text-white font-bold text-lg capitalize">{partner.status}</p>
+            </div>
+            <div className="bg-white/10 rounded-xl p-4 border border-white/20">
+              <p className="text-white/80 text-xs font-semibold mb-1">CASHBACK RATE</p>
+              <p className="text-white font-bold text-lg">{partner.cashback_percent}%</p>
+            </div>
+            <div className="bg-white/10 rounded-xl p-4 border border-white/20">
+              <p className="text-white/80 text-xs font-semibold mb-1">BUSINESS</p>
+              <p className="text-white font-bold text-lg truncate">{partner.shop_name}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Navigation Tabs */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 sm:mb-8 overflow-hidden">
+          <div className="flex overflow-x-auto scrollbar-hide border-b border-gray-200">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap border-b-2 transition-all text-xs sm:text-sm md:text-base ${
+                  activeTab === tab.id
+                    ? 'border-[#1a558b] text-[#1a558b] bg-gradient-to-b from-blue-50 to-transparent'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <span className={`material-symbols-outlined text-base sm:text-lg transition-all ${
+                  activeTab === tab.id ? 'text-[#1a558b]' : 'text-gray-500'
+                }`}>{tab.icon}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
         {/* Tab Content */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {/* Basic Info Tab */}
           {activeTab === 'basic' && (
-            <div className="p-8">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#1a558b]">business</span>
-                Business Information
-              </h3>
+            <div className="p-4 sm:p-6 md:p-8">
+              <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-8">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#1a558b] to-[#2563eb] rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-white text-lg sm:text-xl">business</span>
+                </div>
+                <h3 className="text-lg sm:text-xl md:text-2xl font-black text-gray-900">Business Information</h3>
+              </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Business Name *</label>
+                  <label className="block text-xs sm:text-sm font-black text-gray-700 mb-2 uppercase tracking-wide">Business Name *</label>
                   {editMode ? (
                     <input
                       type="text"
                       value={formData.shop_name || ''}
                       onChange={(e) => setFormData({ ...formData, shop_name: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent text-sm"
                       placeholder="Enter business name"
                     />
                   ) : (
-                    <p className="text-gray-900 font-medium py-3">{partner.shop_name}</p>
+                    <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-gray-900 font-semibold text-sm">{partner.shop_name}</p>
+                    </div>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+                  <label className="block text-xs sm:text-sm font-black text-gray-700 mb-2 uppercase tracking-wide">Category</label>
                   {editMode ? (
                     <select
                       value={formData.category || ''}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent text-sm"
                     >
                       <option value="">Select category</option>
                       <option value="Grocery Store">Grocery Store</option>
@@ -489,104 +493,109 @@ export default function ShopProfile() {
                       <option value="Other">Other</option>
                     </select>
                   ) : (
-                    <p className="text-gray-900 font-medium py-3">{partner.category || 'Not specified'}</p>
+                    <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-gray-900 font-semibold text-sm">{partner.category || 'Not specified'}</p>
+                    </div>
                   )}
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Business Address</label>
+                  <label className="block text-xs sm:text-sm font-black text-gray-700 mb-2 uppercase tracking-wide">Business Address</label>
                   {editMode ? (
                     <textarea
                       value={formData.address || ''}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent text-sm"
                       placeholder="Enter full business address"
                     />
                   ) : (
-                    <p className="text-gray-900 font-medium py-3">{partner.address || 'Not provided'}</p>
+                    <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-gray-900 font-semibold text-sm">{partner.address || 'Not provided'}</p>
+                    </div>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Postal Code</label>
+                  <label className="block text-xs sm:text-sm font-black text-gray-700 mb-2 uppercase tracking-wide">Postal Code</label>
                   {editMode ? (
                     <input
                       type="text"
                       value={formData.postal_code || ''}
                       onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent text-sm"
                       placeholder="e.g., 7530"
                       maxLength={4}
                       pattern="\d{4}"
                     />
                   ) : (
-                    <p className="text-gray-900 font-medium py-3">{partner.postal_code || 'Not provided'}</p>
+                    <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-gray-900 font-semibold text-sm">{partner.postal_code || 'Not provided'}</p>
+                    </div>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Latitude</label>
+                  <label className="block text-xs sm:text-sm font-black text-gray-700 mb-2 uppercase tracking-wide">Latitude</label>
                   {editMode ? (
                     <input
                       type="number"
                       step="any"
                       value={formData.latitude || ''}
-                      onChange={(e) => setFormData({ ...formData, latitude: parseFloat(e.target.value) || null })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                      onChange={(e) => setFormData({ ...formData, latitude: parseFloat(e.target.value) || undefined })}
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent text-sm"
                       placeholder="e.g., -33.9249"
                     />
                   ) : (
-                    <p className="text-gray-900 font-medium py-3">{partner.latitude || 'Not provided'}</p>
+                    <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-gray-900 font-semibold text-sm">{partner.latitude || 'Not provided'}</p>
+                    </div>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Longitude</label>
+                  <label className="block text-xs sm:text-sm font-black text-gray-700 mb-2 uppercase tracking-wide">Longitude</label>
                   {editMode ? (
                     <input
                       type="number"
                       step="any"
                       value={formData.longitude || ''}
-                      onChange={(e) => setFormData({ ...formData, longitude: parseFloat(e.target.value) || null })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                      onChange={(e) => setFormData({ ...formData, longitude: parseFloat(e.target.value) || undefined })}
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent text-sm"
                       placeholder="e.g., 18.4241"
                     />
                   ) : (
-                    <p className="text-gray-900 font-medium py-3">{partner.longitude || 'Not provided'}</p>
+                    <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-gray-900 font-semibold text-sm">{partner.longitude || 'Not provided'}</p>
+                    </div>
                   )}
                 </div>
 
                 {editMode && (
                   <div className="md:col-span-2">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-start gap-3">
-                        <span className="material-symbols-outlined text-blue-600 text-xl">location_on</span>
-                        <div className="flex-1">
-                          <h4 className="text-blue-800 font-semibold text-sm mb-2">Location Coordinates</h4>
-                          <p className="text-blue-700 text-sm mb-3">
-                            Accurate coordinates help customers find your business on maps. You can either:
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+                      <div className="flex items-start gap-2 sm:gap-3">
+                        <span className="material-symbols-outlined text-blue-600 text-lg sm:text-xl flex-shrink-0">location_on</span>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-blue-900 font-black text-xs sm:text-sm mb-1 uppercase tracking-wide">Location Coordinates</h4>
+                          <p className="text-blue-800 text-xs sm:text-sm mb-2">
+                            Accurate coordinates help customers find your business on maps.
                           </p>
-                          <ul className="text-blue-700 text-sm mb-4 space-y-1">
-                            <li>• Use the auto-geocode button to find coordinates from your address</li>
-                            <li>• Manually enter coordinates from Google Maps (right-click your location)</li>
-                            <li>• Use GPS coordinates from your phone's location app</li>
-                          </ul>
                           <button
                             type="button"
                             onClick={handleAutoGeocode}
                             disabled={geocoding || !formData.address}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5"
                           >
                             {geocoding ? (
                               <>
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                Finding coordinates...
+                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                <span className="hidden sm:inline">Finding...</span>
                               </>
                             ) : (
                               <>
-                                <span className="material-symbols-outlined text-lg">my_location</span>
-                                Auto-find coordinates
+                                <span className="material-symbols-outlined text-sm">my_location</span>
+                                <span className="hidden sm:inline">Auto-find</span>
                               </>
                             )}
                           </button>
@@ -597,149 +606,101 @@ export default function ShopProfile() {
                 )}
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Business Description</label>
+                  <label className="block text-xs sm:text-sm font-black text-gray-700 mb-2 uppercase tracking-wide">Business Description</label>
                   {editMode ? (
                     <textarea
                       value={formData.store_description || ''}
                       onChange={(e) => setFormData({ ...formData, store_description: e.target.value })}
                       rows={4}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent text-sm"
                       placeholder="Describe your business, products, and services..."
                     />
                   ) : (
-                    <p className="text-gray-900 font-medium py-3">{partner.store_description || 'No description provided'}</p>
+                    <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-gray-900 font-semibold text-sm">{partner.store_description || 'No description provided'}</p>
+                    </div>
                   )}
                 </div>
               </div>
-
-              {editMode && (
-                <div className="mt-8 pt-6 border-t border-gray-200">
-                  <div className="flex items-center justify-end gap-3">
-                    <button
-                      onClick={handleCancel}
-                      className="px-6 py-3 text-gray-600 hover:text-gray-800 font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      Cancel Changes
-                    </button>
-                    <button
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="px-8 py-3 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 disabled:opacity-50 flex items-center gap-2 shadow-lg"
-                    >
-                      {saving ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                          Saving Profile...
-                        </>
-                      ) : (
-                        <>
-                          <span className="material-symbols-outlined text-lg">save</span>
-                          Save Profile
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
           {/* Contact Tab */}
           {activeTab === 'contact' && (
-            <div className="p-8">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#1a558b]">contact_phone</span>
-                Contact Information
-              </h3>
+            <div className="p-4 sm:p-6 md:p-8">
+              <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-8">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-white text-lg sm:text-xl">contact_phone</span>
+                </div>
+                <h3 className="text-lg sm:text-xl md:text-2xl font-black text-gray-900">Contact Information</h3>
+              </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Responsible Person *</label>
+                  <label className="block text-xs sm:text-sm font-black text-gray-700 mb-2 uppercase tracking-wide">Responsible Person *</label>
                   {editMode ? (
                     <input
                       type="text"
                       value={formData.responsible_person || ''}
                       onChange={(e) => setFormData({ ...formData, responsible_person: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                       placeholder="Full name of responsible person"
                     />
                   ) : (
-                    <p className="text-gray-900 font-medium py-3">{partner.responsible_person || partner.first_name || 'Not provided'}</p>
+                    <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-gray-900 font-semibold text-sm">{partner.responsible_person || partner.first_name || 'Not provided'}</p>
+                    </div>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number *</label>
+                  <label className="block text-xs sm:text-sm font-black text-gray-700 mb-2 uppercase tracking-wide">Phone Number *</label>
                   {editMode ? (
                     <input
                       type="tel"
                       value={formData.phone || formData.cell_phone || ''}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value, cell_phone: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                       placeholder="e.g., 082 555 1234"
                     />
                   ) : (
-                    <p className="text-gray-900 font-medium py-3">{partner.phone || partner.cell_phone || 'Not provided'}</p>
+                    <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-gray-900 font-semibold text-sm">{partner.phone || partner.cell_phone || 'Not provided'}</p>
+                    </div>
                   )}
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address *</label>
+                  <label className="block text-xs sm:text-sm font-black text-gray-700 mb-2 uppercase tracking-wide">Email Address *</label>
                   {editMode ? (
                     <input
                       type="email"
                       value={formData.email || ''}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                       placeholder="business@example.com"
                     />
                   ) : (
-                    <p className="text-gray-900 font-medium py-3">{partner.email}</p>
+                    <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-gray-900 font-semibold text-sm">{partner.email}</p>
+                    </div>
                   )}
                 </div>
               </div>
-
-              {editMode && (
-                <div className="mt-8 pt-6 border-t border-gray-200">
-                  <div className="flex items-center justify-end gap-3">
-                    <button
-                      onClick={handleCancel}
-                      className="px-6 py-3 text-gray-600 hover:text-gray-800 font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      Cancel Changes
-                    </button>
-                    <button
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="px-8 py-3 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 disabled:opacity-50 flex items-center gap-2 shadow-lg"
-                    >
-                      {saving ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                          Saving Profile...
-                        </>
-                      ) : (
-                        <>
-                          <span className="material-symbols-outlined text-lg">save</span>
-                          Save Profile
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
           {/* Branding Tab */}
           {activeTab === 'branding' && (
-            <div className="p-8">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#1a558b]">palette</span>
-                Branding & Media
-              </h3>
+            <div className="p-4 sm:p-6 md:p-8">
+              <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-8">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-white text-lg sm:text-xl">palette</span>
+                </div>
+                <h3 className="text-lg sm:text-xl md:text-2xl font-black text-gray-900">Branding & Media</h3>
+              </div>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
                 {/* Logo Upload Section */}
                 <div>
                   <LogoUpload
@@ -751,10 +712,10 @@ export default function ShopProfile() {
 
                 {/* Card Preview Section */}
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Live Card Preview</h4>
-                  <p className="text-sm text-gray-600 mb-6">This is your actual live card with all animations and effects. Hover over it to see the interactions!</p>
+                  <h4 className="text-base sm:text-lg font-black text-gray-900 mb-2 uppercase tracking-wide">Live Card Preview</h4>
+                  <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">This is your actual live card with all animations and effects. Hover over it to see the interactions!</p>
                   
-                  <div className="flex justify-center">
+                  <div className="flex justify-center mb-4 sm:mb-6">
                     <AnimatedPartnerCard
                       partner={{
                         id: partner.id,
@@ -767,65 +728,34 @@ export default function ShopProfile() {
                         phone: editMode ? (formData.phone || 'No phone') : (partner.phone || 'No phone')
                       }}
                       onClick={() => {
-                        // Optional: Add click handler for preview
                         console.log('Preview card clicked');
                       }}
                     />
                   </div>
                   
-                  <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <span className="material-symbols-outlined text-green-600 text-xl">auto_awesome</span>
-                      <div>
-                        <h5 className="text-green-800 font-semibold text-sm mb-1">Live Interactive Preview</h5>
-                        <ul className="text-green-700 text-sm space-y-1">
-                          <li>• This is your actual card with full animations and hover effects</li>
-                          <li>• Changes update in real-time as you edit your information</li>
-                          <li>• Badge color automatically adjusts based on cashback percentage</li>
-                          <li>• Upload a logo to see it immediately in the card</li>
-                          <li>• This exact card appears on the homepage and partner directory</li>
+                  <div className="p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <span className="material-symbols-outlined text-green-600 text-lg sm:text-xl flex-shrink-0">auto_awesome</span>
+                      <div className="min-w-0 flex-1">
+                        <h5 className="text-green-900 font-black text-xs sm:text-sm mb-1 uppercase tracking-wide">Live Interactive Preview</h5>
+                        <ul className="text-green-800 text-xs sm:text-sm space-y-0.5">
+                          <li>• Full animations and hover effects</li>
+                          <li>• Updates in real-time as you edit</li>
+                          <li>• Badge color adjusts by cashback %</li>
+                          <li>• Upload logo to see it immediately</li>
+                          <li>• Appears on homepage and directory</li>
                         </ul>
                       </div>
                     </div>
                   </div>
                 </div>
-
-                {editMode && (
-                  <div className="mt-8 pt-6 border-t border-gray-200">
-                    <div className="flex items-center justify-end gap-3">
-                      <button
-                        onClick={handleCancel}
-                        className="px-6 py-3 text-gray-600 hover:text-gray-800 font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        Cancel Changes
-                      </button>
-                      <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="px-8 py-3 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 disabled:opacity-50 flex items-center gap-2 shadow-lg"
-                      >
-                        {saving ? (
-                          <>
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                            Saving Profile...
-                          </>
-                        ) : (
-                          <>
-                            <span className="material-symbols-outlined text-lg">save</span>
-                            Save Profile
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           )}
 
           {/* Suppliers Tab */}
           {activeTab === 'suppliers' && (
-            <div className="p-8">
+            <div className="p-4 sm:p-6 md:p-8">
               {/* Supplier Expiry Banner */}
               {partner && (
                 <SupplierExpiryBanner 
@@ -834,43 +764,50 @@ export default function ShopProfile() {
                 />
               )}
 
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[#1a558b]">local_shipping</span>
-                  Business References ({suppliers.length}/3)
-                </h3>
+              <div className="flex items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-white text-lg sm:text-xl">local_shipping</span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl md:text-2xl font-black text-gray-900 truncate">Business References ({suppliers.length}/3)</h3>
+                </div>
                 <button
                   onClick={handleAddSupplier}
                   disabled={suppliers.length >= 3 || !canAddSuppliers}
-                  className="px-4 py-2 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm flex-shrink-0 transition-all"
                 >
-                  <span className="material-symbols-outlined">add</span>
-                  Add Reference
+                  <span className="material-symbols-outlined text-base sm:text-lg">add</span>
+                  <span className="hidden sm:inline">Add Reference</span>
                 </button>
               </div>
 
               {suppliers.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-                  <span className="material-symbols-outlined text-4xl text-gray-400 block mb-4">local_shipping</span>
-                  <p className="text-gray-600 font-semibold mb-2">No references added yet</p>
-                  <p className="text-sm text-gray-500">Add business references to help build credibility</p>
+                <div className="text-center py-8 sm:py-12 bg-gray-50 rounded-lg sm:rounded-xl border-2 border-dashed border-gray-300">
+                  <span className="material-symbols-outlined text-3xl sm:text-4xl text-gray-400 block mb-2 sm:mb-4">local_shipping</span>
+                  <p className="text-gray-700 font-black text-sm sm:text-base mb-1">No references added yet</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Add business references to help build credibility</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {suppliers.map((supplier, idx) => (
-                    <div key={supplier.id} className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-bold text-gray-900">Reference {idx + 1}</h4>
-                        <div className="flex gap-2">
+                    <div key={supplier.id} className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg sm:rounded-xl p-4 sm:p-6 border border-gray-200 hover:shadow-lg transition-all duration-200">
+                      <div className="flex items-start justify-between mb-4 gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-400 to-amber-500 rounded-lg flex items-center justify-center flex-shrink-0 font-black text-white text-xs sm:text-sm">
+                            {idx + 1}
+                          </div>
+                          <h4 className="font-black text-gray-900 text-sm sm:text-base truncate">Reference {idx + 1}</h4>
+                        </div>
+                        <div className="flex gap-1 flex-shrink-0">
                           <button
                             onClick={() => handleEditSupplier(supplier)}
-                            className="p-1 text-blue-600 hover:bg-blue-100 rounded"
+                            className="p-1.5 sm:p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-all"
                           >
                             <span className="material-symbols-outlined text-sm">edit</span>
                           </button>
                           <button
                             onClick={() => handleDeleteSupplier(supplier.id)}
-                            className="p-1 text-red-600 hover:bg-red-100 rounded"
+                            className="p-1.5 sm:p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all"
                           >
                             <span className="material-symbols-outlined text-sm">delete</span>
                           </button>
@@ -878,55 +815,25 @@ export default function ShopProfile() {
                       </div>
                       
                       <div className="space-y-3">
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 uppercase">Name</p>
-                          <p className="text-sm text-gray-900">{supplier.name}</p>
+                        <div className="bg-white rounded-lg p-2.5 sm:p-3 border border-gray-200">
+                          <p className="text-[10px] sm:text-xs font-black text-gray-500 uppercase tracking-wide mb-1">Name</p>
+                          <p className="text-sm sm:text-base font-semibold text-gray-900">{supplier.name}</p>
                         </div>
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 uppercase">Contact Person</p>
-                          <p className="text-sm text-gray-900">{supplier.contact_person || '-'}</p>
+                        <div className="bg-white rounded-lg p-2.5 sm:p-3 border border-gray-200">
+                          <p className="text-[10px] sm:text-xs font-black text-gray-500 uppercase tracking-wide mb-1">Contact Person</p>
+                          <p className="text-sm sm:text-base font-semibold text-gray-900">{supplier.contact_person || '-'}</p>
                         </div>
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 uppercase">Phone</p>
-                          <p className="text-sm text-gray-900">{supplier.phone || '-'}</p>
+                        <div className="bg-white rounded-lg p-2.5 sm:p-3 border border-gray-200">
+                          <p className="text-[10px] sm:text-xs font-black text-gray-500 uppercase tracking-wide mb-1">Phone</p>
+                          <p className="text-sm sm:text-base font-semibold text-gray-900">{supplier.phone || '-'}</p>
                         </div>
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 uppercase">Email</p>
-                          <p className="text-sm text-gray-900">{supplier.email || '-'}</p>
+                        <div className="bg-white rounded-lg p-2.5 sm:p-3 border border-gray-200">
+                          <p className="text-[10px] sm:text-xs font-black text-gray-500 uppercase tracking-wide mb-1">Email</p>
+                          <p className="text-sm sm:text-base font-semibold text-gray-900 truncate">{supplier.email || '-'}</p>
                         </div>
                       </div>
                     </div>
                   ))}
-                </div>
-              )}
-
-              {editMode && (
-                <div className="mt-8 pt-6 border-t border-gray-200">
-                  <div className="flex items-center justify-end gap-3">
-                    <button
-                      onClick={handleCancel}
-                      className="px-6 py-3 text-gray-600 hover:text-gray-800 font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      Cancel Changes
-                    </button>
-                    <button
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="px-8 py-3 bg-[#1a558b] text-white rounded-lg font-semibold hover:bg-[#1a558b]/90 disabled:opacity-50 flex items-center gap-2 shadow-lg"
-                    >
-                      {saving ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                          Saving Profile...
-                        </>
-                      ) : (
-                        <>
-                          <span className="material-symbols-outlined text-lg">save</span>
-                          Save Profile
-                        </>
-                      )}
-                    </button>
-                  </div>
                 </div>
               )}
             </div>
@@ -935,72 +842,72 @@ export default function ShopProfile() {
       </div>
       {/* Supplier Form Modal */}
       {showSupplierForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl">
-            <h3 className="text-xl font-bold text-gray-900 mb-6">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 md:p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-lg sm:text-xl md:text-2xl font-black text-gray-900 mb-4 sm:mb-6">
               {editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}
             </h3>
 
-            <div className="space-y-4 mb-8">
+            <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Supplier Name *</label>
+                <label className="block text-xs sm:text-sm font-black text-gray-700 mb-2 uppercase tracking-wide">Supplier Name *</label>
                 <input
                   type="text"
                   value={supplierForm.name}
                   onChange={(e) => setSupplierForm({ ...supplierForm, name: e.target.value })}
                   placeholder="e.g., ABC Wholesale"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Contact Person</label>
+                <label className="block text-xs sm:text-sm font-black text-gray-700 mb-2 uppercase tracking-wide">Contact Person</label>
                 <input
                   type="text"
                   value={supplierForm.contact_person}
                   onChange={(e) => setSupplierForm({ ...supplierForm, contact_person: e.target.value })}
                   placeholder="e.g., John Smith"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                <label className="block text-xs sm:text-sm font-black text-gray-700 mb-2 uppercase tracking-wide">Phone Number</label>
                 <input
                   type="tel"
                   value={supplierForm.phone}
                   onChange={(e) => setSupplierForm({ ...supplierForm, phone: e.target.value })}
                   placeholder="082 555 1234"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                <label className="block text-xs sm:text-sm font-black text-gray-700 mb-2 uppercase tracking-wide">Email Address</label>
                 <input
                   type="email"
                   value={supplierForm.email}
                   onChange={(e) => setSupplierForm({ ...supplierForm, email: e.target.value })}
                   placeholder="supplier@example.com"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a558b] focus:border-transparent text-sm"
                 />
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               <button
                 onClick={() => {
                   setShowSupplierForm(false);
                   setEditingSupplier(null);
                   setSupplierForm({ name: '', contact_person: '', phone: '', email: '' });
                 }}
-                className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors"
+                className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-all text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveSupplier}
-                className="flex-1 px-4 py-3 bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-semibold rounded-lg transition-colors"
+                className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-[#1a558b] hover:bg-[#1a558b]/90 text-white font-semibold rounded-lg transition-all text-sm"
               >
                 {editingSupplier ? 'Update' : 'Add'} Supplier
               </button>
