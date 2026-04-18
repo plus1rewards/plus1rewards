@@ -773,10 +773,10 @@ export default function PartnerSalesTerminal() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              className="grid lg:grid-cols-2 gap-8"
+              className="flex flex-col lg:flex-row gap-8 justify-center items-start max-w-6xl mx-auto"
             >
               {/* Left Side - Input Display */}
-              <div className="space-y-6">
+              <div className="space-y-6 w-full lg:max-w-md">
                 <motion.div 
                   className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8"
                   initial={{ opacity: 0, x: -20 }}
@@ -928,7 +928,7 @@ export default function PartnerSalesTerminal() {
 
               {/* Right Side - Keypad */}
               <motion.div 
-                className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8"
+                className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 w-full lg:max-w-md"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 }}
@@ -1033,8 +1033,8 @@ export default function PartnerSalesTerminal() {
                     {/* Member Info */}
                     <motion.div 
                       className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-2xl p-6 relative overflow-hidden"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 }}
                     >
                       <div className="absolute top-0 right-0 w-32 h-32 bg-blue-200 rounded-full -mr-16 -mt-16 opacity-30"></div>
@@ -1051,8 +1051,8 @@ export default function PartnerSalesTerminal() {
                     {/* Purchase Amount */}
                     <motion.div 
                       className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-300 rounded-2xl p-6 relative overflow-hidden"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 }}
                     >
                       <div className="absolute top-0 right-0 w-32 h-32 bg-gray-300 rounded-full -mr-16 -mt-16 opacity-20"></div>
@@ -1068,8 +1068,8 @@ export default function PartnerSalesTerminal() {
                     {/* Cashback */}
                     <motion.div 
                       className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-2xl p-6 relative overflow-hidden"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.3 }}
                     >
                       <div className="absolute top-0 right-0 w-32 h-32 bg-green-300 rounded-full -mr-16 -mt-16 opacity-30"></div>

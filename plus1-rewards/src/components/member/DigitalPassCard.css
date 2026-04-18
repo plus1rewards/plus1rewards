@@ -65,7 +65,7 @@
 }
 
 .output .bg-colors {
-  background: conic-gradient(transparent 0deg, #8400ff 65deg, #00ccff 144deg, #1356b4 180deg, transparent 324deg, transparent 360deg);
+  background: conic-gradient(transparent 0deg, #37d270 65deg, #1a568b 144deg, #37d270 180deg, transparent 324deg, transparent 360deg);
   position: absolute;
   width: 400px;
   height: 400px;

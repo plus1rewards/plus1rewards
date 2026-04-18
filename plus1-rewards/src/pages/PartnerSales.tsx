@@ -400,12 +400,12 @@ export default function PartnerSales() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Sales Terminal</h1>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+            <div className="text-center sm:text-left w-full sm:w-auto">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Sales Terminal</h1>
               <p className="text-gray-600">{partner.shop_name}</p>
             </div>
-            <div className="text-right">
+            <div className="w-full sm:w-auto flex justify-center sm:justify-end">
               <div className="inline-block bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-bold">
                 {partner.cashback_percent}% Cashback
               </div>
@@ -420,7 +420,7 @@ export default function PartnerSales() {
             {success && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                <p className="text-green-800">{success}</p>
+                <p className="text-green-800 text-sm">{success}</p>
               </div>
             )}
 
@@ -428,13 +428,13 @@ export default function PartnerSales() {
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
                 <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <p className="text-red-800">{error}</p>
+                <p className="text-red-800 text-sm">{error}</p>
               </div>
             )}
 
             {/* Search Method Toggle */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <div className="flex gap-3 mb-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6">
+              <div className="flex gap-2 sm:gap-3 mb-4 sm:mb-6">
                 <button
                   onClick={() => {
                     setSearchMethod('phone');
@@ -442,14 +442,15 @@ export default function PartnerSales() {
                     setMember(null);
                     setError('');
                   }}
-                  className={`flex-1 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+                  className={`flex-1 py-2.5 sm:py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 text-sm sm:text-base ${
                     searchMethod === 'phone'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  <Phone className="w-5 h-5" />
-                  Phone Number
+                  <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">Phone Number</span>
+                  <span className="sm:hidden">Phone</span>
                 </button>
                 <button
                   onClick={() => {
@@ -457,41 +458,42 @@ export default function PartnerSales() {
                     setMember(null);
                     setError('');
                   }}
-                  className={`flex-1 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+                  className={`flex-1 py-2.5 sm:py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 text-sm sm:text-base ${
                     searchMethod === 'qr'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  <QrCode className="w-5 h-5" />
-                  QR Code
+                  <QrCode className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">QR Code</span>
+                  <span className="sm:hidden">Scan</span>
                 </button>
               </div>
 
               {/* Phone Search */}
               {searchMethod === 'phone' && (
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Member Phone Number
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 text-center sm:text-left">
+                    Member Cell Phone
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <div className="relative flex-1">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <input
                         type="tel"
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                        placeholder="0812345678"
-                        className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
+                        placeholder="0XX XXX XXXX"
+                        className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-center sm:text-left"
                         maxLength={10}
                       />
                     </div>
                     <button
                       onClick={handleSearchByPhone}
                       disabled={loading || phoneNumber.length !== 10}
-                      className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                      className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                     >
-                      {loading ? <Loader className="w-5 h-5 animate-spin" /> : 'Search'}
+                      {loading ? <Loader className="w-5 h-5 animate-spin mx-auto" /> : 'Paste'}
                     </button>
                   </div>
                 </div>
@@ -501,10 +503,10 @@ export default function PartnerSales() {
               {searchMethod === 'qr' && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 text-center sm:text-left">
                       Member QR Code
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <div className="relative flex-1">
                         <QrCode className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
@@ -512,15 +514,15 @@ export default function PartnerSales() {
                           value={qrCode}
                           onChange={(e) => setQrCode(e.target.value)}
                           placeholder="PLUS1-0812345678-..."
-                          className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
+                          className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-center sm:text-left"
                         />
                       </div>
                       <button
                         onClick={handleSearchByQR}
                         disabled={loading || !qrCode}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                        className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                       >
-                        {loading ? <Loader className="w-5 h-5 animate-spin" /> : 'Search'}
+                        {loading ? <Loader className="w-5 h-5 animate-spin mx-auto" /> : 'Search'}
                       </button>
                     </div>
                   </div>
@@ -529,10 +531,10 @@ export default function PartnerSales() {
                   <div>
                     <button
                       onClick={() => setShowScanner(!showScanner)}
-                      className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
                     >
                       <Camera className="w-5 h-5" />
-                      {showScanner ? 'Close Scanner' : 'Open Camera Scanner'}
+                      {showScanner ? 'Close Scanner' : 'Scan'}
                     </button>
                   </div>
 
@@ -558,13 +560,13 @@ export default function PartnerSales() {
 
             {/* Member Info & Transaction */}
             {member && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-6">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6 space-y-4 sm:space-y-6">
                 <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
+                  <div className="flex items-center gap-3 justify-center sm:justify-start">
+                    <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
                       <User className="w-6 h-6 text-white" />
                     </div>
-                    <div>
+                    <div className="text-center sm:text-left">
                       <p className="font-bold text-gray-900">{`${member.first_name} ${member.last_name}`.trim()}</p>
                       <p className="text-sm text-gray-600">{member.phone}</p>
                     </div>
@@ -572,11 +574,11 @@ export default function PartnerSales() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 text-center sm:text-left">
                     Purchase Amount
                   </label>
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <span className="absolute left-1/2 sm:left-3 top-1/2 -translate-y-1/2 sm:translate-x-0 -translate-x-1/2 text-gray-400 text-2xl font-bold">R</span>
                     <input
                       type="number"
                       value={purchaseAmount}
@@ -584,11 +586,11 @@ export default function PartnerSales() {
                       placeholder="0.00"
                       step="0.01"
                       min="0"
-                      className="w-full pl-10 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-2xl font-bold"
+                      className="w-full pl-8 sm:pl-10 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-2xl font-bold text-center sm:text-left"
                     />
                   </div>
                   {purchaseAmount && parseFloat(purchaseAmount) > 0 && (
-                    <p className="mt-2 text-sm text-gray-600">
+                    <p className="mt-2 text-sm text-gray-600 text-center sm:text-left">
                       Member will earn: {formatCurrency((parseFloat(purchaseAmount) * (partner.cashback_percent - 2)) / 100)}
                     </p>
                   )}
@@ -613,16 +615,30 @@ export default function PartnerSales() {
                 </button>
               </div>
             )}
+
+            {/* Member Not Registered Banner */}
+            {!member && !loading && (phoneNumber.length === 10 || qrCode) && (
+              <div className="bg-blue-600 text-white rounded-2xl p-6 text-center">
+                <h3 className="text-xl font-bold mb-2">Member Not Registered?</h3>
+                <p className="text-blue-100 mb-4">Help them sign up in seconds!</p>
+                <button
+                  onClick={() => navigate('/member/register')}
+                  className="bg-white text-blue-600 px-6 py-3 rounded-xl font-bold hover:bg-blue-50 transition-colors"
+                >
+                  Register New Member
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Recent Transactions Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sticky top-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Sales</h2>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6 lg:sticky lg:top-8">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 text-center lg:text-left">Recent Sales</h2>
               {recentTransactions.length === 0 ? (
                 <p className="text-gray-500 text-center py-8 text-sm">No sales yet</p>
               ) : (
-                <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                <div className="space-y-3 max-h-[400px] lg:max-h-[600px] overflow-y-auto">
                   {recentTransactions.map((tx) => (
                     <div key={tx.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100">
                       <p className="font-semibold text-gray-900 text-sm">{`${tx.members?.first_name} ${tx.members?.last_name}`.trim()}</p>
@@ -641,7 +657,7 @@ export default function PartnerSales() {
         </div>
 
         {/* Back Button */}
-        <div className="mt-6">
+        <div className="mt-6 text-center sm:text-left">
           <button
             onClick={() => navigate('/partner/dashboard')}
             className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-semibold px-6 py-3 rounded-xl transition-colors"
