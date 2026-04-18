@@ -10,6 +10,11 @@ import PlanSelectionModal from '../components/member/PlanSelectionModal';
 import PendingVerificationModal from '../components/member/PendingVerificationModal';
 import UpgradePromptModal from '../components/member/UpgradePromptModal';
 import { Notification, useNotification } from '../components/Notification';
+import { 
+  initializeNotifications, 
+  showLocalNotification, 
+  hasNotificationPermission 
+} from '../services/notificationService';
 
 interface Member {
   id: string;
@@ -101,6 +106,7 @@ const DashboardNew: React.FC = () => {
   const [upgradePlanInfo, setUpgradePlanInfo] = useState<{cost: number, currentPlan: string, newPlan: string} | null>(null);
   const [showPendingVerification, setShowPendingVerification] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<string>('');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   
   // Check sessionStorage for dismissal flag on mount
   const [profileModalDismissedByUser, setProfileModalDismissedByUser] = useState(() => {
@@ -170,6 +176,127 @@ const DashboardNew: React.FC = () => {
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  // Initialize push notifications on mount
+  useEffect(() => {
+    const setupNotifications = async () => {
+      const enabled = await initializeNotifications();
+      setNotificationsEnabled(enabled);
+      
+      if (enabled) {
+        console.log('✅ Push notifications enabled');
+      } else {
+        console.log('❌ Push notifications not enabled');
+      }
+    };
+
+    setupNotifications();
+  }, []);
+
+  // Real-time subscription for transactions
+  useEffect(() => {
+    if (!member?.id) return;
+
+    // Subscribe to new transactions for this member
+    const transactionSubscription = supabase
+      .channel(`transactions:member_id=eq.${member.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'transactions',
+          filter: `member_id=eq.${member.id}`
+        },
+        async (payload) => {
+          console.log('New transaction received:', payload);
+          
+          // Fetch the complete transaction with partner info
+          const { data: newTransaction } = await supabase
+            .from('transactions')
+            .select(`
+              id,
+              purchase_amount,
+              member_amount,
+              created_at,
+              partners (shop_name)
+            `)
+            .eq('id', payload.new.id)
+            .single();
+
+          if (newTransaction) {
+            const cashbackAmount = Number(payload.new.member_amount).toFixed(2);
+            const partnerName = (newTransaction as any).partners?.shop_name || 'a partner store';
+            
+            // Add to recent transactions (keep only 3 most recent)
+            setRecentTransactions(prev => [newTransaction as any, ...prev].slice(0, 3));
+            
+            // Show in-app notification
+            showSuccess(
+              'New Cashback Earned!',
+              `You earned R${cashbackAmount} cashback from ${partnerName}!`,
+              5000
+            );
+            
+            // Show push notification (works even when app is in background)
+            if (hasNotificationPermission()) {
+              await showLocalNotification({
+                title: '💰 Cashback Earned!',
+                body: `You earned R${cashbackAmount} from ${partnerName}`,
+                icon: '/logo.png',
+                badge: '/favicon.svg',
+                tag: `transaction-${payload.new.id}`,
+                data: {
+                  type: 'transaction',
+                  transactionId: payload.new.id,
+                  amount: cashbackAmount,
+                },
+                vibrate: [200, 100, 200, 100, 200],
+              });
+            }
+            
+            // Reload dashboard data to update cover plan progress and wallet entries
+            await loadDashboardData();
+          }
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(transactionSubscription);
+    };
+  }, [member?.id]);
+
+  // Real-time subscription for cover plan updates
+  useEffect(() => {
+    if (!member?.id) return;
+
+    // Subscribe to cover plan changes for this member
+    const coverPlanSubscription = supabase
+      .channel(`member_cover_plans:member_id=eq.${member.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'member_cover_plans',
+          filter: `member_id=eq.${member.id}`
+        },
+        async (payload) => {
+          console.log('Cover plan updated:', payload);
+          
+          // Reload dashboard data to reflect changes
+          await loadDashboardData();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(coverPlanSubscription);
+    };
+  }, [member?.id]);
 
   const loadDashboardData = async () => {
     try {
@@ -851,7 +978,34 @@ const DashboardNew: React.FC = () => {
           </div>
         </header>
 
-      <main className="pt-16 pb-24 md:pb-10 px-4 md:px-8 max-w-7xl mx-auto w-full">
+        {/* Notification Permission Banner */}
+        {!notificationsEnabled && (
+          <div className="fixed top-16 left-0 right-0 z-40 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-3 shadow-lg">
+            <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 flex-1">
+                <span className="material-symbols-outlined text-2xl">notifications_active</span>
+                <div className="flex-1">
+                  <p className="font-bold text-sm">Enable Notifications</p>
+                  <p className="text-xs text-blue-100">Get instant alerts when you earn cashback!</p>
+                </div>
+              </div>
+              <button
+                onClick={async () => {
+                  const enabled = await initializeNotifications();
+                  setNotificationsEnabled(enabled);
+                  if (enabled) {
+                    showSuccess('Notifications Enabled', 'You will now receive cashback alerts!', 3000);
+                  }
+                }}
+                className="bg-white text-blue-700 px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-50 transition-colors whitespace-nowrap"
+              >
+                Enable
+              </button>
+            </div>
+          </div>
+        )}
+
+      <main className={`pb-24 md:pb-10 px-4 md:px-8 max-w-7xl mx-auto w-full ${notificationsEnabled ? 'pt-16' : 'pt-28'}`}>
         {/* Profile Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4 pt-4 md:pt-0 md:-mt-[30px]">
           <div className="flex items-center gap-4">

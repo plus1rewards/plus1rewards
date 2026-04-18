@@ -2,6 +2,7 @@
 import { motion } from 'framer-motion'
 import Navbar from '../components/landing/Navbar'
 import Hero from '../components/landing/Hero'
+import PWAInstallBanner from '../components/landing/PWAInstallBanner'
 import { lazy, Suspense } from 'react'
 import SEO from '../components/SEO'
 import { OrganizationSchema, WebSiteSchema, ServiceSchema, FAQSchema } from '../components/StructuredData'
@@ -72,6 +73,7 @@ export default function Landing() {
       <FAQSchema faqs={faqData} />
       <Navbar />
       <Hero />
+      <PWAInstallBanner />
       <Suspense fallback={<div className="h-20" />}>
         <motion.div variants={sectionVariants} initial="initial" whileInView="animate" viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}>
           <HowItWorks />

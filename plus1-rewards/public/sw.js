@@ -40,6 +40,74 @@ self.addEventListener('activate', (event) => {
   self.clients.claim()
 })
 
+// Push notification event
+self.addEventListener('push', (event) => {
+  console.log('Push notification received:', event)
+  
+  let notificationData = {
+    title: '+1 Rewards',
+    body: 'You received cashback!',
+    icon: '/logo.png',
+    badge: '/favicon.svg',
+    tag: 'cashback-notification',
+    requireInteraction: false,
+    vibrate: [200, 100, 200],
+  }
+
+  if (event.data) {
+    try {
+      const data = event.data.json()
+      notificationData = {
+        title: data.title || notificationData.title,
+        body: data.body || notificationData.body,
+        icon: data.icon || notificationData.icon,
+        badge: data.badge || notificationData.badge,
+        tag: data.tag || notificationData.tag,
+        data: data.data || {},
+        requireInteraction: data.requireInteraction || false,
+        vibrate: data.vibrate || [200, 100, 200],
+      }
+    } catch (error) {
+      console.error('Error parsing push data:', error)
+    }
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(notificationData.title, {
+      body: notificationData.body,
+      icon: notificationData.icon,
+      badge: notificationData.badge,
+      tag: notificationData.tag,
+      data: notificationData.data,
+      requireInteraction: notificationData.requireInteraction,
+      vibrate: notificationData.vibrate,
+    })
+  )
+})
+
+// Notification click event
+self.addEventListener('notificationclick', (event) => {
+  console.log('Notification clicked:', event)
+  
+  event.notification.close()
+
+  // Open the app or focus existing window
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // If app is already open, focus it
+      for (const client of clientList) {
+        if (client.url.includes('/member/dashboard') && 'focus' in client) {
+          return client.focus()
+        }
+      }
+      // Otherwise open new window
+      if (clients.openWindow) {
+        return clients.openWindow('/member/dashboard')
+      }
+    })
+  )
+})
+
 // Fetch event - optimized caching strategy
 self.addEventListener('fetch', (event) => {
   const { request } = event
