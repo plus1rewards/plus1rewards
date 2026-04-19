@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../DashboardLayout';
 import StatCard from '../components/StatCard';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { FilterConfig, FilterValues } from '../AdvancedFilters';
+import { applyFilters, countActiveFilters, commonFilters } from '../../../utils/filterHelpers';
 
 // Helper function to get full name from first_name and last_name
 const getFullName = (member: any): string => {
@@ -68,17 +70,100 @@ export default function MembersPage() {
   const [memberDetails, setMemberDetails] = useState<any>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    status: '', // 'complete' or 'incomplete'
-    hasPolicy: '', // 'yes' or 'no'
-    hasQR: '' // 'yes' or 'no'
-  });
+  const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [memberDependants, setMemberDependants] = useState<Record<string, any[]>>({});
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const PAGE_SIZE = 20;
+
+  // Advanced Filter Configuration
+  const memberFilters: FilterConfig[] = [
+    {
+      id: 'name',
+      label: 'Member Name',
+      type: 'text',
+      placeholder: 'Search by name...'
+    },
+    {
+      id: 'phone',
+      label: 'Phone Number',
+      type: 'text',
+      placeholder: 'Search by phone...'
+    },
+    {
+      id: 'email',
+      label: 'Email',
+      type: 'text',
+      placeholder: 'Search by email...'
+    },
+    {
+      id: 'status',
+      label: 'Status',
+      type: 'select',
+      options: [
+        { value: 'active', label: 'Active' },
+        { value: 'suspended', label: 'Suspended' }
+      ]
+    },
+    {
+      id: 'role',
+      label: 'Role',
+      type: 'select',
+      options: [
+        { value: 'member', label: 'Member' },
+        { value: 'sponsored_member', label: 'Sponsored Member' },
+        { value: 'admin', label: 'Admin' }
+      ]
+    },
+    {
+      id: 'profileComplete',
+      label: 'Profile Status',
+      type: 'select',
+      options: [
+        { value: 'complete', label: 'Complete' },
+        { value: 'incomplete', label: 'Incomplete' }
+      ]
+    },
+    {
+      id: 'hasCoverPlan',
+      label: 'Has Cover Plan',
+      type: 'select',
+      options: [
+        { value: 'yes', label: 'Yes' },
+        { value: 'no', label: 'No' }
+      ]
+    },
+    {
+      id: 'planStatus',
+      label: 'Plan Status',
+      type: 'multiSelect',
+      options: [
+        { value: 'in_progress', label: 'In Progress' },
+        { value: 'pending_day1health', label: 'Pending Verification' },
+        { value: 'active', label: 'Active' },
+        { value: 'paused', label: 'Paused' }
+      ]
+    },
+    {
+      id: 'fundedAmount',
+      label: 'Funded Amount (R)',
+      type: 'numberRange',
+      min: 0
+    },
+    {
+      id: 'registrationDate',
+      label: 'Registration Date',
+      type: 'dateRange'
+    },
+    {
+      id: 'city',
+      label: 'City',
+      type: 'text',
+      placeholder: 'Search by city...'
+    }
+  ];
 
   const fetchData = async (loadMore = false) => {
     if (loadMore) {
@@ -255,36 +340,71 @@ export default function MembersPage() {
     a.click();
   };
 
-  const filteredMembers = members.filter(m => {
-    // Advanced Search
-    const searchLower = searchTerm.toLowerCase().trim();
-    const searchTerms = searchLower.split(/\s+/);
+  // Advanced Filter Configuration
+  const filterConfig = {
+    name: (member: any, value: string) => 
+      commonFilters.textMatch(getFullName(member), value),
     
-    const matchesSearch = searchLower === '' || searchTerms.every(term => 
+    phone: (member: any, value: string) => 
+      commonFilters.textMatch(member.cell_phone, value),
+    
+    email: (member: any, value: string) => 
+      commonFilters.textMatch(member.email, value),
+    
+    status: (member: any, value: string) => 
+      member.status === value,
+    
+    role: (member: any, value: string) => 
+      (member.role || 'member') === value,
+    
+    profileComplete: (member: any, value: string) => {
+      const isComplete = member.email && 
+        !member.email.includes('@plus1rewards.local') && 
+        member.sa_id && 
+        member.address_line_1;
+      return value === 'complete' ? isComplete : !isComplete;
+    },
+    
+    hasCoverPlan: (member: any, value: string) => {
+      const hasPlans = member.member_cover_plans && member.member_cover_plans.length > 0;
+      return value === 'yes' ? hasPlans : !hasPlans;
+    },
+    
+    planStatus: (member: any, values: string[]) => {
+      if (!member.member_cover_plans || member.member_cover_plans.length === 0) return false;
+      return member.member_cover_plans.some((plan: any) => values.includes(plan.status));
+    },
+    
+    fundedAmount: (member: any, range: { from?: string; to?: string }) => {
+      const total = member.member_cover_plans?.reduce((sum: number, p: any) => 
+        sum + (parseFloat(p.funded_amount) || 0), 0) || 0;
+      return commonFilters.numberInRange(total, range);
+    },
+    
+    registrationDate: (member: any, range: { from?: string; to?: string }) => 
+      commonFilters.dateInRange(member.created_at, range),
+    
+    city: (member: any, value: string) => 
+      commonFilters.textMatch(member.city, value)
+  };
+
+  // Apply advanced filters
+  const filteredMembers = applyFilters(members, filterValues, filterConfig).filter(m => {
+    // Keep the search term filter separate for quick searching
+    const searchLower = searchTerm.toLowerCase().trim();
+    if (searchLower === '') return true;
+    
+    const searchTerms = searchLower.split(/\s+/);
+    return searchTerms.every(term => 
       getFullName(m).toLowerCase().includes(term) ||
       m.cell_phone?.includes(term) ||
-      m.phone?.includes(term) ||
       m.email?.toLowerCase().includes(term) ||
       m.id?.toLowerCase().includes(term) ||
       m.qr_code?.toLowerCase().includes(term)
     );
-
-    // Filters
-    const isIncomplete = !m.email || (!m.cell_phone && !m.phone);
-    const matchesStatus = filters.status === '' || 
-      (filters.status === 'complete' && !isIncomplete) || 
-      (filters.status === 'incomplete' && isIncomplete);
-    
-    const matchesPolicy = filters.hasPolicy === '' || 
-      (filters.hasPolicy === 'yes' && m.status === 'active') || 
-      (filters.hasPolicy === 'no' && m.status !== 'active');
-
-    const matchesQR = filters.hasQR === '' || 
-      (filters.hasQR === 'yes' && m.qr_code) || 
-      (filters.hasQR === 'no' && !m.qr_code);
-
-    return matchesSearch && matchesStatus && matchesPolicy && matchesQR;
   });
+
+  const activeFiltersCount = countActiveFilters(filterValues);
 
   const fetchMemberDetails = async (memberId: string) => {
     setDetailsLoading(true);
@@ -532,6 +652,11 @@ export default function MembersPage() {
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{showFilters ? 'filter_list_off' : 'filter_list'}</span>
                     <span>{showFilters ? 'Hide' : 'Filter'}</span>
+                    {activeFiltersCount > 0 && (
+                      <span className="bg-green-500 text-white text-xs font-black px-1.5 py-0.5 rounded-full ml-1">
+                        {activeFiltersCount}
+                      </span>
+                    )}
                   </button>
                   <button 
                     onClick={handleExport}
@@ -556,6 +681,11 @@ export default function MembersPage() {
                   >
                     <span className="material-symbols-outlined text-sm">{showFilters ? 'filter_list_off' : 'filter_list'}</span>
                     {showFilters ? 'Hide Filters' : 'Filter'}
+                    {activeFiltersCount > 0 && (
+                      <span className="bg-green-500 text-white text-xs font-black px-1.5 py-0.5 rounded-full ml-1">
+                        {activeFiltersCount}
+                      </span>
+                    )}
                   </button>
                   <button 
                     onClick={handleExport}
@@ -568,53 +698,145 @@ export default function MembersPage() {
               </div>
             </div>
 
-            {/* Advanced Filter Bar */}
+            {/* Advanced Filters Panel */}
             {showFilters && (
-              <div className="px-4 md:px-6 py-4 border-b border-gray-200 bg-white grid grid-cols-1 md:grid-cols-3 gap-4 animate-in slide-in-from-top duration-200">
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5">Member Status</label>
-                  <select 
-                    value={filters.status}
-                    onChange={(e) => setFilters({...filters, status: e.target.value})}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:ring-1 focus:ring-[#1a558b] outline-none"
+              <div className="px-4 md:px-6 py-4 border-b border-gray-200 bg-white animate-in slide-in-from-top duration-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#1a558b]">tune</span>
+                    Filter Options
+                  </h3>
+                  <button
+                    onClick={() => setFilterValues({})}
+                    className="text-sm font-bold text-red-600 hover:text-red-700 flex items-center gap-1 transition-colors"
                   >
-                    <option value="">All Members</option>
-                    <option value="complete">Complete Profiles</option>
-                    <option value="incomplete">Incomplete Profiles</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5">Has Cover Plans</label>
-                  <select 
-                    value={filters.hasPolicy}
-                    onChange={(e) => setFilters({...filters, hasPolicy: e.target.value})}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:ring-1 focus:ring-[#1a558b] outline-none"
-                  >
-                    <option value="">All Members</option>
-                    <option value="yes">With Cover Plans</option>
-                    <option value="no">No Cover Plans</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5">QR Code</label>
-                  <select 
-                    value={filters.hasQR}
-                    onChange={(e) => setFilters({...filters, hasQR: e.target.value})}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:ring-1 focus:ring-[#1a558b] outline-none"
-                  >
-                    <option value="">All Members</option>
-                    <option value="yes">QR Issued</option>
-                    <option value="no">No QR Code</option>
-                  </select>
-                </div>
-                <div className="md:col-span-3 flex justify-end">
-                  <button 
-                    onClick={() => setFilters({ status: '', hasPolicy: '', hasQR: '' })}
-                    className="text-[10px] font-bold text-[#1a558b] hover:underline uppercase tracking-widest"
-                  >
-                    Reset All Filters
+                    <span className="material-symbols-outlined text-lg">restart_alt</span>
+                    Reset All
                   </button>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {memberFilters.map((filter) => (
+                    <div key={filter.id} className="space-y-2">
+                      <label className="block text-sm font-bold text-gray-700">
+                        {filter.label}
+                      </label>
+                      {filter.type === 'text' && (
+                        <input
+                          type="text"
+                          value={filterValues[filter.id] || ''}
+                          onChange={(e) => setFilterValues({ ...filterValues, [filter.id]: e.target.value })}
+                          placeholder={filter.placeholder}
+                          className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                        />
+                      )}
+                      {filter.type === 'select' && (
+                        <select
+                          value={filterValues[filter.id] || ''}
+                          onChange={(e) => setFilterValues({ ...filterValues, [filter.id]: e.target.value })}
+                          className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                        >
+                          <option value="">All {filter.label}</option>
+                          {filter.options?.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      {filter.type === 'dateRange' && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">From</label>
+                            <input
+                              type="date"
+                              value={filterValues[filter.id]?.from || ''}
+                              onChange={(e) => setFilterValues({ 
+                                ...filterValues, 
+                                [filter.id]: { ...(filterValues[filter.id] || {}), from: e.target.value } 
+                              })}
+                              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">To</label>
+                            <input
+                              type="date"
+                              value={filterValues[filter.id]?.to || ''}
+                              onChange={(e) => setFilterValues({ 
+                                ...filterValues, 
+                                [filter.id]: { ...(filterValues[filter.id] || {}), to: e.target.value } 
+                              })}
+                              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {filter.type === 'numberRange' && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Min</label>
+                            <input
+                              type="number"
+                              value={filterValues[filter.id]?.from || ''}
+                              onChange={(e) => setFilterValues({ 
+                                ...filterValues, 
+                                [filter.id]: { ...(filterValues[filter.id] || {}), from: e.target.value } 
+                              })}
+                              placeholder="Min"
+                              min={filter.min}
+                              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Max</label>
+                            <input
+                              type="number"
+                              value={filterValues[filter.id]?.to || ''}
+                              onChange={(e) => setFilterValues({ 
+                                ...filterValues, 
+                                [filter.id]: { ...(filterValues[filter.id] || {}), to: e.target.value } 
+                              })}
+                              placeholder="Max"
+                              max={filter.max}
+                              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {filter.type === 'multiSelect' && (
+                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                          {filter.options?.map((opt) => (
+                            <label key={opt.value} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={(filterValues[filter.id] || []).includes(opt.value)}
+                                onChange={() => {
+                                  const currentValues = filterValues[filter.id] || [];
+                                  const newValues = currentValues.includes(opt.value)
+                                    ? currentValues.filter((v: string) => v !== opt.value)
+                                    : [...currentValues, opt.value];
+                                  setFilterValues({ ...filterValues, [filter.id]: newValues });
+                                }}
+                                className="w-4 h-4 text-[#1a558b] border-gray-300 rounded focus:ring-[#1a558b]"
+                              />
+                              <span className="text-sm text-gray-700">{opt.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Active Filters Summary */}
+                {activeFiltersCount > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-xs text-gray-600">
+                      <span className="font-bold">{activeFiltersCount}</span> filter{activeFiltersCount !== 1 ? 's' : ''} active
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             {loading ? (

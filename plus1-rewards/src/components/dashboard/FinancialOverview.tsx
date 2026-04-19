@@ -68,14 +68,9 @@ export default function FinancialOverview() {
       const totalRewardsIssued = transactionData?.reduce((sum, t) => 
         sum + (parseFloat(t.member_amount) || 0), 0) || 0;
 
-      // Fetch agent commissions
-      const { data: commissionsData } = await supabaseAdmin
-        .from('agent_commissions')
-        .select('total_amount');
-      
-      // Agent Commissions = sum of all commission amounts
-      const agentCommissions = commissionsData?.reduce((sum, c) => 
-        sum + (parseFloat(c.total_amount) || 0), 0) || 0;
+      // Agent Commissions = total agent_amount from all completed transactions
+      const agentCommissions = transactionData?.reduce((sum, t) => 
+        sum + (parseFloat(t.agent_amount) || 0), 0) || 0;
 
       setFinancialData({
         totalPolicyValue,

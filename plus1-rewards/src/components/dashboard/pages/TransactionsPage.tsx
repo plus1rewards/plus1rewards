@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../DashboardLayout';
 import StatCard from '../components/StatCard';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { FilterConfig, FilterValues } from '../AdvancedFilters';
+import { applyFilters, countActiveFilters, commonFilters } from '../../../utils/filterHelpers';
 
 export default function TransactionsPage() {
   const navigate = useNavigate();
@@ -14,16 +16,67 @@ export default function TransactionsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    status: '',
-    type: '', // 'spend' or 'earn'
-    dateFrom: '',
-    dateTo: ''
-  });
+  const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const PAGE_SIZE = 20;
+
+  // Advanced Filter Configuration
+  const transactionFilters: FilterConfig[] = [
+    {
+      id: 'transactionId',
+      label: 'Transaction ID',
+      type: 'text',
+      placeholder: 'Search by transaction ID...'
+    },
+    {
+      id: 'memberName',
+      label: 'Member Name',
+      type: 'text',
+      placeholder: 'Search by member name...'
+    },
+    {
+      id: 'memberPhone',
+      label: 'Member Phone',
+      type: 'text',
+      placeholder: 'Search by phone...'
+    },
+    {
+      id: 'partnerName',
+      label: 'Partner Name',
+      type: 'text',
+      placeholder: 'Search by partner...'
+    },
+    {
+      id: 'status',
+      label: 'Status',
+      type: 'select',
+      options: [
+        { value: 'completed', label: 'Completed' },
+        { value: 'pending', label: 'Pending' },
+        { value: 'reversed', label: 'Reversed' },
+        { value: 'disputed', label: 'Disputed' }
+      ]
+    },
+    {
+      id: 'purchaseAmount',
+      label: 'Purchase Amount (R)',
+      type: 'numberRange',
+      min: 0
+    },
+    {
+      id: 'cashbackAmount',
+      label: 'Cashback Amount (R)',
+      type: 'numberRange',
+      min: 0
+    },
+    {
+      id: 'transactionDate',
+      label: 'Transaction Date',
+      type: 'dateRange'
+    }
+  ];
 
   const fetchData = async (loadMore = false) => {
     if (loadMore) {
@@ -172,12 +225,43 @@ export default function TransactionsPage() {
     { icon: 'payments', title: 'Total Volume', value: `R${stats.volume.toFixed(2)}`, change: '', description: 'Transaction value' }
   ];
 
-  const filteredTransactions = transactions.filter(t => {
-    // Advanced Search
-    const searchLower = searchTerm.toLowerCase().trim();
-    const searchTerms = searchLower.split(/\s+/);
+  // Advanced Filter Configuration
+  const filterConfig = {
+    transactionId: (tx: any, value: string) => 
+      commonFilters.textMatch(tx.id, value),
     
-    const matchesSearch = searchLower === '' || searchTerms.every(term => 
+    memberName: (tx: any, value: string) => {
+      const fullName = `${tx.members?.first_name || ''} ${tx.members?.last_name || ''}`.trim();
+      return commonFilters.textMatch(fullName, value);
+    },
+    
+    memberPhone: (tx: any, value: string) => 
+      commonFilters.textMatch(tx.members?.cell_phone, value),
+    
+    partnerName: (tx: any, value: string) => 
+      commonFilters.textMatch(tx.partners?.shop_name, value),
+    
+    status: (tx: any, value: string) => 
+      tx.status === value,
+    
+    purchaseAmount: (tx: any, range: { from?: string; to?: string }) => 
+      commonFilters.numberInRange(parseFloat(tx.purchase_amount) || 0, range),
+    
+    cashbackAmount: (tx: any, range: { from?: string; to?: string }) => 
+      commonFilters.numberInRange(parseFloat(tx.member_amount) || 0, range),
+    
+    transactionDate: (tx: any, range: { from?: string; to?: string }) => 
+      commonFilters.dateInRange(tx.created_at, range)
+  };
+
+  // Apply advanced filters
+  const filteredTransactions = applyFilters(transactions, filterValues, filterConfig).filter(t => {
+    // Keep the search term filter separate for quick searching
+    const searchLower = searchTerm.toLowerCase().trim();
+    if (searchLower === '') return true;
+    
+    const searchTerms = searchLower.split(/\s+/);
+    return searchTerms.every(term => 
       t.id?.toLowerCase().includes(term) ||
       (t.members?.first_name || '')?.toLowerCase().includes(term) ||
       (t.members?.last_name || '')?.toLowerCase().includes(term) ||
@@ -185,18 +269,9 @@ export default function TransactionsPage() {
       t.purchase_amount?.toString().includes(term) ||
       t.status?.toLowerCase().includes(term)
     );
-
-    // Filters
-    const matchesStatus = filters.status === '' || t.status === filters.status;
-    const matchesType = filters.type === '' || 
-      (filters.type === 'spend' && t.is_spend) || 
-      (filters.type === 'earn' && !t.is_spend);
-    
-    const matchesDate = (!filters.dateFrom || new Date(t.created_at) >= new Date(filters.dateFrom)) &&
-                        (!filters.dateTo || new Date(t.created_at) <= new Date(filters.dateTo));
-
-    return matchesSearch && matchesStatus && matchesType && matchesDate;
   });
+
+  const activeFiltersCount = countActiveFilters(filterValues);
 
   return (
     <DashboardLayout>
@@ -246,6 +321,11 @@ export default function TransactionsPage() {
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{showFilters ? 'filter_list_off' : 'filter_list'}</span>
                     <span>{showFilters ? 'Hide' : 'Filter'}</span>
+                    {activeFiltersCount > 0 && (
+                      <span className="bg-green-500 text-white text-xs font-black px-1.5 py-0.5 rounded-full ml-1">
+                        {activeFiltersCount}
+                      </span>
+                    )}
                   </button>
                   <button 
                     onClick={handleExport} 
@@ -270,6 +350,11 @@ export default function TransactionsPage() {
                   >
                     <span className="material-symbols-outlined text-sm">{showFilters ? 'filter_list_off' : 'filter_list'}</span>
                     {showFilters ? 'Hide Filters' : 'Filter'}
+                    {activeFiltersCount > 0 && (
+                      <span className="bg-green-500 text-white text-xs font-black px-1.5 py-0.5 rounded-full ml-1">
+                        {activeFiltersCount}
+                      </span>
+                    )}
                   </button>
                   <button onClick={handleExport} className="text-xs text-gray-600 hover:text-[#1a558b] flex items-center gap-1 font-medium transition-colors">
                     <span className="material-symbols-outlined text-sm">download</span>Export CSV
@@ -278,61 +363,124 @@ export default function TransactionsPage() {
               </div>
             </div>
 
-            {/* Advanced Filter Bar */}
+            {/* Advanced Filters Panel */}
             {showFilters && (
-              <div className="px-6 py-4 border-b border-gray-200 bg-white grid grid-cols-1 md:grid-cols-4 gap-4 animate-in slide-in-from-top duration-200">
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5">Status</label>
-                  <select 
-                    value={filters.status}
-                    onChange={(e) => setFilters({...filters, status: e.target.value})}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:ring-1 focus:ring-[#1a558b] outline-none"
+              <div className="px-4 md:px-6 py-4 border-b border-gray-200 bg-white animate-in slide-in-from-top duration-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#1a558b]">tune</span>
+                    Filter Options
+                  </h3>
+                  <button
+                    onClick={() => setFilterValues({})}
+                    className="text-sm font-bold text-red-600 hover:text-red-700 flex items-center gap-1 transition-colors"
                   >
-                    <option value="">All Statuses</option>
-                    <option value="completed">Completed</option>
-                    <option value="pending">Pending</option>
-                    <option value="reversed">Reversed</option>
-                    <option value="disputed">Disputed</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5">Type</label>
-                  <select 
-                    value={filters.type}
-                    onChange={(e) => setFilters({...filters, type: e.target.value})}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:ring-1 focus:ring-[#1a558b] outline-none"
-                  >
-                    <option value="">All Types</option>
-                    <option value="earn">Earn (Purchase)</option>
-                    <option value="spend">Spend (Rewards)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5">From Date</label>
-                  <input 
-                    type="date"
-                    value={filters.dateFrom}
-                    onChange={(e) => setFilters({...filters, dateFrom: e.target.value})}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:ring-1 focus:ring-[#1a558b] outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5">To Date</label>
-                  <input 
-                    type="date"
-                    value={filters.dateTo}
-                    onChange={(e) => setFilters({...filters, dateTo: e.target.value})}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:ring-1 focus:ring-[#1a558b] outline-none"
-                  />
-                </div>
-                <div className="md:col-span-4 flex justify-end">
-                  <button 
-                    onClick={() => setFilters({ status: '', type: '', dateFrom: '', dateTo: '' })}
-                    className="text-[10px] font-bold text-[#1a558b] hover:underline uppercase tracking-widest"
-                  >
-                    Reset All Filters
+                    <span className="material-symbols-outlined text-lg">restart_alt</span>
+                    Reset All
                   </button>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {transactionFilters.map((filter) => (
+                    <div key={filter.id} className="space-y-2">
+                      <label className="block text-sm font-bold text-gray-700">
+                        {filter.label}
+                      </label>
+                      {filter.type === 'text' && (
+                        <input
+                          type="text"
+                          value={filterValues[filter.id] || ''}
+                          onChange={(e) => setFilterValues({ ...filterValues, [filter.id]: e.target.value })}
+                          placeholder={filter.placeholder}
+                          className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                        />
+                      )}
+                      {filter.type === 'select' && (
+                        <select
+                          value={filterValues[filter.id] || ''}
+                          onChange={(e) => setFilterValues({ ...filterValues, [filter.id]: e.target.value })}
+                          className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                        >
+                          <option value="">All {filter.label}</option>
+                          {filter.options?.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      {filter.type === 'dateRange' && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">From</label>
+                            <input
+                              type="date"
+                              value={filterValues[filter.id]?.from || ''}
+                              onChange={(e) => setFilterValues({ 
+                                ...filterValues, 
+                                [filter.id]: { ...(filterValues[filter.id] || {}), from: e.target.value } 
+                              })}
+                              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">To</label>
+                            <input
+                              type="date"
+                              value={filterValues[filter.id]?.to || ''}
+                              onChange={(e) => setFilterValues({ 
+                                ...filterValues, 
+                                [filter.id]: { ...(filterValues[filter.id] || {}), to: e.target.value } 
+                              })}
+                              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {filter.type === 'numberRange' && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Min</label>
+                            <input
+                              type="number"
+                              value={filterValues[filter.id]?.from || ''}
+                              onChange={(e) => setFilterValues({ 
+                                ...filterValues, 
+                                [filter.id]: { ...(filterValues[filter.id] || {}), from: e.target.value } 
+                              })}
+                              placeholder="Min"
+                              min={filter.min}
+                              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Max</label>
+                            <input
+                              type="number"
+                              value={filterValues[filter.id]?.to || ''}
+                              onChange={(e) => setFilterValues({ 
+                                ...filterValues, 
+                                [filter.id]: { ...(filterValues[filter.id] || {}), to: e.target.value } 
+                              })}
+                              placeholder="Max"
+                              max={filter.max}
+                              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Active Filters Summary */}
+                {activeFiltersCount > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-xs text-gray-600">
+                      <span className="font-bold">{activeFiltersCount}</span> filter{activeFiltersCount !== 1 ? 's' : ''} active
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

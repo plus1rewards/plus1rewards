@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../DashboardLayout';
 import StatCard from '../components/StatCard';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { FilterConfig, FilterValues } from '../AdvancedFilters';
+import { applyFilters, countActiveFilters, commonFilters } from '../../../utils/filterHelpers';
 
 export default function AgentsPage() {
   const navigate = useNavigate();
@@ -12,13 +14,59 @@ export default function AgentsPage() {
   const [stats, setStats] = useState({ totalAgents: 0, verified: 0, pending: 0, sales: 0, commissions: 0 });
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    status: ''
-  });
+  const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [agentDetails, setAgentDetails] = useState<any>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+
+  // Advanced Filter Configuration
+  const agentFilters: FilterConfig[] = [
+    {
+      id: 'name',
+      label: 'Agent Name',
+      type: 'text',
+      placeholder: 'Search by name...'
+    },
+    {
+      id: 'phone',
+      label: 'Phone Number',
+      type: 'text',
+      placeholder: 'Search by phone...'
+    },
+    {
+      id: 'email',
+      label: 'Email',
+      type: 'text',
+      placeholder: 'Search by email...'
+    },
+    {
+      id: 'status',
+      label: 'Status',
+      type: 'select',
+      options: [
+        { value: 'active', label: 'Active' },
+        { value: 'pending', label: 'Pending' },
+        { value: 'suspended', label: 'Suspended' }
+      ]
+    },
+    {
+      id: 'saId',
+      label: 'SA ID Number',
+      type: 'text',
+      placeholder: 'Search by SA ID...'
+    },
+    {
+      id: 'registrationDate',
+      label: 'Registration Date',
+      type: 'dateRange'
+    },
+    {
+      id: 'approvalDate',
+      label: 'Approval Date',
+      type: 'dateRange'
+    }
+  ];
 
   const fetchData = async () => {
     setLoading(true);
@@ -259,12 +307,42 @@ export default function AgentsPage() {
     { icon: 'account_balance_wallet', title: 'Commissions Paid', value: `R${stats.commissions.toFixed(2)}`, change: '+0%', description: 'Total payouts' }
   ];
 
-  const filteredAgents = agents.filter(a => {
-    // Advanced Search
-    const searchLower = searchTerm.toLowerCase().trim();
-    const searchTerms = searchLower.split(/\s+/);
+  // Advanced Filter Configuration
+  const filterConfig = {
+    name: (agent: any, value: string) => {
+      const fullName = `${agent.first_name || ''} ${agent.last_name || ''}`.trim();
+      return commonFilters.textMatch(fullName, value);
+    },
     
-    const matchesSearch = searchLower === '' || searchTerms.every(term => 
+    phone: (agent: any, value: string) => 
+      commonFilters.textMatch(agent.cell_phone, value),
+    
+    email: (agent: any, value: string) => 
+      commonFilters.textMatch(agent.email, value),
+    
+    status: (agent: any, value: string) => 
+      agent.status === value,
+    
+    saId: (agent: any, value: string) => 
+      commonFilters.textMatch(agent.sa_id, value),
+    
+    registrationDate: (agent: any, range: { from?: string; to?: string }) => 
+      commonFilters.dateInRange(agent.created_at, range),
+    
+    approvalDate: (agent: any, range: { from?: string; to?: string }) => {
+      if (!agent.approved_at) return false;
+      return commonFilters.dateInRange(agent.approved_at, range);
+    }
+  };
+
+  // Apply advanced filters
+  const filteredAgents = applyFilters(agents, filterValues, filterConfig).filter(a => {
+    // Keep the search term filter separate for quick searching
+    const searchLower = searchTerm.toLowerCase().trim();
+    if (searchLower === '') return true;
+    
+    const searchTerms = searchLower.split(/\s+/);
+    return searchTerms.every(term => 
       a.first_name?.toLowerCase().includes(term) ||
       a.last_name?.toLowerCase().includes(term) ||
       a.email?.toLowerCase().includes(term) ||
@@ -272,12 +350,9 @@ export default function AgentsPage() {
       a.id?.toLowerCase().includes(term) ||
       a.sa_id?.includes(term)
     );
-
-    // Filters
-    const matchesStatus = filters.status === '' || a.status === filters.status;
-
-    return matchesSearch && matchesStatus;
   });
+
+  const activeFiltersCount = countActiveFilters(filterValues);
 
   return (
     <>
@@ -412,6 +487,11 @@ export default function AgentsPage() {
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{showFilters ? 'filter_list_off' : 'filter_list'}</span>
                     <span>{showFilters ? 'Hide' : 'Filter'}</span>
+                    {activeFiltersCount > 0 && (
+                      <span className="bg-green-500 text-white text-xs font-black px-1.5 py-0.5 rounded-full ml-1">
+                        {activeFiltersCount}
+                      </span>
+                    )}
                   </button>
                   <button 
                     onClick={() => {}}
@@ -436,6 +516,11 @@ export default function AgentsPage() {
                   >
                     <span className="material-symbols-outlined text-sm">{showFilters ? 'filter_list_off' : 'filter_list'}</span>
                     {showFilters ? 'Hide Filters' : 'Filter'}
+                    {activeFiltersCount > 0 && (
+                      <span className="bg-green-500 text-white text-xs font-black px-1.5 py-0.5 rounded-full ml-1">
+                        {activeFiltersCount}
+                      </span>
+                    )}
                   </button>
                   <button 
                     onClick={() => {}}
@@ -448,30 +533,92 @@ export default function AgentsPage() {
               </div>
             </div>
 
-            {/* Advanced Filter Bar */}
+            {/* Advanced Filters Panel */}
             {showFilters && (
-              <div className="px-6 py-4 border-b border-gray-200 bg-white grid grid-cols-1 md:grid-cols-3 gap-4 animate-in slide-in-from-top duration-200">
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5">Agent Status</label>
-                  <select 
-                    value={filters.status}
-                    onChange={(e) => setFilters({...filters, status: e.target.value})}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:ring-1 focus:ring-[#1a558b] outline-none"
+              <div className="px-4 md:px-6 py-4 border-b border-gray-200 bg-white animate-in slide-in-from-top duration-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#1a558b]">tune</span>
+                    Filter Options
+                  </h3>
+                  <button
+                    onClick={() => setFilterValues({})}
+                    className="text-sm font-bold text-red-600 hover:text-red-700 flex items-center gap-1 transition-colors"
                   >
-                    <option value="">All Statuses</option>
-                    <option value="active">Active</option>
-                    <option value="pending">Pending</option>
-                    <option value="suspended">Suspended</option>
-                  </select>
-                </div>
-                <div className="md:col-span-3 flex justify-end">
-                  <button 
-                    onClick={() => setFilters({ status: '' })}
-                    className="text-[10px] font-bold text-[#1a558b] hover:underline uppercase tracking-widest"
-                  >
-                    Reset Filter
+                    <span className="material-symbols-outlined text-lg">restart_alt</span>
+                    Reset All
                   </button>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {agentFilters.map((filter) => (
+                    <div key={filter.id} className="space-y-2">
+                      <label className="block text-sm font-bold text-gray-700">
+                        {filter.label}
+                      </label>
+                      {filter.type === 'text' && (
+                        <input
+                          type="text"
+                          value={filterValues[filter.id] || ''}
+                          onChange={(e) => setFilterValues({ ...filterValues, [filter.id]: e.target.value })}
+                          placeholder={filter.placeholder}
+                          className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                        />
+                      )}
+                      {filter.type === 'select' && (
+                        <select
+                          value={filterValues[filter.id] || ''}
+                          onChange={(e) => setFilterValues({ ...filterValues, [filter.id]: e.target.value })}
+                          className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                        >
+                          <option value="">All {filter.label}</option>
+                          {filter.options?.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      {filter.type === 'dateRange' && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">From</label>
+                            <input
+                              type="date"
+                              value={filterValues[filter.id]?.from || ''}
+                              onChange={(e) => setFilterValues({ 
+                                ...filterValues, 
+                                [filter.id]: { ...(filterValues[filter.id] || {}), from: e.target.value } 
+                              })}
+                              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">To</label>
+                            <input
+                              type="date"
+                              value={filterValues[filter.id]?.to || ''}
+                              onChange={(e) => setFilterValues({ 
+                                ...filterValues, 
+                                [filter.id]: { ...(filterValues[filter.id] || {}), to: e.target.value } 
+                              })}
+                              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Active Filters Summary */}
+                {activeFiltersCount > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-xs text-gray-600">
+                      <span className="font-bold">{activeFiltersCount}</span> filter{activeFiltersCount !== 1 ? 's' : ''} active
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
