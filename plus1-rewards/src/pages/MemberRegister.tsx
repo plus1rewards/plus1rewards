@@ -106,6 +106,16 @@ export default function MemberRegister() {
       // Generate unique QR code
       const qrCode = `PLUS1-${phoneDigits}-${Date.now()}`;
 
+      // Hash the PIN using database function
+      const { data: hashedPinData, error: hashError } = await supabase
+        .rpc('hash_pin', { p_pin: formData.pin });
+
+      if (hashError) {
+        throw new Error('Failed to secure PIN: ' + hashError.message);
+      }
+
+      const pinHash = hashedPinData;
+
       // Create member in members table (NO auto-assigned plan)
       const { data: memberData, error: memberError } = await supabase
         .from('members')
@@ -116,7 +126,7 @@ export default function MemberRegister() {
           email: `${phoneDigits}@plus1rewards.local`,
           date_of_birth: formData.dateOfBirth,
           qr_code: qrCode,
-          pin_code: formData.pin,
+          pin_hash: pinHash,
           status: 'active',
           role: 'member'
         })

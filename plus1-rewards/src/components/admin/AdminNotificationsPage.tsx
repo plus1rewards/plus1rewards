@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabaseAdmin } from '../../lib/supabase';
 
 const BLUE = '#1a558b';
@@ -22,10 +23,15 @@ interface AdminNotification {
 }
 
 export default function AdminNotificationsPage() {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'unread' | 'high'>('all');
-  const [groupBy, setGroupBy] = useState<'member' | 'time'>('member');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     fetchNotifications();
@@ -77,7 +83,27 @@ export default function AdminNotificationsPage() {
     }
   };
 
+  const markSelectedAsRead = async () => {
+    if (selectedIds.size === 0) return;
+    
+    try {
+      await supabaseAdmin
+        .from('admin_notifications')
+        .update({ read: true })
+        .in('id', Array.from(selectedIds));
+
+      setNotifications(prev =>
+        prev.map(n => selectedIds.has(n.id) ? { ...n, read: true } : n)
+      );
+      setSelectedIds(new Set());
+    } catch (error) {
+      console.error('Error marking selected as read:', error);
+    }
+  };
+
   const deleteNotification = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this notification?')) return;
+    
     try {
       await supabaseAdmin
         .from('admin_notifications')
@@ -85,35 +111,89 @@ export default function AdminNotificationsPage() {
         .eq('id', id);
 
       setNotifications(prev => prev.filter(n => n.id !== id));
+      selectedIds.delete(id);
+      setSelectedIds(new Set(selectedIds));
     } catch (error) {
       console.error('Error deleting notification:', error);
     }
   };
 
-  const getFilteredNotifications = () => {
-    if (filter === 'unread') return notifications.filter(n => !n.read);
-    if (filter === 'high') return notifications.filter(n => n.priority === 'high');
-    return notifications;
+  const deleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedIds.size} notification(s)?`)) return;
+    
+    try {
+      await supabaseAdmin
+        .from('admin_notifications')
+        .delete()
+        .in('id', Array.from(selectedIds));
+
+      setNotifications(prev => prev.filter(n => !selectedIds.has(n.id)));
+      setSelectedIds(new Set());
+    } catch (error) {
+      console.error('Error deleting selected notifications:', error);
+    }
   };
 
-  const getGroupedNotifications = () => {
+  const toggleSelectAll = () => {
     const filtered = getFilteredNotifications();
-    
-    if (groupBy === 'time') {
-      return { ungrouped: filtered };
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(n => n.id)));
     }
-    
-    // Group by member
-    const grouped: { [key: string]: AdminNotification[] } = {};
-    filtered.forEach(notification => {
-      const key = notification.member_id || 'system';
-      if (!grouped[key]) {
-        grouped[key] = [];
-      }
-      grouped[key].push(notification);
-    });
-    
-    return grouped;
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const getFilteredNotifications = () => {
+    let filtered = notifications;
+
+    // Search filter
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(n =>
+        n.member_name?.toLowerCase().includes(search) ||
+        n.member_phone?.includes(search) ||
+        n.message?.toLowerCase().includes(search) ||
+        n.type?.toLowerCase().includes(search)
+      );
+    }
+
+    // Read/Priority filter
+    if (filter === 'unread') filtered = filtered.filter(n => !n.read);
+    if (filter === 'high') filtered = filtered.filter(n => n.priority === 'high');
+
+    // Type filter
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(n => n.type === typeFilter);
+    }
+
+    // Date filter
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      filtered = filtered.filter(n => {
+        const created = new Date(n.created_at);
+        if (dateFilter === 'today') return created >= today;
+        if (dateFilter === 'week') return created >= weekAgo;
+        if (dateFilter === 'month') return created >= monthAgo;
+        return true;
+      });
+    }
+
+    return filtered;
   };
 
   const getPriorityColor = (priority: string) => {
@@ -128,23 +208,28 @@ export default function AdminNotificationsPage() {
   };
 
   const getNotificationIcon = (type: string) => {
-    if (type.includes('suspended')) return '🚫';
-    if (type.includes('profile')) return '⚠️';
-    if (type.includes('unsuspended')) return '✅';
-    if (type.includes('dependant')) return '👨‍👩‍👧';
-    return '💡';
+    if (type.includes('suspended')) return 'block';
+    if (type.includes('profile')) return 'warning';
+    if (type.includes('unsuspended')) return 'check_circle';
+    if (type.includes('dependant')) return 'group';
+    return 'notifications';
+  };
+
+  const getUniqueTypes = () => {
+    const types = new Set(notifications.map(n => n.type));
+    return Array.from(types).sort();
   };
 
   const filteredNotifications = getFilteredNotifications();
-  const groupedNotifications = getGroupedNotifications();
   const unreadCount = notifications.filter(n => !n.read).length;
   const highPriorityCount = notifications.filter(n => n.priority === 'high').length;
+  const uniqueTypes = getUniqueTypes();
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f5f8fc] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-gray-200 rounded-full animate-spin mx-auto mb-4" style={{ borderTopColor: BLUE }}></div>
+          <div className="w-12 h-12 border-4 border-gray-200 rounded-full animate-spin mx-auto mb-4" style={{ borderTopColor: BLUE, borderRadius: '50%' }}></div>
           <p className="text-gray-600 font-semibold">Loading notifications...</p>
         </div>
       </div>
@@ -153,292 +238,345 @@ export default function AdminNotificationsPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f8fc]">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-black text-gray-900 flex items-center gap-3">
-                <span className="material-symbols-outlined text-4xl" style={{ color: BLUE }}>notifications</span>
-                Notifications Center
-              </h1>
-              <p className="text-sm text-gray-600 mt-2">
-                <span className="font-bold text-red-600">{unreadCount}</span> unread • 
-                <span className="font-bold text-orange-600 ml-2">{highPriorityCount}</span> high priority • 
-                <span className="font-bold text-gray-700 ml-2">{notifications.length}</span> total
-              </p>
+      {/* Desktop Header */}
+      <header className="hidden md:flex md:flex-col md:gap-6 p-6 md:p-10 pb-6">
+        <div className="flex items-center justify-between gap-6">
+          <div className="flex-1 max-w-2xl">
+            <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-4">Notifications Center</h2>
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xl">search</span>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-white border border-gray-200 rounded-lg py-2.5 pl-10 pr-4 text-sm text-gray-900 focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none transition-all placeholder:text-gray-400"
+                placeholder="Search by member name, phone, message, or type..."
+              />
             </div>
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllAsRead}
-                className="flex items-center gap-2 px-6 py-3 bg-white border-2 text-gray-700 rounded-lg hover:bg-gray-50 transition-all text-sm font-bold"
-                style={{ borderColor: BLUE, color: BLUE }}
-              >
-                <span className="material-symbols-outlined">done_all</span>
-                Mark All as Read
-              </button>
-            )}
           </div>
 
-          {/* Filter Tabs */}
-          <div className="flex gap-3 flex-wrap items-center">
-            {[
-              { key: 'all', label: 'All Notifications', icon: 'inbox', count: notifications.length },
-              { key: 'unread', label: 'Unread', icon: 'mail', count: unreadCount },
-              { key: 'high', label: 'High Priority', icon: 'priority_high', count: highPriorityCount }
-            ].map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setFilter(tab.key as any)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
-                  filter === tab.key
-                    ? 'text-white shadow-lg'
-                    : 'bg-white border border-gray-200 text-gray-700 hover:border-gray-300'
-                }`}
-                style={filter === tab.key ? { backgroundColor: BLUE } : {}}
-              >
-                <span className="material-symbols-outlined text-lg">{tab.icon}</span>
-                {tab.label}
-                <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
-                  filter === tab.key ? 'bg-white/30' : 'bg-gray-100'
-                }`}>
-                  {tab.count}
-                </span>
-              </button>
-            ))}
-            
-            <div className="ml-auto flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-1">
-              <button
-                onClick={() => setGroupBy('member')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-semibold text-xs transition-all ${
-                  groupBy === 'member' ? 'text-white' : 'text-gray-600 hover:bg-gray-100'
-                }`}
-                style={groupBy === 'member' ? { backgroundColor: BLUE } : {}}
-              >
-                <span className="material-symbols-outlined text-sm">person</span>
-                By Member
-              </button>
-              <button
-                onClick={() => setGroupBy('time')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-semibold text-xs transition-all ${
-                  groupBy === 'time' ? 'text-white' : 'text-gray-600 hover:bg-gray-100'
-                }`}
-                style={groupBy === 'time' ? { backgroundColor: BLUE } : {}}
-              >
-                <span className="material-symbols-outlined text-sm">schedule</span>
-                By Time
-              </button>
-            </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => fetchNotifications()}
+              className="flex items-center gap-2 px-5 py-2.5 font-bold rounded-lg border border-[#1a558b] bg-white text-[#1a558b] hover:bg-[#1a558b] hover:text-white transition-all text-sm"
+            >
+              <span className="material-symbols-outlined text-lg">refresh</span>
+              Refresh
+            </button>
+
+            <button
+              onClick={() => navigate('/admin/dashboard')}
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#1a558b] text-white rounded-lg hover:opacity-90 transition-all text-sm"
+            >
+              <span className="material-symbols-outlined text-lg">dashboard</span>
+              Dashboard
+            </button>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      {/* Mobile Header - 2 Rows */}
+      <header className="md:hidden p-4 space-y-3">
+        {/* Row 1: Title + Count */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#1a558b]">notifications</span>
+              Notifications
+              {unreadCount > 0 && (
+                <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold" style={{ borderRadius: '5px' }}>
+                  {unreadCount}
+                </span>
+              )}
+            </h1>
+            <p className="text-sm text-gray-600 mt-0.5">{filteredNotifications.length} total</p>
+          </div>
+        </div>
+        
+        {/* Row 2: Search */}
+        <div className="relative">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-base">search</span>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-white border border-gray-200 rounded-lg py-2 pl-9 pr-3 text-sm text-gray-900 focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none transition-all placeholder:text-gray-400"
+            placeholder="Search notifications..."
+          />
+        </div>
+
+        {/* Row 3: Buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center justify-center gap-1.5 px-3 py-2 font-bold rounded-lg transition-all text-xs flex-1 ${
+              showFilters 
+                ? 'bg-[#1a558b] text-white' 
+                : 'border border-[#1a558b] bg-white text-[#1a558b] hover:bg-[#1a558b] hover:text-white'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">filter_list</span>
+            <span>Filters</span>
+          </button>
+          <button
+            onClick={() => fetchNotifications()}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 font-bold rounded-lg border border-[#1a558b] bg-white text-[#1a558b] hover:bg-[#1a558b] hover:text-white transition-all text-xs flex-1"
+          >
+            <span className="material-symbols-outlined text-base">refresh</span>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </header>
+
+      <div className="px-4 md:px-6 lg:px-10 pb-6 md:pb-10">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
+          <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-1 md:mb-2">
+              <span className="material-symbols-outlined text-[#1a558b] text-2xl md:text-3xl">inbox</span>
+              <span className="text-2xl md:text-3xl font-black text-gray-900">{notifications.length}</span>
+            </div>
+            <p className="text-xs md:text-sm font-bold text-gray-600">Total</p>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-1 md:mb-2">
+              <span className="material-symbols-outlined text-red-600 text-2xl md:text-3xl">mail</span>
+              <span className="text-2xl md:text-3xl font-black text-red-600">{unreadCount}</span>
+            </div>
+            <p className="text-xs md:text-sm font-bold text-gray-600">Unread</p>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-1 md:mb-2">
+              <span className="material-symbols-outlined text-orange-600 text-2xl md:text-3xl">priority_high</span>
+              <span className="text-2xl md:text-3xl font-black text-orange-600">{highPriorityCount}</span>
+            </div>
+            <p className="text-xs md:text-sm font-bold text-gray-600">High Priority</p>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-1 md:mb-2">
+              <span className="material-symbols-outlined text-green-600 text-2xl md:text-3xl">check_circle</span>
+              <span className="text-2xl md:text-3xl font-black text-green-600">{filteredNotifications.length}</span>
+            </div>
+            <p className="text-xs md:text-sm font-bold text-gray-600">Filtered</p>
+          </div>
+        </div>
+
+        {/* Filters and Actions Bar */}
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm mb-4 md:mb-6">
+          <div className="px-4 md:px-6 py-3 md:py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+            <h3 className="text-base md:text-lg font-bold text-gray-900 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#1a558b]">filter_list</span>
+              <span className="hidden sm:inline">Filters & Actions</span>
+              <span className="sm:hidden">Filters</span>
+            </h3>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="text-xs flex items-center gap-1 font-medium text-[#1a558b] hover:underline"
+            >
+              <span className="material-symbols-outlined text-sm">{showFilters ? 'expand_less' : 'expand_more'}</span>
+              {showFilters ? 'Hide' : 'Show'}
+            </button>
+          </div>
+
+          {showFilters && (
+            <div className="p-4 md:p-6 space-y-4">
+              {/* Filter Tabs */}
+              <div className="flex gap-2 md:gap-3 flex-wrap">
+                {[
+                  { key: 'all', label: 'All', icon: 'inbox', count: notifications.length },
+                  { key: 'unread', label: 'Unread', icon: 'mail', count: unreadCount },
+                  { key: 'high', label: 'High Priority', icon: 'priority_high', count: highPriorityCount }
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setFilter(tab.key as any)}
+                    className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-lg font-semibold text-xs md:text-sm transition-all ${
+                      filter === tab.key
+                        ? 'bg-[#1a558b] text-white shadow-md'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-base md:text-lg">{tab.icon}</span>
+                    <span className="hidden sm:inline">{tab.label}</span>
+                    <span className={`px-1.5 md:px-2 py-0.5 rounded-full text-[10px] md:text-xs font-bold ${
+                      filter === tab.key ? 'bg-white/30' : 'bg-white'
+                    }`} style={{ borderRadius: '9px' }}>
+                      {tab.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Advanced Filters */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5">Type</label>
+                  <select
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-xs md:text-sm text-gray-900 focus:ring-1 focus:ring-[#1a558b] outline-none"
+                  >
+                    <option value="all">All Types</option>
+                    {uniqueTypes.map(type => (
+                      <option key={type} value={type}>{type.replace(/_/g, ' ').toUpperCase()}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5">Date Range</label>
+                  <select
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value as any)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-xs md:text-sm text-gray-900 focus:ring-1 focus:ring-[#1a558b] outline-none"
+                  >
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">Last 7 Days</option>
+                    <option value="month">Last 30 Days</option>
+                  </select>
+                </div>
+
+                <div className="flex items-end">
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setFilter('all');
+                      setTypeFilter('all');
+                      setDateFilter('all');
+                    }}
+                    className="text-xs font-bold text-[#1a558b] hover:underline uppercase tracking-widest"
+                  >
+                    Reset All
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Bulk Actions */}
+          {selectedIds.size > 0 && (
+            <div className="px-4 md:px-6 py-3 md:py-4 bg-blue-50 border-t border-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <p className="text-xs md:text-sm font-bold text-blue-900">
+                {selectedIds.size} selected
+              </p>
+              <div className="flex items-center gap-2 md:gap-3 w-full sm:w-auto">
+                <button
+                  onClick={markSelectedAsRead}
+                  className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 md:py-2 bg-white border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-all text-xs md:text-sm font-bold flex-1 sm:flex-initial justify-center"
+                >
+                  <span className="material-symbols-outlined text-base md:text-lg">done_all</span>
+                  <span className="hidden sm:inline">Mark as Read</span>
+                  <span className="sm:hidden">Read</span>
+                </button>
+                <button
+                  onClick={deleteSelected}
+                  className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 md:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all text-xs md:text-sm font-bold flex-1 sm:flex-initial justify-center"
+                >
+                  <span className="material-symbols-outlined text-base md:text-lg">delete</span>
+                  <span className="hidden sm:inline">Delete</span>
+                  <span className="sm:hidden">Delete</span>
+                </button>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 md:py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all text-xs md:text-sm font-bold"
+                >
+                  <span className="material-symbols-outlined text-base md:text-lg">close</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Quick Actions */}
+        {unreadCount > 0 && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 md:p-4 mb-4 md:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
+              <span className="material-symbols-outlined text-blue-600 text-xl md:text-2xl">info</span>
+              <p className="text-xs md:text-sm font-bold text-blue-900">
+                {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <button
+              onClick={markAllAsRead}
+              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-xs md:text-sm font-bold w-full sm:w-auto justify-center"
+            >
+              <span className="material-symbols-outlined text-base md:text-lg">done_all</span>
+              Mark All as Read
+            </button>
+          </div>
+        )}
+
+        {/* Notifications List */}
         {filteredNotifications.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center">
-            <span className="material-symbols-outlined text-6xl text-gray-300 block mb-4">mail_outline</span>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">No notifications</h3>
-            <p className="text-gray-600">
-              {filter === 'unread' ? 'All notifications have been read' : 'You have no notifications'}
+          <div className="bg-white border border-gray-200 rounded-xl p-8 md:p-12 text-center shadow-sm">
+            <span className="material-symbols-outlined text-4xl md:text-6xl text-gray-300 block mb-3 md:mb-4">mail_outline</span>
+            <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">No notifications found</h3>
+            <p className="text-sm md:text-base text-gray-600">
+              {searchTerm || filter !== 'all' || typeFilter !== 'all' || dateFilter !== 'all'
+                ? 'Try adjusting your filters'
+                : 'You have no notifications'}
             </p>
           </div>
-        ) : groupBy === 'member' ? (
-          // Grouped by Member View
-          <div className="space-y-6">
-            {Object.entries(groupedNotifications).map(([memberId, memberNotifications]) => {
-              if (memberId === 'ungrouped') return null;
-              
-              const firstNotification = memberNotifications[0];
-              const unreadInGroup = memberNotifications.filter(n => !n.read).length;
-              const highPriorityInGroup = memberNotifications.filter(n => n.priority === 'high').length;
-              
-              return (
-                <div key={memberId} className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all">
-                  {/* Member Header */}
-                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200 p-5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-full flex items-center justify-center font-black text-xl text-white" style={{ backgroundColor: BLUE }}>
-                          {firstNotification.member_name?.charAt(0).toUpperCase() || '?'}
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-black text-gray-900">{firstNotification.member_name || 'Unknown Member'}</h3>
-                          <p className="text-sm text-gray-600 font-semibold">{firstNotification.member_phone || 'No phone'}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
-                              {memberNotifications.length} {memberNotifications.length === 1 ? 'Notification' : 'Notifications'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 justify-end">
-                            {unreadInGroup > 0 && (
-                              <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-bold">
-                                {unreadInGroup} Unread
-                              </span>
-                            )}
-                            {highPriorityInGroup > 0 && (
-                              <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs font-bold">
-                                {highPriorityInGroup} High
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Notifications List */}
-                  <div className="divide-y divide-gray-200">
-                    {memberNotifications.map(notification => {
-                      const colors = getPriorityColor(notification.priority);
-                      const icon = getNotificationIcon(notification.type);
-                      
-                      return (
-                        <div
-                          key={notification.id}
-                          className={`p-5 transition-all hover:bg-gray-50 ${!notification.read ? 'bg-blue-50/30' : ''}`}
-                        >
-                          <div className="flex gap-4">
-                            {/* Left accent bar */}
-                            <div className={`w-1 rounded-full flex-shrink-0 ${colors.dot}`}></div>
-
-                            {/* Icon and content */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-4 mb-3">
-                                <div className="flex items-center gap-3">
-                                  <span className="text-2xl">{icon}</span>
-                                  <div>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${colors.badge}`}>
-                                        {notification.priority.toUpperCase()}
-                                      </span>
-                                      {!notification.read && (
-                                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
-                                          <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
-                                          NEW
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                                <span className="text-xs text-gray-500 font-medium whitespace-nowrap">
-                                  {new Date(notification.created_at).toLocaleDateString('en-ZA', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
-                                </span>
-                              </div>
-
-                              {/* Message */}
-                              <p className="text-gray-900 font-semibold mb-3 leading-relaxed">
-                                {notification.message}
-                              </p>
-
-                              {/* Metadata */}
-                              {notification.metadata && (
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                                  <div className="space-y-1.5 text-sm">
-                                    {notification.metadata.progress_percent !== undefined && (
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-blue-900 font-semibold">Progress</span>
-                                        <div className="flex items-center gap-2">
-                                          <div className="w-24 h-2 bg-blue-200 rounded-full overflow-hidden">
-                                            <div 
-                                              className="h-full bg-blue-600 rounded-full transition-all"
-                                              style={{ width: `${notification.metadata.progress_percent}%` }}
-                                            ></div>
-                                          </div>
-                                          <span className="text-blue-700 font-bold text-xs">{notification.metadata.progress_percent.toFixed(0)}%</span>
-                                        </div>
-                                      </div>
-                                    )}
-                                    {notification.metadata.missing_fields && notification.metadata.missing_fields.length > 0 && (
-                                      <p className="text-blue-900">
-                                        <span className="font-semibold">Missing Fields:</span> {notification.metadata.missing_fields.join(', ')}
-                                      </p>
-                                    )}
-                                    {notification.metadata.action && (
-                                      <p className="text-red-700 font-semibold">
-                                        <span className="material-symbols-outlined text-sm align-middle mr-1">info</span>
-                                        Action: {notification.metadata.action.replace(/_/g, ' ').toUpperCase()}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex gap-2 flex-shrink-0">
-                              {!notification.read && (
-                                <button
-                                  onClick={() => markAsRead(notification.id)}
-                                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
-                                  title="Mark as read"
-                                >
-                                  <span className="material-symbols-outlined">done</span>
-                                </button>
-                              )}
-                              <button
-                                onClick={() => deleteNotification(notification.id)}
-                                className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                title="Delete"
-                              >
-                                <span className="material-symbols-outlined">delete</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         ) : (
-          // Time-based View (original)
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
+            {/* Select All */}
+            <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4 flex items-center justify-between">
+              <label className="flex items-center gap-2 md:gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.size === filteredNotifications.length && filteredNotifications.length > 0}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 md:w-5 md:h-5 text-[#1a558b] border-gray-300 rounded focus:ring-[#1a558b] cursor-pointer"
+                />
+                <span className="text-xs md:text-sm font-bold text-gray-700">
+                  Select All ({filteredNotifications.length})
+                </span>
+              </label>
+            </div>
+
             {filteredNotifications.map(notification => {
               const colors = getPriorityColor(notification.priority);
               const icon = getNotificationIcon(notification.type);
+              const isSelected = selectedIds.has(notification.id);
               
               return (
                 <div
                   key={notification.id}
-                  className={`bg-white border-2 rounded-xl p-5 transition-all hover:shadow-lg ${colors.border} ${!notification.read ? 'ring-2 ring-offset-2' : ''}`}
-                  style={!notification.read ? { '--tw-ring-color': BLUE } as React.CSSProperties : {}}
+                  className={`bg-white border-2 rounded-xl p-3 md:p-5 transition-all hover:shadow-md ${colors.border} ${!notification.read ? 'ring-2 ring-offset-2 ring-[#1a558b]' : ''} ${isSelected ? 'bg-blue-50' : ''}`}
                 >
-                  <div className="flex gap-4">
-                    {/* Left accent bar */}
-                    <div className={`w-1 rounded-full flex-shrink-0 ${colors.dot}`}></div>
+                  <div className="flex gap-2 md:gap-4">
+                    {/* Checkbox */}
+                    <div className="flex items-start pt-1">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(notification.id)}
+                        className="w-4 h-4 md:w-5 md:h-5 text-[#1a558b] border-gray-300 rounded focus:ring-[#1a558b] cursor-pointer"
+                      />
+                    </div>
 
-                    {/* Icon and content */}
+                    {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-4 mb-3">
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">{icon}</span>
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className={`px-3 py-1 rounded-full text-xs font-bold ${colors.badge}`}>
-                                {notification.priority.toUpperCase()} PRIORITY
+                      <div className="flex items-start justify-between gap-2 md:gap-4 mb-2 md:mb-3">
+                        <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+                          <span className="material-symbols-outlined text-xl md:text-2xl text-gray-600">{icon}</span>
+                          <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
+                            <span className={`px-2 md:px-3 py-0.5 md:py-1 rounded-lg text-[10px] md:text-xs font-bold ${colors.badge}`} style={{ borderRadius: '9px' }}>
+                              {notification.priority.toUpperCase()}
+                            </span>
+                            {!notification.read && (
+                              <span className="flex items-center gap-1 md:gap-1.5 px-2 md:px-2.5 py-0.5 md:py-1 bg-blue-100 text-blue-700 rounded-lg text-[10px] md:text-xs font-bold" style={{ borderRadius: '9px' }}>
+                                <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-blue-600 animate-pulse" style={{ borderRadius: '50%' }}></span>
+                                NEW
                               </span>
-                              {!notification.read && (
-                                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
-                                  <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
-                                  NEW
-                                </span>
-                              )}
-                            </div>
+                            )}
                           </div>
                         </div>
-                        <span className="text-xs text-gray-500 font-medium whitespace-nowrap">
+                        <span className="text-[10px] md:text-xs text-gray-500 font-medium whitespace-nowrap">
                           {new Date(notification.created_at).toLocaleDateString('en-ZA', {
                             month: 'short',
                             day: 'numeric',
@@ -448,20 +586,19 @@ export default function AdminNotificationsPage() {
                         </span>
                       </div>
 
-                      {/* Message */}
-                      <p className="text-gray-900 font-semibold mb-3 leading-relaxed">
+                      <p className="text-xs md:text-sm text-gray-900 font-semibold mb-2 md:mb-3 leading-relaxed">
                         {notification.message}
                       </p>
 
                       {/* Member info */}
-                      <div className="bg-gray-50 rounded-lg p-3 mb-3 border border-gray-200">
-                        <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="bg-gray-50 rounded-lg p-2 md:p-3 mb-2 md:mb-3 border border-gray-200">
+                        <div className="grid grid-cols-2 gap-2 md:gap-3 text-xs md:text-sm">
                           <div>
-                            <p className="text-gray-600 text-xs font-bold uppercase tracking-wide mb-1">Member</p>
-                            <p className="text-gray-900 font-semibold">{notification.member_name}</p>
+                            <p className="text-gray-600 text-[10px] md:text-xs font-bold uppercase tracking-wide mb-0.5 md:mb-1">Member</p>
+                            <p className="text-gray-900 font-semibold truncate">{notification.member_name}</p>
                           </div>
                           <div>
-                            <p className="text-gray-600 text-xs font-bold uppercase tracking-wide mb-1">Phone</p>
+                            <p className="text-gray-600 text-[10px] md:text-xs font-bold uppercase tracking-wide mb-0.5 md:mb-1">Phone</p>
                             <p className="text-gray-900 font-semibold">{notification.member_phone}</p>
                           </div>
                         </div>
@@ -469,31 +606,25 @@ export default function AdminNotificationsPage() {
 
                       {/* Metadata */}
                       {notification.metadata && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                          <div className="space-y-1.5 text-sm">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 md:p-3">
+                          <div className="space-y-1 md:space-y-1.5 text-xs md:text-sm">
                             {notification.metadata.progress_percent !== undefined && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-blue-900 font-semibold">Progress</span>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-24 h-2 bg-blue-200 rounded-full overflow-hidden">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-blue-900 font-semibold text-xs md:text-sm">Progress</span>
+                                <div className="flex items-center gap-1.5 md:gap-2">
+                                  <div className="w-16 md:w-24 h-1.5 md:h-2 bg-blue-200 rounded-full overflow-hidden">
                                     <div 
                                       className="h-full bg-blue-600 rounded-full transition-all"
                                       style={{ width: `${notification.metadata.progress_percent}%` }}
                                     ></div>
                                   </div>
-                                  <span className="text-blue-700 font-bold text-xs">{notification.metadata.progress_percent.toFixed(0)}%</span>
+                                  <span className="text-blue-700 font-bold text-[10px] md:text-xs">{notification.metadata.progress_percent.toFixed(0)}%</span>
                                 </div>
                               </div>
                             )}
                             {notification.metadata.missing_fields && notification.metadata.missing_fields.length > 0 && (
-                              <p className="text-blue-900">
-                                <span className="font-semibold">Missing Fields:</span> {notification.metadata.missing_fields.join(', ')}
-                              </p>
-                            )}
-                            {notification.metadata.action && (
-                              <p className="text-red-700 font-semibold">
-                                <span className="material-symbols-outlined text-sm align-middle mr-1">info</span>
-                                Action: {notification.metadata.action.replace(/_/g, ' ').toUpperCase()}
+                              <p className="text-blue-900 text-xs md:text-sm">
+                                <span className="font-semibold">Missing:</span> {notification.metadata.missing_fields.join(', ')}
                               </p>
                             )}
                           </div>
@@ -502,22 +633,22 @@ export default function AdminNotificationsPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex flex-col md:flex-row gap-1 md:gap-2 flex-shrink-0">
                       {!notification.read && (
                         <button
                           onClick={() => markAsRead(notification.id)}
-                          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                          className="p-1.5 md:p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
                           title="Mark as read"
                         >
-                          <span className="material-symbols-outlined">done</span>
+                          <span className="material-symbols-outlined text-base md:text-xl">done</span>
                         </button>
                       )}
                       <button
                         onClick={() => deleteNotification(notification.id)}
-                        className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                        className="p-1.5 md:p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                         title="Delete"
                       >
-                        <span className="material-symbols-outlined">delete</span>
+                        <span className="material-symbols-outlined text-base md:text-xl">delete</span>
                       </button>
                     </div>
                   </div>
@@ -526,7 +657,14 @@ export default function AdminNotificationsPage() {
             })}
           </div>
         )}
-      </main>
+
+        {/* Footer */}
+        <div className="mt-12 text-center">
+          <p className="text-[10px] text-gray-600 font-bold tracking-[0.2em] uppercase">
+            © 2026 +1 Rewards Platform Management • Secured Admin Access
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

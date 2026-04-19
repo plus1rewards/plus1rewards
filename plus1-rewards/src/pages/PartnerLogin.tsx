@@ -41,9 +41,131 @@ export default function PartnerLogin() {
         return;
       }
 
-      // Fetch partner by phone or email
-      let query = supabase.from('partners').select('*');
-      query = isMobile ? query.eq('cell_phone', normalizedPhone) : query.eq('email', identifier);
+      // For phone login, use secure database verification
+      if (isMobile) {
+        const { data: verifyResult, error: verifyError } = await supabase
+          .rpc('verify_partner_pin', {
+            p_cell_phone: normalizedPhone,
+            p_pin: pin
+          });
+
+        if (verifyError) {
+          console.error('Verification error:', verifyError);
+          showNotification('error', 'Login Failed', 'Failed to verify credentials. Please try again.');
+          return;
+        }
+
+        if (!verifyResult || verifyResult.length === 0) {
+          showNotification('error', 'Account Not Found', 'Partner account not found');
+          return;
+        }
+
+        const { partner_id, is_valid, partner_data } = verifyResult[0];
+
+        if (!partner_id || !is_valid) {
+          // Fetch partner to update failed attempts
+          const { data: partnerData } = await supabase
+            .from('partners')
+            .select('id, failed_login_attempts, locked_until')
+            .eq('cell_phone', normalizedPhone)
+            .single();
+
+          if (partnerData) {
+            if (partnerData.locked_until && new Date(partnerData.locked_until) > new Date()) {
+              const mins = Math.ceil((new Date(partnerData.locked_until).getTime() - Date.now()) / 60000);
+              showNotification('error', 'Account Locked', `Too many failed attempts. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.`);
+              return;
+            }
+
+            const newAttempts = (partnerData.failed_login_attempts ?? 0) + 1;
+            const shouldLock = newAttempts >= MAX_ATTEMPTS;
+            
+            await supabase.from('partners').update({
+              failed_login_attempts: newAttempts,
+              locked_until: shouldLock
+                ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000).toISOString()
+                : null,
+            }).eq('id', partnerData.id);
+
+            if (shouldLock) {
+              showNotification('error', 'Account Locked', `Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.`);
+            } else {
+              showNotification('error', 'Incorrect PIN', `The PIN you entered is incorrect. ${MAX_ATTEMPTS - newAttempts} attempt${MAX_ATTEMPTS - newAttempts !== 1 ? 's' : ''} remaining.`);
+            }
+          } else {
+            showNotification('error', 'Account Not Found', 'Partner account not found');
+          }
+          return;
+        }
+
+        // PIN is valid - use partner_data from verification
+        const partnerData = partner_data as any;
+
+        // Check if account is locked
+        if (partnerData.locked_until && new Date(partnerData.locked_until) > new Date()) {
+          const mins = Math.ceil((new Date(partnerData.locked_until).getTime() - Date.now()) / 60000);
+          showNotification('error', 'Account Locked', `Too many failed attempts. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.`);
+          return;
+        }
+
+        // Reset failed attempts on successful login
+        await supabase.from('partners').update({
+          failed_login_attempts: 0,
+          locked_until: null,
+        }).eq('id', partner_id);
+
+        // Check partner status
+        if (partnerData.status === 'pending') {
+          showNotification('warning', 'Pending Approval', `Your business "${partnerData.shop_name}" is still pending admin approval.`);
+          return;
+        }
+        if (partnerData.status === 'paused') {
+          showNotification('error', 'Account Paused', `Your business "${partnerData.shop_name}" has been paused. Please contact admin.`);
+          return;
+        }
+        if (partnerData.status === 'rejected') {
+          const msg = partnerData.rejection_reason
+            ? `Registration rejected.\n\nReason: ${partnerData.rejection_reason}\n\nPlease contact admin.`
+            : 'Registration rejected by admin. Please contact admin for more information.';
+          showNotification('error', 'Application Rejected', msg, 40000);
+          return;
+        }
+        if (partnerData.status !== 'active') {
+          showNotification('error', 'Login Not Allowed', 'Your account status does not allow login. Please contact admin.');
+          return;
+        }
+
+        const sessionData = {
+          user: {
+            id: partnerData.id,
+            role: partnerData.role || 'partner',
+            first_name: partnerData.first_name,
+            last_name: partnerData.last_name,
+            cell_phone: partnerData.cell_phone,
+            status: partnerData.status,
+          },
+          partner: partnerData,
+          loggedInAt: new Date().toISOString(),
+          expiresAt: rememberMe ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null,
+          rememberMe,
+        };
+
+        if (rememberMe) {
+          localStorage.setItem('partnerSession', JSON.stringify(sessionData));
+        } else {
+          sessionStorage.setItem('partnerSession', JSON.stringify(sessionData));
+        }
+
+        showNotification('success', 'Welcome Back!', `Welcome back, ${partnerData.shop_name}!`);
+        navigate('/partner/dashboard');
+        return;
+      }
+
+      // Email login - legacy flow (keep existing logic)
+      // Fetch partner by email
+      // Email login - legacy flow (keep existing logic)
+      // Fetch partner by email
+      let query = supabase.from('partners').select('*').eq('email', identifier);
       const { data: partnerData, error: fetchError } = await query.single();
 
       if (fetchError || !partnerData) {
@@ -58,7 +180,7 @@ export default function PartnerLogin() {
         return;
       }
 
-      // Verify PIN
+      // Verify PIN (for email login - legacy plain text check)
       if (partnerData.pin_code !== pin) {
         const newAttempts = (partnerData.failed_login_attempts ?? 0) + 1;
         const shouldLock = newAttempts >= MAX_ATTEMPTS;

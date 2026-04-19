@@ -1,4 +1,4 @@
-// plus1-rewards/src/components/dashboard/pages/CommissionsPage.tsx
+﻿// plus1-rewards/src/components/dashboard/pages/CommissionsPage.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../DashboardLayout';
@@ -139,20 +139,52 @@ export default function CommissionsPage() {
     setDetailsLoading(true);
     try {
       // Fetch transactions for this agent
-      const { data: transactions } = await supabaseAdmin
+      const { data: transactions, error: transError } = await supabaseAdmin
         .from('transactions')
-        .select(`
-          *,
-          members(first_name, last_name, cell_phone),
-          partners(shop_name)
-        `)
+        .select('*')
         .eq('agent_id', commission.agent_id)
         .eq('status', 'completed')
         .order('created_at', { ascending: false });
 
+      console.log('Transactions query result:', { transactions, transError });
+
+      // Fetch member and partner details separately
+      let transactionsWithDetails = transactions || [];
+      if (transactions && transactions.length > 0) {
+        const memberIds = [...new Set(transactions.map(t => t.member_id).filter(Boolean))];
+        const partnerIds = [...new Set(transactions.map(t => t.partner_id).filter(Boolean))];
+
+        console.log('Fetching members:', memberIds);
+        console.log('Fetching partners:', partnerIds);
+
+        const { data: membersData, error: membersError } = await supabaseAdmin
+          .from('members')
+          .select('id, first_name, last_name, cell_phone')
+          .in('id', memberIds);
+
+        const { data: partnersData, error: partnersError } = await supabaseAdmin
+          .from('partners')
+          .select('id, shop_name')
+          .in('id', partnerIds);
+
+        console.log('Members data:', { membersData, membersError });
+        console.log('Partners data:', { partnersData, partnersError });
+
+        const membersMap = new Map(membersData?.map(m => [m.id, m]) || []);
+        const partnersMap = new Map(partnersData?.map(p => [p.id, p]) || []);
+
+        transactionsWithDetails = transactions.map(t => ({
+          ...t,
+          members: membersMap.get(t.member_id) || null,
+          partners: partnersMap.get(t.partner_id) || null
+        }));
+      }
+
+      console.log('Transactions with details:', transactionsWithDetails);
+
       setCommissionDetails({
         commission,
-        transactions: transactions || []
+        transactions: transactionsWithDetails
       });
     } catch (error) {
       console.error('Error fetching commission details:', error);
@@ -184,7 +216,43 @@ export default function CommissionsPage() {
     <>
     <DashboardLayout>
       <main className="flex-1 overflow-y-auto bg-[#f5f8fc]">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 md:p-10 pb-6">
+        {/* Mobile Header - 3 rows */}
+        <header className="md:hidden p-4 space-y-3">
+          {/* Row 1: Title + Count */}
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#1a558b] text-2xl">account_balance_wallet</span>
+            <h1 className="text-xl font-black text-gray-900">Commissions</h1>
+            <span className="ml-auto px-2 py-0.5 bg-[#1a558b]/10 text-[#1a558b] text-xs font-bold" style={{ borderRadius: '5px' }}>
+              {filteredCommissions.length}
+            </span>
+          </div>
+
+          {/* Row 2: Search */}
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">search</span>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-white border border-gray-200 rounded-lg py-2.5 pl-10 pr-4 text-sm text-gray-900 focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none transition-all placeholder:text-gray-400"
+              placeholder="Search agents..."
+            />
+          </div>
+
+          {/* Row 3: Refresh button */}
+          <div className="flex gap-2">
+            <button
+              onClick={handleRefresh}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-bold rounded-lg border border-[#1a558b] bg-white text-[#1a558b] hover:bg-[#1a558b] hover:text-white transition-all text-sm"
+            >
+              <span className="material-symbols-outlined text-lg">refresh</span>
+              Refresh
+            </button>
+          </div>
+        </header>
+
+        {/* Desktop Header */}
+        <header className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 md:p-10 pb-6">
           <div className="flex-1 max-w-2xl">
             <div className="relative">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xl">search</span>
@@ -216,23 +284,25 @@ export default function CommissionsPage() {
           </div>
         </header>
 
-        <div className="px-6 md:px-10 pb-10">
-          <div className="mb-8">
+        <div className="px-4 md:px-10 pb-10">
+          {/* Desktop Title */}
+          <div className="mb-8 hidden md:block">
             <h2 className="text-3xl font-black text-gray-900 tracking-tight">Agent Commission Management</h2>
             <p className="text-gray-600 mt-1">Track and manage agent commission payouts</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-10">
             {statsData.map((stat, index) => (
               <StatCard key={index} icon={stat.icon} title={stat.title} value={stat.value} change={stat.change} description={stat.description} />
             ))}
           </div>
 
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-2xl">
-            <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <div className="px-4 md:px-6 py-4 md:py-5 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+              <h3 className="text-base md:text-lg font-bold text-gray-900 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#1a558b]">list_alt</span>
-                Agent Commissions ({filteredCommissions.length})
+                <span className="hidden md:inline">Agent Commissions ({filteredCommissions.length})</span>
+                <span className="md:hidden">Commissions</span>
               </h3>
             </div>
 
@@ -242,76 +312,143 @@ export default function CommissionsPage() {
               </div>
             ) : filteredCommissions.length === 0 ? (
               <div className="px-6 py-12 text-center">
+                <span className="material-symbols-outlined text-gray-400 text-4xl mb-2">inbox</span>
                 <p className="text-gray-600">No commission data found</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[800px]">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Agent</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Contact</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Transactions</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Commission Earned</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Payout Status</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {filteredCommissions.map((commission) => (
-                      <tr key={commission.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-4">
-                          <div className="text-sm font-semibold text-gray-900">{commission.agent_name}</div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="text-xs text-gray-700">{commission.agent_phone}</div>
-                          <div className="text-xs text-gray-600">{commission.agent_email}</div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-sm font-bold text-gray-900">{commission.transaction_count || 0}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-sm font-bold text-[#1a558b]">R{parseFloat(commission.total_amount || 0).toFixed(2)}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                            commission.payout_status === 'ready'
-                              ? 'bg-green-500/20 text-green-700 border border-green-500/30'
-                              : 'bg-yellow-500/20 text-yellow-700 border border-yellow-500/30'
-                          }`}>
-                            <span className={`size-1.5 rounded-full ${
-                              commission.payout_status === 'ready' ? 'bg-green-600' : 'bg-yellow-500'
-                            }`}></span>
-                            {commission.payout_status === 'ready' ? 'Ready for Payout' : 'Below Threshold'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-2">
-                            {commission.payout_status === 'ready' && (
-                              <button
-                                onClick={() => handleMarkPaid(commission.id, commission.total_amount)}
-                                className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold transition-colors"
-                              >
-                                Mark Paid
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleViewCommission(commission)}
-                              className="p-2 text-gray-600 hover:text-[#1a558b] transition-colors rounded-lg bg-gray-100 hover:bg-[#1a558b]/10"
-                              title="View Breakdown"
-                            >
-                              <span className="material-symbols-outlined text-sm">visibility</span>
-                            </button>
+              <>
+                {/* Mobile Card View */}
+                <div className="md:hidden divide-y divide-gray-200">
+                  {filteredCommissions.map((commission) => (
+                    <div key={commission.id} className="p-4 hover:bg-gray-50 transition-colors">
+                      {/* Header Row */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="font-bold text-gray-900 text-sm mb-1">
+                            {commission.agent_name}
                           </div>
-                        </td>
+                          <div className="text-xs text-gray-600">
+                            {commission.agent_phone}
+                          </div>
+                        </div>
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold uppercase" style={{ borderRadius: "5px" }} ${
+                          commission.payout_status === 'ready'
+                            ? 'bg-green-500/20 text-green-700 border border-green-500/30'
+                            : 'bg-yellow-500/20 text-yellow-700 border border-yellow-500/30'
+                        }`}>
+                          <span className={`size-1.5 rounded-full ${
+                            commission.payout_status === 'ready' ? 'bg-green-600' : 'bg-yellow-500'
+                          }`}></span>
+                          {commission.payout_status === 'ready' ? 'Ready' : 'Pending'}
+                        </span>
+                      </div>
+
+                      {/* Commission Amount - Highlighted */}
+                      <div className="mb-3 p-3 bg-[#1a558b]/5 border border-[#1a558b]/20 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-600 mb-0.5">Commission Earned</p>
+                            <p className="text-2xl font-black text-[#1a558b]">R{parseFloat(commission.total_amount || 0).toFixed(2)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-gray-600 mb-0.5">Transactions</p>
+                            <p className="text-xl font-bold text-gray-900">{commission.transaction_count || 0}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                        {commission.payout_status === 'ready' && (
+                          <button
+                            onClick={() => handleMarkPaid(commission.id, commission.total_amount)}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-sm">check_circle</span>
+                            Mark Paid
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleViewCommission(commission)}
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#1a558b] bg-[#1a558b]/10 hover:bg-[#1a558b]/20 rounded-lg transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-sm">visibility</span>
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Agent</th>
+                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Contact</th>
+                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Transactions</th>
+                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Commission Earned</th>
+                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Payout Status</th>
+                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredCommissions.map((commission) => (
+                        <tr key={commission.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-4">
+                            <div className="text-sm font-semibold text-gray-900">{commission.agent_name}</div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="text-xs text-gray-700">{commission.agent_phone}</div>
+                            <div className="text-xs text-gray-600">{commission.agent_email}</div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="text-sm font-bold text-gray-900">{commission.transaction_count || 0}</span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="text-sm font-bold text-[#1a558b]">R{parseFloat(commission.total_amount || 0).toFixed(2)}</span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase ${
+                              commission.payout_status === 'ready'
+                                ? 'bg-green-500/20 text-green-700 border border-green-500/30'
+                                : 'bg-yellow-500/20 text-yellow-700 border border-yellow-500/30'
+                            }`} style={{ borderRadius: "5px" }}>
+                              <span className={`size-1.5 rounded-full ${
+                                commission.payout_status === 'ready' ? 'bg-green-600' : 'bg-yellow-500'
+                              }`}></span>
+                              {commission.payout_status === 'ready' ? 'Ready for Payout' : 'Below Threshold'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              {commission.payout_status === 'ready' && (
+                                <button
+                                  onClick={() => handleMarkPaid(commission.id, commission.total_amount)}
+                                  className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold transition-colors"
+                                >
+                                  Mark Paid
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleViewCommission(commission)}
+                                className="p-2 text-gray-600 hover:text-[#1a558b] transition-colors rounded-lg bg-gray-100 hover:bg-[#1a558b]/10"
+                                title="View Breakdown"
+                              >
+                                <span className="material-symbols-outlined text-sm">visibility</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
 
-            <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
+            <div className="px-4 md:px-6 py-3 bg-gray-50 border-t border-gray-200">
               <p className="text-[10px] text-gray-600 font-medium uppercase tracking-widest text-center">
                 Showing {filteredCommissions.length} of {commissions.length} total agents
               </p>
@@ -323,17 +460,17 @@ export default function CommissionsPage() {
             <div>
               <h4 className="text-sm font-bold text-blue-900 mb-1">Commission Rules</h4>
               <ul className="text-xs text-blue-800 space-y-1">
-                <li>• Agents earn 1% from all partner transactions they manage</li>
-                <li>• Minimum payout threshold: R100</li>
-                <li>• Commissions calculated monthly</li>
-                <li>• Payouts processed after month end</li>
+                <li>â€¢ Agents earn 1% from all partner transactions they manage</li>
+                <li>â€¢ Minimum payout threshold: R100</li>
+                <li>â€¢ Commissions calculated monthly</li>
+                <li>â€¢ Payouts processed after month end</li>
               </ul>
             </div>
           </div>
 
           <div className="mt-12 text-center">
             <p className="text-[10px] text-gray-600 font-bold tracking-[0.2em] uppercase">
-              © 2026 +1 Rewards Platform Management • Secured Admin Access
+              Â© 2026 +1 Rewards Platform Management â€¢ Secured Admin Access
             </p>
           </div>
         </div>
@@ -345,21 +482,21 @@ export default function CommissionsPage() {
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
         <div className="bg-white border border-gray-200 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
           {/* Modal Header */}
-          <div className="border-b border-gray-200 px-8 py-6 flex items-center justify-between flex-shrink-0">
+          <div className="border-b border-gray-200 px-4 md:px-8 py-4 md:py-6 flex items-center justify-between flex-shrink-0">
             <div>
-              <h2 className="text-2xl font-black text-gray-900">Commission Breakdown</h2>
-              <p className="text-sm text-gray-600 mt-1">{selectedCommission.agent_name} - {selectedCommission.month}</p>
+              <h2 className="text-xl md:text-2xl font-black text-gray-900">Commission Breakdown</h2>
+              <p className="text-xs md:text-sm text-gray-600 mt-1">{selectedCommission.agent_name}</p>
             </div>
             <button
               onClick={closeCommissionModal}
-              className="size-10 rounded-full bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-colors"
+              className="size-8 md:size-10 rounded-full bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-colors"
             >
-              <span className="material-symbols-outlined">close</span>
+              <span className="material-symbols-outlined text-lg md:text-xl">close</span>
             </button>
           </div>
 
           {/* Modal Content */}
-          <div className="overflow-y-auto flex-1 px-8 py-6 space-y-6 bg-gray-50">
+          <div className="overflow-y-auto flex-1 px-4 md:px-8 py-4 md:py-6 space-y-4 md:space-y-6 bg-gray-50">
             {detailsLoading ? (
               <div className="text-center py-12">
                 <p className="text-gray-600">Loading commission details...</p>
@@ -368,35 +505,35 @@ export default function CommissionsPage() {
               <>
                 {/* Summary */}
                 <section>
-                  <h3 className="text-lg font-bold text-[#1a558b] mb-4 flex items-center gap-2">
+                  <h3 className="text-base md:text-lg font-bold text-[#1a558b] mb-3 md:mb-4 flex items-center gap-2">
                     <span className="material-symbols-outlined">summarize</span>
                     Commission Summary
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                    <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Agent Name</p>
                       <p className="text-sm text-gray-900 font-semibold">{selectedCommission.agent_name}</p>
                     </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">Month</p>
-                      <p className="text-sm text-gray-900">{selectedCommission.month}</p>
+                    <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4">
+                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">Period</p>
+                      <p className="text-sm text-gray-900 font-semibold">All Time</p>
                     </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Total Commission</p>
-                      <p className="text-2xl text-[#1a558b] font-bold">R{parseFloat(selectedCommission.total_amount).toFixed(2)}</p>
+                      <p className="text-xl md:text-2xl text-[#1a558b] font-bold">R{parseFloat(selectedCommission.total_amount).toFixed(2)}</p>
                     </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Payout Status</p>
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase ${
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold uppercase ${
                         selectedCommission.payout_status === 'paid'
                           ? 'bg-green-500/20 text-green-700 border border-green-500/30'
                           : 'bg-yellow-500/20 text-yellow-700 border border-yellow-500/30'
-                      }`}>
+                      }`} style={{ borderRadius: "5px" }}>
                         {selectedCommission.payout_status}
                       </span>
                     </div>
                     {selectedCommission.paid_at && (
-                      <div className="bg-white border border-gray-200 rounded-lg p-4 md:col-span-2">
+                      <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4 md:col-span-2">
                         <p className="text-xs text-gray-600 uppercase font-bold mb-1">Paid At</p>
                         <p className="text-sm text-green-700 font-semibold">{new Date(selectedCommission.paid_at).toLocaleString()}</p>
                       </div>
@@ -406,51 +543,92 @@ export default function CommissionsPage() {
 
                 {/* Transactions */}
                 <section>
-                  <h3 className="text-lg font-bold text-[#1a558b] mb-4 flex items-center gap-2">
+                  <h3 className="text-base md:text-lg font-bold text-[#1a558b] mb-3 md:mb-4 flex items-center gap-2">
                     <span className="material-symbols-outlined">receipt_long</span>
                     Transactions ({commissionDetails.transactions.length})
                   </h3>
                   {commissionDetails.transactions.length > 0 ? (
-                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead className="bg-[#1a558b]/10">
-                            <tr>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Date</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Time</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Member</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Partner</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Purchase Amount</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Agent Commission</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200">
-                            {commissionDetails.transactions.map((transaction: any) => (
-                              <tr key={transaction.id} className="hover:bg-gray-50">
-                                <td className="px-4 py-3 text-sm text-gray-600">{new Date(transaction.created_at).toLocaleDateString()}</td>
-                                <td className="px-4 py-3 text-sm text-gray-600">{transaction.transaction_time || new Date(transaction.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                                <td className="px-4 py-3 text-sm text-gray-900">{`${transaction.members?.first_name || ''} ${transaction.members?.last_name || ''}`.trim() || 'Unknown'}</td>
-                                <td className="px-4 py-3 text-sm text-gray-900">{transaction.partners?.shop_name || 'Unknown'}</td>
-                                <td className="px-4 py-3 text-sm text-gray-900 font-bold">R{parseFloat(transaction.purchase_amount || 0).toFixed(2)}</td>
-                                <td className="px-4 py-3 text-sm text-[#1a558b] font-bold">R{parseFloat(transaction.agent_amount || 0).toFixed(2)}</td>
-                                <td className="px-4 py-3">
-                                  <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                                    transaction.status === 'completed' ? 'bg-green-500/20 text-green-700' : 
-                                    transaction.status === 'pending' ? 'bg-yellow-500/20 text-yellow-700' :
-                                    'bg-red-500/20 text-red-700'
-                                  }`}>
-                                    {transaction.status}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                    <>
+                      {/* Mobile Card View */}
+                      <div className="md:hidden space-y-3">
+                        {commissionDetails.transactions.slice(0, 10).map((transaction: any) => (
+                          <div key={transaction.id} className="bg-white border border-gray-200 rounded-lg p-3">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <p className="text-xs text-gray-600">{new Date(transaction.created_at).toLocaleDateString()}</p>
+                                <p className="text-sm font-semibold text-gray-900">{`${transaction.members?.first_name || ''} ${transaction.members?.last_name || ''}`.trim() || 'Unknown'}</p>
+                                <p className="text-xs text-gray-600">{transaction.partners?.shop_name || 'Unknown'}</p>
+                              </div>
+                              <span className={`px-2 py-0.5 text-[10px] font-bold ${
+                                transaction.status === 'completed' ? 'bg-green-500/20 text-green-700' : 
+                                transaction.status === 'pending' ? 'bg-yellow-500/20 text-yellow-700' :
+                                'bg-red-500/20 text-red-700'
+                              }`} style={{ borderRadius: "5px" }}>
+                                {transaction.status}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                              <div>
+                                <p className="text-xs text-gray-600">Purchase</p>
+                                <p className="text-sm font-bold text-gray-900">R{parseFloat(transaction.purchase_amount || 0).toFixed(2)}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs text-gray-600">Commission</p>
+                                <p className="text-sm font-bold text-[#1a558b]">R{parseFloat(transaction.agent_amount || 0).toFixed(2)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {commissionDetails.transactions.length > 10 && (
+                          <p className="text-xs text-gray-600 text-center py-2">
+                            Showing 10 of {commissionDetails.transactions.length} transactions
+                          </p>
+                        )}
                       </div>
-                    </div>
+
+                      {/* Desktop Table View */}
+                      <div className="hidden md:block bg-white border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-[#1a558b]/10">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Date</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Time</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Member</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Partner</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Purchase Amount</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Agent Commission</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {commissionDetails.transactions.map((transaction: any) => (
+                                <tr key={transaction.id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3 text-sm text-gray-600">{new Date(transaction.created_at).toLocaleDateString()}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-600">{transaction.transaction_time || new Date(transaction.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-900">{`${transaction.members?.first_name || ''} ${transaction.members?.last_name || ''}`.trim() || 'Unknown'}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-900">{transaction.partners?.shop_name || 'Unknown'}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-900 font-bold">R{parseFloat(transaction.purchase_amount || 0).toFixed(2)}</td>
+                                  <td className="px-4 py-3 text-sm text-[#1a558b] font-bold">R{parseFloat(transaction.agent_amount || 0).toFixed(2)}</td>
+                                  <td className="px-4 py-3">
+                                    <span className={`px-2 py-1 text-xs font-bold ${
+                                      transaction.status === 'completed' ? 'bg-green-500/20 text-green-700' : 
+                                      transaction.status === 'pending' ? 'bg-yellow-500/20 text-yellow-700' :
+                                      'bg-red-500/20 text-red-700'
+                                    }`} style={{ borderRadius: "5px" }}>
+                                      {transaction.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </>
                   ) : (
                     <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
+                      <span className="material-symbols-outlined text-gray-400 text-4xl mb-2">inbox</span>
                       <p className="text-gray-600">No transactions found for this period</p>
                     </div>
                   )}
@@ -458,15 +636,15 @@ export default function CommissionsPage() {
 
                 {/* Actions */}
                 {selectedCommission.payout_status !== 'paid' && (
-                  <section className="flex gap-4 justify-center pt-4">
+                  <section className="flex gap-3 md:gap-4 justify-center pt-2 md:pt-4">
                     <button
                       onClick={() => {
                         handleMarkPaid(selectedCommission.id, parseFloat(selectedCommission.total_amount));
                         closeCommissionModal();
                       }}
-                      className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold transition-colors flex items-center gap-2"
+                      className="px-4 md:px-6 py-2.5 md:py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold transition-colors flex items-center gap-2 text-sm md:text-base"
                     >
-                      <span className="material-symbols-outlined">check_circle</span>
+                      <span className="material-symbols-outlined text-lg md:text-xl">check_circle</span>
                       Mark as Paid
                     </button>
                   </section>
@@ -480,3 +658,5 @@ export default function CommissionsPage() {
     </>
   );
 }
+
+

@@ -28,35 +28,106 @@ export default function MemberPoliciesAdmin() {
 
   const loadPolicies = async () => {
     try {
+      // Fetch member_cover_plans
       const { data, error } = await supabaseAdmin
         .from('member_cover_plans')
-        .select(`
-          id,
-          member_id,
-          status,
-          funded_amount,
-          target_amount,
-          created_at,
-          suspended_at,
-          cover_plans(plan_name),
-          members(full_name, cell_phone)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching member_cover_plans:', error);
+        throw error;
+      }
 
-      const formattedPolicies = (data || []).map((p: any) => ({
-        id: p.id,
-        member_id: p.member_id,
-        member_name: p.members?.full_name || 'Unknown',
-        member_phone: p.members?.cell_phone || 'Unknown',
-        plan_name: p.cover_plans?.plan_name || 'Unknown Plan',
-        status: p.status,
-        funded_amount: p.funded_amount,
-        target_amount: p.target_amount,
-        created_at: p.created_at,
-        suspended_at: p.suspended_at
-      }));
+      if (!data || data.length === 0) {
+        setPolicies([]);
+        return;
+      }
+
+      console.log('Member cover plans data:', data);
+
+      // Get unique member and plan IDs
+      const memberIds = [...new Set(data.map(p => p.member_id).filter(Boolean))];
+      const planIds = [...new Set(data.map(p => p.cover_plan_id).filter(Boolean))];
+
+      console.log('Fetching members for IDs:', memberIds);
+      console.log('Fetching plans for IDs:', planIds);
+
+      // Fetch members
+      const { data: membersData, error: membersError } = await supabaseAdmin
+        .from('members')
+        .select('id, first_name, last_name, cell_phone')
+        .in('id', memberIds);
+
+      if (membersError) {
+        console.error('Error fetching members:', membersError);
+      }
+
+      console.log('Members fetched:', membersData);
+
+      // Fetch plans
+      const { data: plansData, error: plansError } = await supabaseAdmin
+        .from('cover_plans')
+        .select('id, plan_name')
+        .in('id', planIds);
+
+      if (plansError) {
+        console.error('Error fetching plans:', plansError);
+      }
+
+      console.log('Plans fetched:', plansData);
+
+      // Create lookup maps
+      const membersMap = new Map();
+      if (membersData) {
+        membersData.forEach(m => {
+          membersMap.set(m.id, m);
+        });
+      }
+
+      const plansMap = new Map();
+      if (plansData) {
+        plansData.forEach(p => {
+          plansMap.set(p.id, p);
+        });
+      }
+
+      console.log('Members map size:', membersMap.size);
+      console.log('Plans map size:', plansMap.size);
+
+      // Format policies
+      const formattedPolicies = data.map((p: any) => {
+        const member = membersMap.get(p.member_id);
+        const plan = plansMap.get(p.cover_plan_id);
+        
+        console.log(`Policy ${p.id}:`, {
+          member_id: p.member_id,
+          member_found: !!member,
+          member_data: member,
+          plan_id: p.cover_plan_id,
+          plan_found: !!plan,
+          plan_data: plan
+        });
+        
+        const firstName = member?.first_name || '';
+        const lastName = member?.last_name || '';
+        const fullName = `${firstName} ${lastName}`.trim() || 'Unknown';
+        
+        return {
+          id: p.id,
+          member_id: p.member_id,
+          member_name: fullName,
+          member_phone: member?.cell_phone || 'N/A',
+          plan_name: plan?.plan_name || 'Unknown Plan',
+          status: p.status,
+          funded_amount: p.funded_amount,
+          target_amount: p.target_amount,
+          created_at: p.created_at,
+          suspended_at: p.suspended_at
+        };
+      });
+
+      console.log('Formatted policies:', formattedPolicies);
 
       setPolicies(formattedPolicies);
     } catch (error) {

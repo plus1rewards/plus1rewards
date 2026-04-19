@@ -1,4 +1,4 @@
-// plus1-rewards/src/components/dashboard/pages/BlogAdminPage.tsx
+﻿// plus1-rewards/src/components/dashboard/pages/BlogAdminPage.tsx
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../DashboardLayout'
@@ -24,7 +24,7 @@ interface BlogPost {
   updated_at: string
 }
 
-// ─── Rich Text Editor ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Rich Text Editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface EditorProps {
   value: string
@@ -203,7 +203,7 @@ function RichEditor({ value, onChange }: EditorProps) {
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function BlogAdminPage() {
   const navigate = useNavigate()
@@ -334,11 +334,12 @@ export default function BlogAdminPage() {
     fetchPosts()
   }
 
-  // ── List view ──
+  // â”€â”€ List view â”€â”€
   if (view === 'list') return (
     <DashboardLayout>
       <main className="flex-1 overflow-y-auto bg-[#f5f8fc]">
-        <header className="flex items-center justify-between gap-4 p-6 md:p-10 pb-6">
+        {/* Desktop Header */}
+        <header className="hidden md:flex items-center justify-between gap-4 p-6 md:p-10 pb-6">
           <div>
             <h2 className="text-3xl font-black text-gray-900 tracking-tight">Blog Posts</h2>
             <p className="text-gray-500 text-sm mt-1">Create and manage public blog articles</p>
@@ -362,7 +363,40 @@ export default function BlogAdminPage() {
           </div>
         </header>
 
-        <div className="px-6 md:px-10 pb-10">
+        {/* Mobile Header - 2 rows */}
+        <header className="md:hidden px-4 py-4 space-y-3">
+          {/* Row 1: Title with count */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#1a558b]">edit_note</span>
+              <h2 className="text-xl font-black text-gray-900">Blog Posts</h2>
+              <span className="px-2 py-0.5 text-xs font-bold bg-[#1a558b] text-white" style={{ borderRadius: '5px' }}>
+                {posts.length}
+              </span>
+            </div>
+          </div>
+
+          {/* Row 2: Two equal-width buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate('/admin/dashboard')}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-bold rounded-lg border border-gray-200 bg-white text-gray-700 text-sm"
+            >
+              <span className="material-symbols-outlined text-lg">arrow_back</span>
+              Back
+            </button>
+            <button
+              onClick={newPost}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-bold rounded-lg text-white text-sm"
+              style={{ backgroundColor: BLUE }}
+            >
+              <span className="material-symbols-outlined text-lg">add</span>
+              New Post
+            </button>
+          </div>
+        </header>
+
+        <div className="px-4 md:px-10 pb-6 md:pb-10">
           {loading ? (
             <div className="text-center py-20 text-gray-400">Loading...</div>
           ) : posts.length === 0 ? (
@@ -374,7 +408,9 @@ export default function BlogAdminPage() {
               </button>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <>
+              {/* Desktop Table */}
+              <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
               <table className="w-full text-left">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
@@ -398,17 +434,17 @@ export default function BlogAdminPage() {
                         </div>
                       </td>
                       <td className="px-5 py-4">
-                        <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: 'rgba(26,85,139,0.1)', color: BLUE }}>
+                        <span className="text-xs px-2 py-0.5 font-semibold" style={{ backgroundColor: 'rgba(26,85,139,0.1)', color: BLUE, borderRadius: '5px' }}>
                           {post.category}
                         </span>
                       </td>
                       <td className="px-5 py-4">
-                        <button onClick={() => togglePublish(post)} className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all ${
+                        <button onClick={() => togglePublish(post)} className={`text-[10px] font-bold uppercase px-2.5 py-1 border transition-all ${
                           post.published
                             ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
                             : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'
-                        }`}>
-                          {post.published ? '● Published' : '○ Draft'}
+                        }`} style={{ borderRadius: '5px' }}>
+                          {post.published ? 'â— Published' : 'â—‹ Draft'}
                         </button>
                       </td>
                       <td className="px-5 py-4 text-xs text-gray-400">
@@ -431,14 +467,78 @@ export default function BlogAdminPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="md:hidden space-y-3">
+                {posts.map(post => (
+                  <div key={post.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                    {/* Cover image if exists */}
+                    {post.cover_image_url && (
+                      <img src={post.cover_image_url} alt="" className="w-full h-32 object-cover rounded-lg mb-3" />
+                    )}
+
+                    {/* Title and slug */}
+                    <div className="mb-3">
+                      <h3 className="font-bold text-gray-900 text-sm mb-1">{post.title}</h3>
+                      <p className="text-xs text-gray-400">/blog/{post.slug}</p>
+                    </div>
+
+                    {/* Category and Status */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-xs px-2 py-0.5 font-semibold" style={{ backgroundColor: 'rgba(26,85,139,0.1)', color: BLUE, borderRadius: '5px' }}>
+                        {post.category}
+                      </span>
+                      <button onClick={() => togglePublish(post)} className={`text-[10px] font-bold uppercase px-2.5 py-1 border transition-all ${
+                        post.published
+                          ? 'bg-green-50 text-green-700 border-green-200'
+                          : 'bg-gray-100 text-gray-500 border-gray-200'
+                      }`} style={{ borderRadius: '5px' }}>
+                        {post.published ? 'â— Published' : 'â—‹ Draft'}
+                      </button>
+                    </div>
+
+                    {/* Date */}
+                    <p className="text-xs text-gray-400 mb-3">
+                      {new Date(post.created_at).toLocaleDateString('en-ZA')}
+                    </p>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                      <button 
+                        onClick={() => editPost(post)} 
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-gray-100 hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm font-medium"
+                      >
+                        <span className="material-symbols-outlined text-base">edit</span>
+                        Edit
+                      </button>
+                      <a 
+                        href={`/blog/${post.slug}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-gray-100 hover:bg-green-50 hover:text-green-600 transition-colors text-sm font-medium"
+                      >
+                        <span className="material-symbols-outlined text-base">open_in_new</span>
+                        Preview
+                      </a>
+                      <button 
+                        onClick={() => handleDelete(post.id)} 
+                        className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-base">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </main>
     </DashboardLayout>
   )
 
-  // ── Editor view ──
+  // â”€â”€ Editor view â”€â”€
   return (
     <DashboardLayout>
       <main className="flex-1 overflow-y-auto bg-[#f5f8fc]">
@@ -610,9 +710,9 @@ export default function BlogAdminPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {(editingPost?.tags || []).map(tag => (
-                  <span key={tag} className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(26,85,139,0.1)', color: BLUE }}>
+                  <span key={tag} className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium" style={{ backgroundColor: 'rgba(26,85,139,0.1)', color: BLUE, borderRadius: '5px' }}>
                     {tag}
-                    <button onClick={() => removeTag(tag)} className="hover:text-red-500 transition-colors">×</button>
+                    <button onClick={() => removeTag(tag)} className="hover:text-red-500 transition-colors">Ã—</button>
                   </span>
                 ))}
               </div>
@@ -623,3 +723,5 @@ export default function BlogAdminPage() {
     </DashboardLayout>
   )
 }
+
+

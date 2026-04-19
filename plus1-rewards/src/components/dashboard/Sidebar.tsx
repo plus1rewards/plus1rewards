@@ -1,4 +1,4 @@
-// plus1-rewards/src/components/dashboard/Sidebar.tsx
+﻿// plus1-rewards/src/components/dashboard/Sidebar.tsx
 import { useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
@@ -205,7 +205,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">approval</span>
             <span className={getTextClasses('/admin/approvals')}>Approvals</span>
             {pendingCounts.approvals > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.approvals}
               </span>
             )}
@@ -215,7 +215,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">group</span>
             <span className={getTextClasses('/admin/members')}>Members</span>
             {pendingCounts.members > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.members}
               </span>
             )}
@@ -225,7 +225,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">health_and_safety</span>
             <span className={getTextClasses('/admin/cover-plans')}>Member Cover Plans</span>
             {pendingCounts.coverPlans > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-yellow-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-yellow-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.coverPlans}
               </span>
             )}
@@ -240,7 +240,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">storefront</span>
             <span className={getTextClasses('/admin/partners')}>Partners</span>
             {pendingCounts.partners > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-blue-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.partners}
               </span>
             )}
@@ -250,7 +250,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">receipt</span>
             <span className={getTextClasses('/admin/invoices')}>Partner Billing</span>
             {pendingCounts.invoices > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.invoices}
               </span>
             )}
@@ -260,7 +260,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">support_agent</span>
             <span className={getTextClasses('/admin/agents')}>Agents</span>
             {pendingCounts.agents > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-blue-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.agents}
               </span>
             )}
@@ -270,7 +270,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">account_balance_wallet</span>
             <span className={getTextClasses('/admin/commissions')}>Agent Commission</span>
             {pendingCounts.commissions > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-green-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.commissions}
               </span>
             )}
@@ -280,7 +280,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">business</span>
             <span className={getTextClasses('/admin/providers')}>Providers</span>
             {pendingCounts.providers > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-blue-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.providers}
               </span>
             )}
@@ -290,7 +290,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">receipt_long</span>
             <span className={getTextClasses('/admin/transactions')}>Transactions</span>
             {pendingCounts.transactions > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-purple-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-purple-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.transactions}
               </span>
             )}
@@ -300,7 +300,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">report_problem</span>
             <span className={getTextClasses('/admin/disputes')}>Disputes</span>
             {pendingCounts.disputes > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.disputes}
               </span>
             )}
@@ -310,7 +310,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">add_card</span>
             <span className={getTextClasses('/admin/top-ups')}>Top-Ups</span>
             {pendingCounts.topUps > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.topUps}
               </span>
             )}
@@ -359,7 +359,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">approval</span>
             <span className={getTextClasses('/admin/approvals')}>Approvals</span>
             {pendingCounts.approvals > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.approvals}
               </span>
             )}
@@ -369,7 +369,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">group</span>
             <span className={getTextClasses('/admin/members')}>Members</span>
             {pendingCounts.members > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.members}
               </span>
             )}
@@ -379,7 +379,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">health_and_safety</span>
             <span className={getTextClasses('/admin/cover-plans')}>Member Cover Plans</span>
             {pendingCounts.coverPlans > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-yellow-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-yellow-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.coverPlans}
               </span>
             )}
@@ -394,7 +394,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">storefront</span>
             <span className={getTextClasses('/admin/partners')}>Partners</span>
             {pendingCounts.partners > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-blue-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.partners}
               </span>
             )}
@@ -404,7 +404,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">receipt</span>
             <span className={getTextClasses('/admin/invoices')}>Partner Billing</span>
             {pendingCounts.invoices > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.invoices}
               </span>
             )}
@@ -414,7 +414,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">support_agent</span>
             <span className={getTextClasses('/admin/agents')}>Agents</span>
             {pendingCounts.agents > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-blue-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.agents}
               </span>
             )}
@@ -424,7 +424,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">account_balance_wallet</span>
             <span className={getTextClasses('/admin/commissions')}>Agent Commission</span>
             {pendingCounts.commissions > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-green-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.commissions}
               </span>
             )}
@@ -434,7 +434,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">business</span>
             <span className={getTextClasses('/admin/providers')}>Providers</span>
             {pendingCounts.providers > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-blue-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.providers}
               </span>
             )}
@@ -444,7 +444,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">receipt_long</span>
             <span className={getTextClasses('/admin/transactions')}>Transactions</span>
             {pendingCounts.transactions > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-purple-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-purple-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.transactions}
               </span>
             )}
@@ -454,7 +454,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">report_problem</span>
             <span className={getTextClasses('/admin/disputes')}>Disputes</span>
             {pendingCounts.disputes > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.disputes}
               </span>
             )}
@@ -464,7 +464,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="material-symbols-outlined">add_card</span>
             <span className={getTextClasses('/admin/top-ups')}>Top-Ups</span>
             {pendingCounts.topUps > 0 && (
-              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+              <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold " style={{ borderRadius: '9px' }}>
                 {pendingCounts.topUps}
               </span>
             )}
@@ -489,3 +489,4 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     </>
   );
 }
+

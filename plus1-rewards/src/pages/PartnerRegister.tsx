@@ -247,6 +247,16 @@ export default function PartnerRegister() {
         // Continue even if signature upload fails
       }
 
+      // Hash the PIN using database function
+      const { data: hashedPinData, error: hashError } = await supabase
+        .rpc('hash_pin', { p_pin: formData.pin });
+
+      if (hashError) {
+        throw new Error('Failed to secure PIN: ' + hashError.message);
+      }
+
+      const pinHash = hashedPinData;
+
       // Create partner profile directly in partners table
       const { error: partnerError } = await supabase
         .from('partners')
@@ -264,7 +274,7 @@ export default function PartnerRegister() {
           status: 'pending',
           signature_url: uploadError ? null : signatureFileName,
           suppliers: [],
-          pin_code: formData.pin,
+          pin_hash: pinHash,
           role: 'partner'
         });
 

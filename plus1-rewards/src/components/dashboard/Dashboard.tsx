@@ -1,4 +1,4 @@
-// plus1-rewards/src/components/dashboard/Dashboard.tsx
+﻿// plus1-rewards/src/components/dashboard/Dashboard.tsx
 import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
@@ -42,7 +42,7 @@ export default function Dashboard() {
 
   const checkMembersNeedingProfileCompletion = async () => {
     try {
-      console.log('🔍 Checking for members at 90%+ needing profile completion...');
+      console.log('ðŸ” Checking for members at 90%+ needing profile completion...');
       
       // Get all members
       const { data: members } = await supabaseAdmin
@@ -51,7 +51,7 @@ export default function Dashboard() {
       
       if (!members) return;
       
-      console.log(`📋 Found ${members.length} members`);
+      console.log(`ðŸ“‹ Found ${members.length} members`);
       
       const membersNeedingAttention: Array<{
         id: string;
@@ -96,7 +96,7 @@ export default function Dashboard() {
             amountFunded: totalCashback,
             target: targetAmount
           });
-          console.log(`⚠️ ALERT: Member ${member.name} at ${percentComplete.toFixed(1)}% needs verification!`);
+          console.log(`âš ï¸ ALERT: Member ${member.name} at ${percentComplete.toFixed(1)}% needs verification!`);
         }
       }
       
@@ -320,3 +320,5 @@ export default function Dashboard() {
     </DashboardLayout>
   );
 }
+
+

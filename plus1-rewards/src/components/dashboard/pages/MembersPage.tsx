@@ -12,6 +12,46 @@ const getFullName = (member: any): string => {
   return `${firstName} ${lastName}`.trim() || 'No name';
 };
 
+// Pricing calculation functions (same logic as MemberCoverPlans.tsx)
+const getPlanPricing = (planName: string) => {
+  const lowerPlanName = planName.toLowerCase();
+  
+  // Comprehensive plans
+  if (lowerPlanName.includes('comprehensive')) {
+    if (lowerPlanName.includes('value plus')) {
+      return { single: 665, couple: 1151, childCost: 266 };
+    } else if (lowerPlanName.includes('platinum')) {
+      return { single: 896, couple: 1611, childCost: 358 };
+    } else if (lowerPlanName.includes('executive')) {
+      return { single: 985, couple: 1724, childCost: 394 };
+    }
+  }
+  
+  // Hospital plans
+  if (lowerPlanName.includes('hospital')) {
+    return { single: 390, couple: 624, childCost: 156 };
+  }
+  
+  // Day to Day plans
+  if (lowerPlanName.includes('day')) {
+    return { single: 385, couple: 578, childCost: 193 };
+  }
+  
+  // Default fallback
+  return { single: 0, couple: 0, childCost: 0 };
+};
+
+const calculateDependantCost = (planName: string, dependantType: string): number => {
+  const pricing = getPlanPricing(planName);
+  
+  if (dependantType === 'child') {
+    return pricing.childCost;
+  } else {
+    // Adult dependant (spouse/partner/other) = couple price - single price
+    return pricing.couple - pricing.single;
+  }
+};
+
 export default function MembersPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,6 +63,7 @@ export default function MembersPage() {
     totalRewards: 0
   });
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [memberDetails, setMemberDetails] = useState<any>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -32,25 +73,101 @@ export default function MembersPage() {
     hasPolicy: '', // 'yes' or 'no'
     hasQR: '' // 'yes' or 'no'
   });
+  const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
+  const [memberDependants, setMemberDependants] = useState<Record<string, any[]>>({});
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 20;
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (loadMore = false) => {
+    if (loadMore) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      setPage(0);
+      setMembers([]);
+    }
+    
     try {
-      // Fetch members
+      const currentPage = loadMore ? page + 1 : 0;
+      const from = currentPage * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      
+      console.log(`Fetching members page ${currentPage} (${from}-${to})...`);
+      
+      // Get total count first (only on initial load)
+      if (!loadMore) {
+        const { count } = await supabaseAdmin
+          .from('members')
+          .select('*', { count: 'exact', head: true });
+        setTotalCount(count || 0);
+        console.log('Total members:', count);
+      }
+      
+      // Fetch members with pagination
       const { data: membersData, error: membersError } = await supabaseAdmin
         .from('members')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (membersError) throw membersError;
+      
+      console.log('Members fetched:', membersData?.length);
+      
+      // Check if there are more records
+      setHasMore(membersData && membersData.length === PAGE_SIZE);
 
       // Fetch cover plans separately to avoid ambiguous relationship
       if (membersData && membersData.length > 0) {
         const memberIds = membersData.map(m => m.id);
         const { data: coverPlansData } = await supabaseAdmin
           .from('member_cover_plans')
-          .select('member_id, funded_amount, status')
+          .select('member_id, funded_amount, status, id, cover_plan_id')
           .in('member_id', memberIds);
+
+        // Fetch cover plan names
+        const coverPlanIdsForNames = [...new Set(coverPlansData?.map(cp => cp.cover_plan_id) || [])];
+        const { data: coverPlanNamesData } = await supabaseAdmin
+          .from('cover_plans')
+          .select('id, plan_name')
+          .in('id', coverPlanIdsForNames);
+        
+        // Create a map of cover_plan_id to plan_name
+        const planNamesMap = new Map(coverPlanNamesData?.map(cp => [cp.id, cp.plan_name]) || []);
+
+        // Fetch dependants for all members
+        const coverPlanIds = coverPlansData?.map(cp => cp.id) || [];
+        const { data: dependantsData } = await supabaseAdmin
+          .from('dependants')
+          .select('*')
+          .in('member_cover_plan_id', coverPlanIds);
+
+        // Group dependants by member_id
+        const dependantsByMember: Record<string, any[]> = {};
+        if (dependantsData && coverPlansData) {
+          dependantsData.forEach(dep => {
+            const coverPlan = coverPlansData.find(cp => cp.id === dep.member_cover_plan_id);
+            if (coverPlan) {
+              if (!dependantsByMember[coverPlan.member_id]) {
+                dependantsByMember[coverPlan.member_id] = [];
+              }
+              // Add plan name to dependant for pricing calculation
+              const planName = planNamesMap.get(coverPlan.cover_plan_id) || '';
+              dependantsByMember[coverPlan.member_id].push({
+                ...dep,
+                plan_name: planName
+              });
+            }
+          });
+        }
+        
+        if (loadMore) {
+          setMemberDependants(prev => ({ ...prev, ...dependantsByMember }));
+        } else {
+          setMemberDependants(dependantsByMember);
+        }
 
         // Attach cover plans to members
         const membersWithPlans = membersData.map(member => ({
@@ -58,30 +175,49 @@ export default function MembersPage() {
           member_cover_plans: coverPlansData?.filter(cp => cp.member_id === member.id) || []
         }));
 
-        membersData.splice(0, membersData.length, ...membersWithPlans);
+        // Update members list
+        if (loadMore) {
+          setMembers(prev => [...prev, ...membersWithPlans]);
+          setPage(currentPage);
+        } else {
+          setMembers(membersWithPlans);
+          
+          // Calculate stats (only on initial load)
+          const { count: verifiedCount } = await supabaseAdmin
+            .from('members')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'active');
+          
+          const { count: qrCount } = await supabaseAdmin
+            .from('members')
+            .select('*', { count: 'exact', head: true })
+            .not('qr_code', 'is', null);
+          
+          const { data: allCoverPlans } = await supabaseAdmin
+            .from('member_cover_plans')
+            .select('funded_amount');
+          
+          const totalRewards = allCoverPlans?.reduce((sum, p) => sum + (parseFloat(p.funded_amount) || 0), 0) || 0;
+          
+          setStats({
+            totalMembers: totalCount,
+            verified: verifiedCount || 0,
+            qrCodes: qrCount || 0,
+            totalRewards
+          });
+        }
       }
-
-      // Calculate stats
-      const totalMembers = membersData?.length || 0;
-      const verified = membersData?.filter(m => m.status === 'active')?.length || 0;
-      const qrCodes = membersData?.filter(m => m.qr_code)?.length || 0;
-      const totalRewards = membersData?.reduce((sum, m) => {
-        const memberRewards = m.member_cover_plans?.reduce((s: number, p: any) => s + (parseFloat(p.funded_amount) || 0), 0) || 0;
-        return sum + memberRewards;
-      }, 0) || 0;
-
-      setStats({
-        totalMembers,
-        verified,
-        qrCodes,
-        totalRewards
-      });
-
-      setMembers(membersData || []);
     } catch (error) {
       console.error('Error fetching members:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const loadMoreMembers = () => {
+    if (!loadingMore && hasMore) {
+      fetchData(true);
     }
   };
 
@@ -279,6 +415,10 @@ export default function MembersPage() {
     setMemberDetails(null);
   };
 
+  const toggleDependants = (memberId: string) => {
+    setExpandedMemberId(expandedMemberId === memberId ? null : memberId);
+  };
+
   const statsData = [
     {
       icon: 'group',
@@ -372,27 +512,59 @@ export default function MembersPage() {
 
           {/* Members List Table */}
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-2xl">
-            <div className="px-4 md:px-6 py-4 md:py-5 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50">
-              <h3 className="text-base md:text-lg font-bold text-gray-900 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#1a558b]">list_alt</span>
-                All Members ({filteredMembers.length})
-              </h3>
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`text-xs flex items-center gap-1 font-medium transition-colors ${showFilters ? 'text-[#1a558b]' : 'text-gray-600 hover:text-[#1a558b]'}`}
-                >
-                  <span className="material-symbols-outlined text-sm">{showFilters ? 'filter_list_off' : 'filter_list'}</span>
-                  {showFilters ? 'Hide Filters' : 'Filter'}
-                </button>
-                <button 
-                  onClick={handleExport}
-                  className="text-xs text-gray-600 hover:text-[#1a558b] flex items-center gap-1 font-medium transition-colors"
-                >
-                  <span className="material-symbols-outlined text-sm">download</span>
-                  <span className="hidden sm:inline">Export CSV</span>
-                  <span className="sm:hidden">Export</span>
-                </button>
+            <div className="px-4 md:px-6 py-4 md:py-5 border-b border-gray-200 bg-gray-50">
+              {/* Mobile Layout */}
+              <div className="md:hidden">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#1a558b]" style={{ fontSize: '20px' }}>list_alt</span>
+                    All Members ({filteredMembers.length})
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-all ${
+                      showFilters 
+                        ? 'bg-[#1a558b] text-white' 
+                        : 'bg-white border border-gray-200 text-gray-700 hover:border-[#1a558b] hover:text-[#1a558b]'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{showFilters ? 'filter_list_off' : 'filter_list'}</span>
+                    <span>{showFilters ? 'Hide' : 'Filter'}</span>
+                  </button>
+                  <button 
+                    onClick={handleExport}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg bg-white border border-gray-200 text-gray-700 hover:border-[#1a558b] hover:text-[#1a558b] transition-all"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>download</span>
+                    <span>Export</span>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Desktop Layout */}
+              <div className="hidden md:flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#1a558b]">list_alt</span>
+                  All Members ({filteredMembers.length})
+                </h3>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`text-xs flex items-center gap-1 font-medium transition-colors ${showFilters ? 'text-[#1a558b]' : 'text-gray-600 hover:text-[#1a558b]'}`}
+                  >
+                    <span className="material-symbols-outlined text-sm">{showFilters ? 'filter_list_off' : 'filter_list'}</span>
+                    {showFilters ? 'Hide Filters' : 'Filter'}
+                  </button>
+                  <button 
+                    onClick={handleExport}
+                    className="text-xs text-gray-600 hover:text-[#1a558b] flex items-center gap-1 font-medium transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">download</span>
+                    Export CSV
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -455,7 +627,8 @@ export default function MembersPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                {/* Desktop Table View */}
+                <table className="hidden md:table w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
                       <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-600 text-left">Member</th>
@@ -471,23 +644,33 @@ export default function MembersPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredMembers.map((member) => {
                       const fundedAmount = member.member_cover_plans?.reduce((s: number, p: any) => s + (parseFloat(p.funded_amount) || 0), 0) || 0;
+                      const dependants = memberDependants[member.id] || [];
+                      const isExpanded = expandedMemberId === member.id;
                       
                       return (
-                        <tr key={member.id} className="hover:bg-gray-50 transition-colors duration-150">
-                          {/* Member Info */}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center space-x-3">
-                              <div className="flex-shrink-0 h-10 w-10">
-                                <div className="h-10 w-10 rounded-full bg-[#1a558b] flex items-center justify-center">
-                                  <span className="text-white font-bold text-lg">{getFullName(member).charAt(0)}</span>
+                        <>
+                          <tr key={member.id} className="hover:bg-gray-50 transition-colors duration-150">
+                            {/* Member Info */}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center space-x-3">
+                                <div className="flex-shrink-0 h-10 w-10">
+                                  <div className="h-10 w-10 rounded-full bg-[#1a558b] flex items-center justify-center">
+                                    <span className="text-white font-bold text-lg">{getFullName(member).charAt(0)}</span>
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-sm font-semibold text-gray-900 truncate">{getFullName(member)}</p>
+                                    {dependants.length > 0 && (
+                                      <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800" style={{ borderRadius: '5px' }}>
+                                        {dependants.length} dep
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-gray-500 font-mono">{member.id.substring(0, 8)}...</p>
                                 </div>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-gray-900 truncate">{getFullName(member)}</p>
-                                <p className="text-xs text-gray-500 font-mono">{member.id.substring(0, 8)}...</p>
-                              </div>
-                            </div>
-                          </td>
+                            </td>
                           
                           {/* Phone */}
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -506,7 +689,7 @@ export default function MembersPage() {
                                 member.email.includes('@') ? 
                                   member.email.split('@')[0].match(/^\d+$/) ? 
                                     member.email : // If it starts with digits, show full email
-                                    member.email.split(' ').find(part => part.includes('@')) || member.email
+                                    member.email.split(' ').find((part: string) => part.includes('@')) || member.email
                                   : member.email
                               ) : (
                                 <span className="text-gray-400 italic">No email</span>
@@ -518,13 +701,13 @@ export default function MembersPage() {
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             {member.qr_code ? (
                               <div className="flex flex-col items-center space-y-1">
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-800" style={{ borderRadius: '5px' }}>
                                   ✓ Issued
                                 </span>
                                 <span className="text-xs text-gray-500 font-mono">{member.qr_code.substring(0, 12)}...</span>
                               </div>
                             ) : (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-red-100 text-red-800" style={{ borderRadius: '5px' }}>
                                 ✗ Not Issued
                               </span>
                             )}
@@ -532,13 +715,13 @@ export default function MembersPage() {
                           
                           {/* Status */}
                           <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                            <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold ${
                               member.status === 'active' 
                                 ? 'bg-[#1a558b] text-white'
                                 : member.status === 'pending'
                                 ? 'bg-yellow-100 text-yellow-800'
                                 : 'bg-red-100 text-red-800'
-                            }`}>
+                            }`} style={{ borderRadius: '9px' }}>
                               {member.status?.toUpperCase()}
                             </span>
                           </td>
@@ -564,6 +747,18 @@ export default function MembersPage() {
                           {/* Actions */}
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <div className="flex items-center justify-center gap-2">
+                              {/* Expand button for dependants - moved here */}
+                              {dependants.length > 0 && (
+                                <button
+                                  onClick={() => toggleDependants(member.id)}
+                                  className="p-2 text-gray-400 hover:text-[#1a558b] rounded-lg transition-colors duration-150"
+                                  title={`View ${dependants.length} dependant${dependants.length > 1 ? 's' : ''}`}
+                                >
+                                  <span className="material-symbols-outlined text-xl">
+                                    {isExpanded ? 'expand_less' : 'expand_more'}
+                                  </span>
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleViewDetails(member)}
                                 className="p-2 text-[#1a558b] hover:bg-[#1a558b]/10 rounded-lg transition-colors duration-150"
@@ -637,15 +832,289 @@ export default function MembersPage() {
                             </div>
                           </td>
                         </tr>
+                        
+                        {/* Expandable Dependants Row */}
+                        {isExpanded && dependants.length > 0 && (
+                          <tr key={`${member.id}-dependants`} className="bg-blue-50">
+                            <td colSpan={8} className="px-6 py-4">
+                              <div className="space-y-3">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <span className="material-symbols-outlined text-[#1a558b] text-lg">group</span>
+                                  <h4 className="text-sm font-bold text-gray-900">Dependants ({dependants.length})</h4>
+                                </div>
+                                {dependants.map((dep: any) => (
+                                  <div key={dep.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                                      <div>
+                                        <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Full Name</p>
+                                        <p className="text-sm text-gray-900 font-semibold">{dep.first_name} {dep.last_name}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Type</p>
+                                        <p className="text-sm text-gray-900 font-semibold capitalize">{dep.dependant_type || 'Not specified'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">SA ID</p>
+                                        <p className="text-sm text-gray-900 font-semibold font-mono">{dep.sa_id || 'Not provided'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Date of Birth</p>
+                                        <p className="text-sm text-gray-900 font-semibold">{dep.date_of_birth ? new Date(dep.date_of_birth).toLocaleDateString('en-ZA') : 'Not provided'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Gender</p>
+                                        <p className="text-sm text-gray-900 font-semibold capitalize">{dep.gender || 'Not specified'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Relationship</p>
+                                        <p className="text-sm text-gray-900 font-semibold capitalize">{dep.relationship || 'Not specified'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Email</p>
+                                        <p className="text-sm text-gray-900 font-semibold break-all">{dep.email || 'Not provided'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Phone</p>
+                                        <p className="text-sm text-gray-900 font-semibold">{dep.cell_phone || 'Not provided'}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
                       );
                     })}
                   </tbody>
                 </table>
+                
+                {/* Mobile Card View */}
+                <div className="md:hidden divide-y divide-gray-200">
+                  {filteredMembers.map((member) => {
+                    const fundedAmount = member.member_cover_plans?.reduce((s: number, p: any) => s + (parseFloat(p.funded_amount) || 0), 0) || 0;
+                    const dependants = memberDependants[member.id] || [];
+                    const isExpanded = expandedMemberId === member.id;
+                    
+                    // Calculate dependant prices using plan name and dependant type
+                    const dependantsWithPrices = dependants.map((dep: any) => {
+                      const price = dep.plan_name && dep.dependant_type 
+                        ? calculateDependantCost(dep.plan_name, dep.dependant_type)
+                        : 0;
+                      return {
+                        ...dep,
+                        price
+                      };
+                    });
+                    
+                    return (
+                      <div key={member.id} className="p-4 bg-white">
+                        {/* Member Header */}
+                        <div className="flex items-start justify-between mb-3 gap-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className="size-10 rounded-full bg-gradient-to-br from-[#1a558b] to-blue-600 flex items-center justify-center text-white font-black text-sm flex-shrink-0">
+                              {getFullName(member).charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold text-gray-900 truncate">{getFullName(member)}</p>
+                              <p className="text-xs text-gray-600">{member.cell_phone}</p>
+                            </div>
+                          </div>
+                          {dependantsWithPrices.length > 0 && (
+                            <span className="px-2 py-0.5 text-[9px] font-bold bg-blue-100 text-blue-800 flex-shrink-0" style={{ borderRadius: '5px' }}>
+                              {dependantsWithPrices.length} dep
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Email */}
+                        <div className="mb-3">
+                          <p className="text-[9px] font-bold uppercase text-gray-500 mb-0.5">Email</p>
+                          <p className="text-xs text-gray-900 truncate">{member.email || 'Not provided'}</p>
+                        </div>
+                        
+                        {/* QR Code & Status Row */}
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <p className="text-[9px] font-bold uppercase text-gray-500 mb-1">QR Code</p>
+                            {member.qr_code ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold bg-green-100 text-green-700" style={{ borderRadius: '5px' }}>
+                                <span className="material-symbols-outlined text-xs">check_circle</span>
+                                Issued
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold bg-gray-100 text-gray-600" style={{ borderRadius: '5px' }}>
+                                <span className="material-symbols-outlined text-xs">cancel</span>
+                                Not Issued
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-bold uppercase text-gray-500 mb-1">Status</p>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold ${
+                              member.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                            }`} style={{ borderRadius: '5px' }}>
+                              {member.status === 'active' ? 'Active' : 'Suspended'}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Funded Amount */}
+                        <div className="mb-3 bg-gray-50 rounded-lg p-3">
+                          <p className="text-[9px] font-bold uppercase text-gray-500 mb-1">Total Funded</p>
+                          <p className="text-lg font-black text-[#1a558b]">R{fundedAmount.toFixed(2)}</p>
+                        </div>
+                        
+                        {/* Joined Date */}
+                        <div className="mb-3">
+                          <p className="text-[9px] font-bold uppercase text-gray-500 mb-0.5">Joined</p>
+                          <p className="text-xs text-gray-600">{new Date(member.created_at).toLocaleDateString()}</p>
+                        </div>
+                        
+                        {/* Dependants Dropdown */}
+                        {dependantsWithPrices.length > 0 && (
+                          <div className="mb-3">
+                            <button
+                              onClick={() => setExpandedMemberId(isExpanded ? null : member.id)}
+                              className="w-full flex items-center justify-between px-3 py-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-xs font-semibold text-blue-900"
+                            >
+                              <span className="flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-sm">group</span>
+                                View {dependantsWithPrices.length} Dependant{dependantsWithPrices.length !== 1 ? 's' : ''}
+                              </span>
+                              <span className={`material-symbols-outlined text-sm transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                                expand_more
+                              </span>
+                            </button>
+                            
+                            {isExpanded && (
+                              <div className="mt-2 space-y-2 pl-2 border-l-2 border-blue-200">
+                                {dependantsWithPrices.map((dep: any) => (
+                                  <div key={dep.id} className="bg-white border border-gray-200 rounded-lg p-2">
+                                    <p className="text-xs font-semibold text-gray-900">{dep.first_name} {dep.last_name}</p>
+                                    <p className="text-[10px] text-gray-600">Price: R{parseFloat(dep.price || 0).toFixed(2)}</p>
+                                    <p className="text-[10px] text-gray-600">Dependant Type: {dep.dependant_type || 'Not specified'}</p>
+                                    <p className="text-[10px] text-gray-600">ID: {dep.id ? dep.id.substring(0, 12) + '...' : 'N/A'}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Action Buttons */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => handleViewDetails(member)}
+                            className="px-3 py-2 bg-[#1a558b] text-white rounded-lg text-xs font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-sm">visibility</span>
+                            View
+                          </button>
+                          {member.status === 'suspended' ? (
+                            <button
+                              onClick={() => {
+                                if (confirm(`Reactivate ${getFullName(member)}?`)) {
+                                  supabaseAdmin
+                                    .from('members')
+                                    .update({ status: 'active' })
+                                    .eq('id', member.id)
+                                    .then(() => fetchData());
+                                }
+                              }}
+                              className="px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-1"
+                            >
+                              <span className="material-symbols-outlined text-sm">check_circle</span>
+                              Reactivate
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                const reason = prompt(`Enter reason for suspending ${getFullName(member)}:`);
+                                if (reason && reason.trim()) {
+                                  supabaseAdmin
+                                    .from('members')
+                                    .update({ status: 'suspended' })
+                                    .eq('id', member.id)
+                                    .then(async () => {
+                                      await supabaseAdmin
+                                        .from('member_cover_plans')
+                                        .update({ 
+                                          status: 'suspended',
+                                          suspended_at: new Date().toISOString()
+                                        })
+                                        .eq('member_id', member.id);
+                                      
+                                      await supabaseAdmin.from('admin_notifications').insert({
+                                        type: 'member_suspended',
+                                        member_id: member.id,
+                                        member_name: getFullName(member),
+                                        member_phone: member.cell_phone,
+                                        message: `Member ${getFullName(member)} (${member.cell_phone}) has been SUSPENDED by admin. Reason: ${reason}`,
+                                        priority: 'high',
+                                        metadata: {
+                                          suspension_reason: reason,
+                                          suspended_at: new Date().toISOString(),
+                                          action: 'member_suspended'
+                                        }
+                                      });
+                                      
+                                      fetchData();
+                                    });
+                                }
+                              }}
+                              className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-1"
+                            >
+                              <span className="material-symbols-outlined text-sm">block</span>
+                              Suspend
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
+            
+            {/* Load More Button */}
+            {!loading && hasMore && filteredMembers.length === members.length && (
+              <div className="mt-6 text-center px-4 md:px-6">
+                <button
+                  onClick={loadMoreMembers}
+                  disabled={loadingMore}
+                  className="px-6 py-3 bg-[#1a558b] text-white rounded-lg font-bold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                >
+                  {loadingMore ? (
+                    <>
+                      <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined">expand_more</span>
+                      Load More Members
+                    </>
+                  )}
+                </button>
+                <p className="text-xs text-gray-500 mt-2">
+                  Showing {members.length} of {totalCount} total members
+                </p>
+              </div>
+            )}
+            
+            {!loading && !hasMore && members.length > 0 && (
+              <div className="mt-6 text-center px-4 md:px-6">
+                <p className="text-sm text-gray-600 font-medium">
+                  All members loaded ({members.length} total)
+                </p>
+              </div>
+            )}
+            
             <div className="px-4 md:px-6 py-3 bg-gray-50 border-t border-gray-200">
               <p className="text-[10px] text-gray-600 font-medium uppercase tracking-widest text-center">
-                Showing {filteredMembers.length} of {members.length} total members
+                Showing {filteredMembers.length} of {members.length} loaded members
               </p>
             </div>
           </div>
@@ -782,11 +1251,11 @@ export default function MembersPage() {
                         </div>
                         <div>
                           <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Status</p>
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase ${
                             memberDetails.member.status === 'active' ? 'bg-[#1a558b]/20 text-[#1a558b]' : 
                             memberDetails.member.status === 'suspended' ? 'bg-red-500/20 text-red-600' :
                             'bg-yellow-500/20 text-yellow-600'
-                          }`}>
+                          }`} style={{ borderRadius: '5px' }}>
                             {memberDetails.member.status}
                           </span>
                         </div>
@@ -846,12 +1315,12 @@ export default function MembersPage() {
                                   <p className="font-bold text-gray-900 text-sm md:text-base">{plan.cover_plans?.plan_name || 'Cover Plan'}</p>
                                   <p className="text-xs text-gray-600">Priority: {plan.creation_order}</p>
                                 </div>
-                                <span className={`px-3 py-1 rounded text-xs font-bold self-start ${
+                                <span className={`px-3 py-1 text-xs font-bold self-start ${
                                   plan.status === 'active' ? 'bg-green-500/20 text-green-600' :
                                   plan.status === 'in_progress' ? 'bg-blue-500/20 text-blue-600' :
                                   plan.status === 'suspended' ? 'bg-red-500/20 text-red-600 font-black' :
                                   'bg-gray-500/20 text-gray-600'
-                                }`}>
+                                }`} style={{ borderRadius: '5px' }}>
                                   {plan.status === 'suspended' ? '🚫 ' + plan.status.toUpperCase() : plan.status.toUpperCase()}
                                 </span>
                               </div>
@@ -926,11 +1395,11 @@ export default function MembersPage() {
                                   <p className="font-semibold text-gray-900">{tx.partners?.shop_name || 'Unknown Partner'}</p>
                                   <p className="text-xs text-gray-600">{new Date(tx.created_at).toLocaleString()}</p>
                                 </div>
-                                <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                <span className={`px-2 py-1 text-xs font-bold ${
                                   tx.status === 'completed' ? 'bg-green-500/20 text-green-600' :
                                   tx.status === 'pending' ? 'bg-yellow-500/20 text-yellow-600' :
                                   'bg-red-500/20 text-red-600'
-                                }`}>
+                                }`} style={{ borderRadius: '5px' }}>
                                   {tx.status}
                                 </span>
                               </div>
@@ -1020,14 +1489,53 @@ export default function MembersPage() {
                       <div className="bg-white border border-gray-200 rounded-xl p-6">
                         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                           <span className="material-symbols-outlined text-[#1a558b]">group</span>
-                          dependants ({memberDetails.linkedPeople.length})
+                          Dependants ({memberDetails.linkedPeople.length})
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-4">
                           {memberDetails.linkedPeople.map((person: any) => (
-                            <div key={person.id} className="border border-gray-200 rounded-lg p-3">
-                              <p className="font-semibold text-gray-900">{getFullName(person)}</p>
-                              <p className="text-xs text-gray-600">{person.dependant_type}</p>
-                              <p className="text-xs text-gray-600">ID: {person.sa_id}</p>
+                            <div key={person.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <div>
+                                  <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Dependant ID</p>
+                                  <p className="text-xs text-gray-900 font-semibold font-mono break-all">{person.id}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Full Name</p>
+                                  <p className="text-sm text-gray-900 font-semibold">{person.first_name} {person.last_name}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Dependant Type</p>
+                                  <p className="text-sm text-gray-900 font-semibold capitalize">{person.dependant_type || 'Not specified'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">SA ID Number</p>
+                                  <p className="text-sm text-gray-900 font-semibold font-mono">{person.sa_id || 'Not provided'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Date of Birth</p>
+                                  <p className="text-sm text-gray-900 font-semibold">{person.date_of_birth ? new Date(person.date_of_birth).toLocaleDateString('en-ZA') : 'Not provided'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Gender</p>
+                                  <p className="text-sm text-gray-900 font-semibold capitalize">{person.gender || 'Not specified'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Relationship</p>
+                                  <p className="text-sm text-gray-900 font-semibold capitalize">{person.relationship || 'Not specified'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Email</p>
+                                  <p className="text-sm text-gray-900 font-semibold break-all">{person.email || 'Not provided'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Phone</p>
+                                  <p className="text-sm text-gray-900 font-semibold">{person.cell_phone || 'Not provided'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Added On</p>
+                                  <p className="text-sm text-gray-900 font-semibold">{person.created_at ? new Date(person.created_at).toLocaleDateString('en-ZA') : 'N/A'}</p>
+                                </div>
+                              </div>
                             </div>
                           ))}
                         </div>

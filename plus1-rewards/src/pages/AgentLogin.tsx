@@ -31,49 +31,80 @@ export default function AgentLogin() {
 
       const cleanPhone = mobileNumber.replace(/\D/g, '');
 
-      // Fetch agent by phone only first
-      const { data: agentData, error: fetchError } = await supabase
-        .from('agents')
-        .select('*')
-        .eq('cell_phone', cleanPhone)
-        .single();
+      // Use database function to verify PIN securely
+      const { data: verifyResult, error: verifyError } = await supabase
+        .rpc('verify_agent_pin', {
+          p_cell_phone: cleanPhone,
+          p_pin: pin
+        });
 
-      if (fetchError || !agentData) {
+      if (verifyError) {
+        console.error('Verification error:', verifyError);
+        setError('Login failed. Please try again.');
+        return;
+      }
+
+      // Check if verification returned a result
+      if (!verifyResult || verifyResult.length === 0) {
         setError('Invalid mobile number or PIN');
         return;
       }
 
-      // Check lockout
+      const { agent_id, is_valid, agent_data } = verifyResult[0];
+
+      // If agent not found or PIN invalid
+      if (!agent_id || !is_valid) {
+        // Fetch agent to update failed attempts
+        const { data: agentData } = await supabase
+          .from('agents')
+          .select('id, failed_login_attempts, locked_until')
+          .eq('cell_phone', cleanPhone)
+          .single();
+
+        if (agentData) {
+          // Check if already locked
+          if (agentData.locked_until && new Date(agentData.locked_until) > new Date()) {
+            const mins = Math.ceil((new Date(agentData.locked_until).getTime() - Date.now()) / 60000);
+            setError(`Account locked. Too many failed attempts. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.`);
+            return;
+          }
+
+          const newAttempts = (agentData.failed_login_attempts ?? 0) + 1;
+          const shouldLock = newAttempts >= MAX_ATTEMPTS;
+          
+          await supabase.from('agents').update({
+            failed_login_attempts: newAttempts,
+            locked_until: shouldLock
+              ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000).toISOString()
+              : null,
+          }).eq('id', agentData.id);
+
+          if (shouldLock) {
+            setError(`Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.`);
+          } else {
+            setError(`Invalid mobile number or PIN. ${MAX_ATTEMPTS - newAttempts} attempt${MAX_ATTEMPTS - newAttempts !== 1 ? 's' : ''} remaining.`);
+          }
+        } else {
+          setError('Invalid mobile number or PIN');
+        }
+        return;
+      }
+
+      // PIN is valid - parse agent data
+      const agentData = agent_data as any;
+
+      // Check if account is locked
       if (agentData.locked_until && new Date(agentData.locked_until) > new Date()) {
         const mins = Math.ceil((new Date(agentData.locked_until).getTime() - Date.now()) / 60000);
         setError(`Account locked. Too many failed attempts. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.`);
         return;
       }
 
-      // Verify PIN
-      if (agentData.pin_code !== pin) {
-        const newAttempts = (agentData.failed_login_attempts ?? 0) + 1;
-        const shouldLock = newAttempts >= MAX_ATTEMPTS;
-        await supabase.from('agents').update({
-          failed_login_attempts: newAttempts,
-          locked_until: shouldLock
-            ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000).toISOString()
-            : null,
-        }).eq('id', agentData.id);
-
-        if (shouldLock) {
-          setError(`Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.`);
-        } else {
-          setError(`Invalid mobile number or PIN. ${MAX_ATTEMPTS - newAttempts} attempt${MAX_ATTEMPTS - newAttempts !== 1 ? 's' : ''} remaining.`);
-        }
-        return;
-      }
-
-      // PIN correct — reset attempts
+      // Reset failed attempts on successful login
       await supabase.from('agents').update({
         failed_login_attempts: 0,
         locked_until: null,
-      }).eq('id', agentData.id);
+      }).eq('id', agent_id);
 
       // Check status
       if (agentData.status === 'pending') {

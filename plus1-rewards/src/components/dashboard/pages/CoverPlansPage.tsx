@@ -1,4 +1,4 @@
-// plus1-rewards/src/components/dashboard/pages/CoverPlansPage.tsx
+﻿// plus1-rewards/src/components/dashboard/pages/CoverPlansPage.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../DashboardLayout';
@@ -56,7 +56,7 @@ export default function CoverPlansPage() {
           // Get member details
           const { data: member } = await supabaseAdmin
             .from('members')
-            .select('full_name, cell_phone, phone')
+            .select('first_name, last_name, cell_phone')
             .eq('id', mcp.member_id)
             .single();
 
@@ -169,8 +169,8 @@ export default function CoverPlansPage() {
   return (
     <DashboardLayout>
       <main className="flex-1 overflow-y-auto bg-[#f5f8fc]">
-        {/* Topbar */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 md:p-10 pb-6">
+        {/* Topbar - Desktop */}
+        <header className="hidden md:flex md:flex-row md:items-center justify-between gap-6 p-6 md:p-10 pb-6">
           <div className="flex-1 max-w-2xl">
             <div className="relative">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xl">
@@ -205,6 +205,41 @@ export default function CoverPlansPage() {
           </div>
         </header>
 
+        {/* Topbar - Mobile */}
+        <header className="md:hidden p-4 space-y-3">
+          {/* Row 1: Search */}
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-base">
+              search
+            </span>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-white border border-gray-200 rounded-lg py-2 pl-9 pr-3 text-sm text-gray-900 focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none transition-all placeholder:text-gray-400"
+              placeholder="Search plans..."
+            />
+          </div>
+          
+          {/* Row 2: Buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRefresh}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 font-bold rounded-lg border border-[#1a558b] bg-white text-[#1a558b] hover:bg-[#1a558b] hover:text-white transition-all text-xs flex-1"
+            >
+              <span className="material-symbols-outlined text-base">refresh</span>
+              <span>Refresh</span>
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[#1a558b] text-white rounded-lg hover:opacity-90 transition-all text-xs flex-1"
+            >
+              <span className="material-symbols-outlined text-base">logout</span>
+              <span>Logout</span>
+            </button>
+          </div>
+        </header>
+
         <div className="px-6 md:px-10 pb-10">
           {/* Page Title */}
           <div className="mb-8">
@@ -228,7 +263,8 @@ export default function CoverPlansPage() {
 
           {/* Cover Plans Table */}
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-2xl">
-            <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+            {/* Desktop Header */}
+            <div className="hidden md:flex px-6 py-5 border-b border-gray-200 items-center justify-between bg-gray-50">
               <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#1a558b]">list_alt</span>
                 All Member Cover Plans ({filteredCoverPlans.length})
@@ -240,6 +276,29 @@ export default function CoverPlansPage() {
                 >
                   <span className="material-symbols-outlined text-sm">{showFilters ? 'filter_list_off' : 'filter_list'}</span>
                   {showFilters ? 'Hide Filters' : 'Filter'}
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Header */}
+            <div className="md:hidden px-4 py-4 border-b border-gray-200 bg-gray-50">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#1a558b]" style={{ fontSize: '20px' }}>list_alt</span>
+                  Cover Plans ({filteredCoverPlans.length})
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-all ${
+                    showFilters 
+                      ? 'bg-[#1a558b] text-white' 
+                      : 'bg-white border border-gray-200 text-gray-700 hover:border-[#1a558b] hover:text-[#1a558b]'
+                  }`}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{showFilters ? 'filter_list_off' : 'filter_list'}</span>
+                  <span>{showFilters ? 'Hide' : 'Filter'}</span>
                 </button>
               </div>
             </div>
@@ -281,8 +340,10 @@ export default function CoverPlansPage() {
                 <p className="text-gray-600">No cover plans found</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[900px]">
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[900px]">
                   <thead>
                     <tr className="bg-gray-50">
                       <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Member</th>
@@ -338,11 +399,11 @@ export default function CoverPlansPage() {
                             </div>
                           </td>
                           <td className="px-4 py-4">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase ${
                               plan.status === 'active' 
                                 ? 'bg-green-500/20 text-green-700 border border-green-500/30'
                                 : 'bg-yellow-500/20 text-yellow-700 border border-yellow-500/30'
-                            }`}>
+                            }`} style={{ borderRadius: "5px" }}>
                               <span className={`size-1.5 rounded-full ${
                                 plan.status === 'active' ? 'bg-green-600' : 'bg-yellow-500'
                               }`}></span>
@@ -376,12 +437,12 @@ export default function CoverPlansPage() {
                                   }
                                   
                                   if (pin !== '201555') {
-                                    alert('❌ Invalid PIN. Manual funding authorization denied.');
+                                    alert('âŒ Invalid PIN. Manual funding authorization denied.');
                                     return;
                                   }
                                   
                                   // Step 2: Get funding amount
-                                  const amount = prompt('✅ PIN verified. Enter manual funding amount (R):');
+                                  const amount = prompt('âœ… PIN verified. Enter manual funding amount (R):');
                                   if (amount && !isNaN(parseFloat(amount))) {
                                     const fundingAmount = parseFloat(amount);
                                     if (fundingAmount <= 0) {
@@ -404,6 +465,111 @@ export default function CoverPlansPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden divide-y divide-gray-200">
+                {filteredCoverPlans.map((plan) => {
+                  const progress = (plan.funded_amount / plan.target_amount) * 100;
+                  
+                  return (
+                    <div key={plan.id} className="p-4 bg-white">
+                      {/* Member Info */}
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="size-12 rounded-full bg-gradient-to-br from-[#1a558b] to-blue-600 flex items-center justify-center text-white font-black text-base flex-shrink-0">
+                          {plan.member_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-base font-bold text-gray-900 mb-0.5">{plan.member_name}</p>
+                          <p className="text-xs text-gray-600 mb-1">{plan.member_phone}</p>
+                          <p className="text-xs text-[#1a558b] font-semibold">{plan.cover_plan_name}</p>
+                        </div>
+                        <span className="inline-flex items-center justify-center size-8 rounded-full bg-[#1a558b]/10 text-[#1a558b] font-bold text-sm flex-shrink-0">
+                          {plan.creation_order}
+                        </span>
+                      </div>
+
+                      {/* Funding Progress */}
+                      <div className="mb-3 bg-gray-50 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold text-gray-600">Funding Progress</span>
+                          <span className="text-xs font-bold text-[#1a558b]">{progress.toFixed(0)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                          <div 
+                            className={`h-2 rounded-full transition-all ${
+                              progress >= 100 ? 'bg-green-500' : progress >= 90 ? 'bg-yellow-500' : 'bg-[#1a558b]'
+                            }`}
+                            style={{ width: `${Math.min(progress, 100)}%` }}
+                          ></div>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-600">R{plan.funded_amount.toFixed(2)}</span>
+                          <span className="text-gray-600">/ R{plan.target_amount.toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      {/* Status & Active Until */}
+                      <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+                        <div>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase ${
+                            plan.status === 'active' 
+                              ? 'bg-green-500/20 text-green-700'
+                              : 'bg-yellow-500/20 text-yellow-700'
+                          }`} style={{ borderRadius: "5px" }}>
+                            <span className={`size-1.5 rounded-full ${
+                              plan.status === 'active' ? 'bg-green-600' : 'bg-yellow-500'
+                            }`}></span>
+                            {plan.status}
+                          </span>
+                        </div>
+                        {plan.active_to && (
+                          <div className="text-right">
+                            <p className="text-[9px] text-gray-500 uppercase font-bold">Active Until</p>
+                            <p className="text-[10px] text-gray-700">{new Date(plan.active_to).toLocaleDateString()}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => navigate(`/admin/members?member_id=${plan.member_id}`)}
+                          className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 bg-[#1a558b] text-white rounded-lg hover:opacity-90 transition-all text-sm font-bold"
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>visibility</span>
+                          View Member
+                        </button>
+                        <button
+                          onClick={() => {
+                            const pin = prompt('Enter admin PIN to authorize manual funding:');
+                            if (!pin) return;
+                            
+                            if (pin !== '201555') {
+                              alert('❌ Invalid PIN. Manual funding authorization denied.');
+                              return;
+                            }
+                            
+                            const amount = prompt('✅ PIN verified. Enter manual funding amount (R):');
+                            if (amount && !isNaN(parseFloat(amount))) {
+                              const fundingAmount = parseFloat(amount);
+                              if (fundingAmount <= 0) {
+                                alert('Please enter a valid positive amount.');
+                                return;
+                              }
+                              handleManualFunding(plan.id, fundingAmount);
+                            }
+                          }}
+                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                          title="Add Funding"
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>add_circle</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
             )}
 
             <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
@@ -419,10 +585,10 @@ export default function CoverPlansPage() {
             <div>
               <h4 className="text-sm font-bold text-blue-900 mb-1">Cover Plan Funding Rules</h4>
               <ul className="text-xs text-blue-800 space-y-1">
-                <li>• Cover plans fill in creation date order (oldest first)</li>
-                <li>• Active status requires full target amount</li>
-                <li>• Plans renew every 30 days if funding is maintained</li>
-                <li>• Suspended plans need top-up or additional cashback</li>
+                <li>â€¢ Cover plans fill in creation date order (oldest first)</li>
+                <li>â€¢ Active status requires full target amount</li>
+                <li>â€¢ Plans renew every 30 days if funding is maintained</li>
+                <li>â€¢ Suspended plans need top-up or additional cashback</li>
               </ul>
             </div>
           </div>
@@ -430,7 +596,7 @@ export default function CoverPlansPage() {
           {/* Footer */}
           <div className="mt-12 text-center">
             <p className="text-[10px] text-gray-600 font-bold tracking-[0.2em] uppercase">
-              © 2026 +1 Rewards Platform Management • Secured Admin Access
+              Â© 2026 +1 Rewards Platform Management â€¢ Secured Admin Access
             </p>
           </div>
         </div>
@@ -438,3 +604,5 @@ export default function CoverPlansPage() {
     </DashboardLayout>
   );
 }
+
+

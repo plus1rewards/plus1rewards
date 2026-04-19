@@ -243,6 +243,16 @@ export default function AgentRegister() {
         return;
       }
 
+      // Hash the PIN using database function
+      const { data: hashedPinData, error: hashError } = await supabase
+        .rpc('hash_pin', { p_pin: formData.pin });
+
+      if (hashError) {
+        throw new Error('Failed to secure PIN: ' + hashError.message);
+      }
+
+      const pinHash = hashedPinData;
+
       // If rejected agent is re-registering, update their record
       if (existingAgent && existingAgent.status === 'rejected') {
         const { error: updateError } = await supabase
@@ -250,7 +260,7 @@ export default function AgentRegister() {
           .update({
             first_name: formData.firstName,
             last_name: formData.surname,
-            pin_code: formData.pin,
+            pin_hash: pinHash,
             sa_id: formData.idNumber,
             agreement_file: signatureStoragePath,
             id_document_url: idDocFileName,
@@ -286,7 +296,7 @@ export default function AgentRegister() {
           first_name: formData.firstName,
           last_name: formData.surname,
           cell_phone: cleanPhone,
-          pin_code: formData.pin,
+          pin_hash: pinHash,
           email: formData.email,
           sa_id: formData.idNumber,
           agreement_file: signatureStoragePath,

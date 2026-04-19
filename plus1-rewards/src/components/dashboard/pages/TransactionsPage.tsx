@@ -11,9 +11,8 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0, volume: 0 });
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [transactionDetails, setTransactionDetails] = useState<any>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     status: '',
@@ -21,61 +20,144 @@ export default function TransactionsPage() {
     dateFrom: '',
     dateTo: ''
   });
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 20;
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (loadMore = false) => {
+    if (loadMore) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      setPage(0);
+      setTransactions([]);
+    }
+    
     try {
-      const { data, error } = await supabaseAdmin
+      const currentPage = loadMore ? page + 1 : 0;
+      const from = currentPage * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      
+      console.log(`Fetching transactions page ${currentPage} (${from}-${to})...`);
+      
+      // Get total count first (only on initial load)
+      if (!loadMore) {
+        const { count } = await supabaseAdmin
+          .from('transactions')
+          .select('*', { count: 'exact', head: true });
+        setTotalCount(count || 0);
+        console.log('Total transactions:', count);
+      }
+      
+      // Fetch transactions with pagination
+      const { data: transactionsData, error: transactionsError } = await supabaseAdmin
         .from('transactions')
-        .select(`
-          *,
-          members(first_name, last_name, cell_phone, email),
-          partners(shop_name, address, cashback_percent)
-        `)
-        .order('created_at', { ascending: false });
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, to);
       
-      if (error) throw error;
+      if (transactionsError) {
+        console.error('Error fetching transactions:', transactionsError);
+        throw transactionsError;
+      }
       
-      const total = data?.length || 0;
-      const completed = data?.filter(t => t.status === 'completed').length || 0;
-      const pending = data?.filter(t => t.status === 'pending').length || 0;
-      const volume = data?.reduce((sum, t) => sum + (parseFloat(t.purchase_amount) || 0), 0) || 0;
+      console.log('Transactions fetched:', transactionsData?.length);
       
-      setStats({ total, completed, pending, volume });
-      setTransactions(data || []);
+      // Check if there are more records
+      setHasMore(transactionsData && transactionsData.length === PAGE_SIZE);
+      
+      // Fetch members and partners separately
+      let transactionsWithDetails = transactionsData || [];
+      
+      if (transactionsData && transactionsData.length > 0) {
+        // Get unique member IDs and partner IDs
+        const memberIds = [...new Set(transactionsData.map(t => t.member_id).filter(Boolean))];
+        const partnerIds = [...new Set(transactionsData.map(t => t.partner_id).filter(Boolean))];
+        
+        console.log('Fetching members:', memberIds.length);
+        console.log('Fetching partners:', partnerIds.length);
+        
+        // Fetch members
+        const { data: membersData } = await supabaseAdmin
+          .from('members')
+          .select('id, first_name, last_name, cell_phone, email')
+          .in('id', memberIds);
+        
+        // Fetch partners
+        const { data: partnersData } = await supabaseAdmin
+          .from('partners')
+          .select('id, shop_name, address, cashback_percent')
+          .in('id', partnerIds);
+        
+        console.log('Members fetched:', membersData?.length);
+        console.log('Partners fetched:', partnersData?.length);
+        
+        // Create maps for quick lookup
+        const membersMap = new Map(membersData?.map(m => [m.id, m]) || []);
+        const partnersMap = new Map(partnersData?.map(p => [p.id, p]) || []);
+        
+        // Merge data
+        transactionsWithDetails = transactionsData.map(tx => ({
+          ...tx,
+          members: membersMap.get(tx.member_id) || null,
+          partners: partnersMap.get(tx.partner_id) || null
+        }));
+      }
+      
+      // Update transactions list
+      if (loadMore) {
+        setTransactions(prev => [...prev, ...transactionsWithDetails]);
+        setPage(currentPage);
+      } else {
+        setTransactions(transactionsWithDetails);
+        
+        // Calculate stats (only on initial load)
+        const { count: completedCount } = await supabaseAdmin
+          .from('transactions')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'completed');
+        
+        const { count: pendingCount } = await supabaseAdmin
+          .from('transactions')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending');
+        
+        const { data: volumeData } = await supabaseAdmin
+          .from('transactions')
+          .select('purchase_amount');
+        
+        const volume = volumeData?.reduce((sum, t) => sum + (parseFloat(t.purchase_amount) || 0), 0) || 0;
+        
+        setStats({ 
+          total: totalCount, 
+          completed: completedCount || 0, 
+          pending: pendingCount || 0, 
+          volume 
+        });
+        
+        console.log('Stats:', { total: totalCount, completed: completedCount, pending: pendingCount, volume });
+      }
     } catch (error) {
       console.error('Error fetching transactions:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
-  const fetchTransactionDetails = async (transactionId: string) => {
-    setDetailsLoading(true);
-    try {
-      const { data: policyTrans } = await supabaseAdmin
-        .from('policy_transactions')
-        .select('*')
-        .eq('transaction_id', transactionId);
-
-      setTransactionDetails({
-        policyTransactions: policyTrans || []
-      });
-    } catch (error) {
-      console.error('Error fetching transaction details:', error);
-    } finally {
-      setDetailsLoading(false);
+  const loadMoreTransactions = () => {
+    if (!loadingMore && hasMore) {
+      fetchData(true);
     }
   };
 
   const handleViewDetails = (tx: any) => {
     setSelectedTransaction(tx);
-    fetchTransactionDetails(tx.id);
   };
 
   const closeDetailsModal = () => {
     setSelectedTransaction(null);
-    setTransactionDetails(null);
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -84,10 +166,10 @@ export default function TransactionsPage() {
   const handleExport = () => console.log('Export CSV triggered');
 
   const statsData = [
-    { icon: 'receipt_long', title: 'Total Transactions', value: stats.total.toString(), change: '+0%', description: 'All time' },
-    { icon: 'check_circle', title: 'Completed', value: stats.completed.toString(), change: '+0%', description: 'Successful' },
-    { icon: 'pending', title: 'Pending', value: stats.pending.toString(), change: '+0%', description: 'Awaiting confirmation' },
-    { icon: 'payments', title: 'Total Volume', value: `R${stats.volume.toFixed(2)}`, change: '+0%', description: 'Transaction value' }
+    { icon: 'receipt_long', title: 'Total Transactions', value: stats.total.toString(), change: '', description: 'All time' },
+    { icon: 'check_circle', title: 'Completed', value: stats.completed.toString(), change: '', description: 'Successful' },
+    { icon: 'pending', title: 'Pending', value: stats.pending.toString(), change: '', description: 'Awaiting confirmation' },
+    { icon: 'payments', title: 'Total Volume', value: `R${stats.volume.toFixed(2)}`, change: '', description: 'Transaction value' }
   ];
 
   const filteredTransactions = transactions.filter(t => {
@@ -144,21 +226,55 @@ export default function TransactionsPage() {
             {statsData.map((stat, index) => (<StatCard key={index} icon={stat.icon} title={stat.title} value={stat.value} change={stat.change} description={stat.description} />))}
           </div>
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-2xl">
-            <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#1a558b]">list_alt</span>Transactions List ({filteredTransactions.length})
-              </h3>
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => setShowFilters(!showFilters)} 
-                  className={`text-xs flex items-center gap-1 font-medium transition-colors ${showFilters ? 'text-[#1a558b]' : 'text-gray-600 hover:text-[#1a558b]'}`}
-                >
-                  <span className="material-symbols-outlined text-sm">{showFilters ? 'filter_list_off' : 'filter_list'}</span>
-                  {showFilters ? 'Hide Filters' : 'Filter'}
-                </button>
-                <button onClick={handleExport} className="text-xs text-gray-600 hover:text-[#1a558b] flex items-center gap-1 font-medium transition-colors">
-                  <span className="material-symbols-outlined text-sm">download</span>Export CSV
-                </button>
+            <div className="px-4 md:px-6 py-4 md:py-5 border-b border-gray-200 bg-gray-50">
+              {/* Mobile Layout */}
+              <div className="md:hidden">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#1a558b]" style={{ fontSize: '20px' }}>list_alt</span>
+                    Transactions List ({filteredTransactions.length})
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setShowFilters(!showFilters)} 
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-all ${
+                      showFilters 
+                        ? 'bg-[#1a558b] text-white' 
+                        : 'bg-white border border-gray-200 text-gray-700 hover:border-[#1a558b] hover:text-[#1a558b]'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{showFilters ? 'filter_list_off' : 'filter_list'}</span>
+                    <span>{showFilters ? 'Hide' : 'Filter'}</span>
+                  </button>
+                  <button 
+                    onClick={handleExport} 
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg bg-white border border-gray-200 text-gray-700 hover:border-[#1a558b] hover:text-[#1a558b] transition-all"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>download</span>
+                    <span>Export</span>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Desktop Layout */}
+              <div className="hidden md:flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#1a558b]">list_alt</span>
+                  Transactions List ({filteredTransactions.length})
+                </h3>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setShowFilters(!showFilters)} 
+                    className={`text-xs flex items-center gap-1 font-medium transition-colors ${showFilters ? 'text-[#1a558b]' : 'text-gray-600 hover:text-[#1a558b]'}`}
+                  >
+                    <span className="material-symbols-outlined text-sm">{showFilters ? 'filter_list_off' : 'filter_list'}</span>
+                    {showFilters ? 'Hide Filters' : 'Filter'}
+                  </button>
+                  <button onClick={handleExport} className="text-xs text-gray-600 hover:text-[#1a558b] flex items-center gap-1 font-medium transition-colors">
+                    <span className="material-symbols-outlined text-sm">download</span>Export CSV
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -221,7 +337,8 @@ export default function TransactionsPage() {
             )}
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[900px]">
+              {/* Desktop Table View */}
+              <table className="hidden md:table w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50">
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600">Transaction ID</th>
@@ -253,15 +370,15 @@ export default function TransactionsPage() {
                           <div className="text-xs text-gray-600">{tx.partners?.address || 'No address'}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase ${
                             tx.status === 'completed' ? 'bg-[#1a558b]/20 text-[#1a558b] border border-[#1a558b]/30' : 
                             tx.status === 'pending' ? 'bg-yellow-500/20 text-yellow-600 border border-yellow-500/30' :
                             'bg-red-500/20 text-red-600 border border-red-500/30'
-                          }`}>
-                            <span className={`size-1.5 rounded-full ${
+                          }`} style={{ borderRadius: '9px' }}>
+                            <span className={`size-1.5 ${
                               tx.status === 'completed' ? 'bg-[#1a558b]' : 
                               tx.status === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
-                            }`}></span>
+                            }`} style={{ borderRadius: '50%' }}></span>
                             {tx.status}
                           </span>
                         </td>
@@ -280,12 +397,125 @@ export default function TransactionsPage() {
                       </tr>
                     ))
                   )}
-                  <tr className="bg-gray-50">
-                    <td className="px-6 py-3 text-center" colSpan={8}><p className="text-[10px] text-gray-600 font-medium uppercase tracking-widest">Showing {filteredTransactions.length} of {transactions.length} total records</p></td>
-                  </tr>
                 </tbody>
               </table>
+              
+              {/* Mobile Card View */}
+              <div className="md:hidden">
+                {loading ? (
+                  <div className="p-6 text-center"><p className="text-gray-600">Loading transactions...</p></div>
+                ) : filteredTransactions.length === 0 ? (
+                  <div className="p-6 text-center"><p className="text-sm text-gray-600">No transactions found</p></div>
+                ) : (
+                  <div className="divide-y divide-gray-200">
+                    {filteredTransactions.map((tx) => (
+                      <div key={tx.id} className="p-4 hover:bg-gray-50 transition-colors">
+                        {/* Transaction ID & Status */}
+                        <div className="flex items-start justify-between mb-3 gap-2">
+                          <span className="text-[10px] font-mono font-bold text-[#1a558b] px-2 py-1 bg-[#1a558b]/10 rounded flex-shrink-0">
+                            {tx.id.substring(0, 8).toUpperCase()}
+                          </span>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold uppercase flex-shrink-0 ${
+                            tx.status === 'completed' ? 'bg-[#1a558b]/20 text-[#1a558b]' : 
+                            tx.status === 'pending' ? 'bg-yellow-500/20 text-yellow-600' :
+                            'bg-red-500/20 text-red-600'
+                          }`} style={{ borderRadius: '5px' }}>
+                            <span className={`size-1 ${
+                              tx.status === 'completed' ? 'bg-[#1a558b]' : 
+                              tx.status === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
+                            }`} style={{ borderRadius: '50%' }}></span>
+                            {tx.status}
+                          </span>
+                        </div>
+                        
+                        {/* Member Info */}
+                        <div className="mb-2">
+                          <p className="text-[9px] font-bold uppercase text-gray-500 mb-0.5">Member</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {tx.members ? `${tx.members.first_name || ''} ${tx.members.last_name || ''}`.trim() : 'Unknown'}
+                          </p>
+                          <p className="text-xs text-gray-600">{tx.members?.cell_phone || 'No phone'}</p>
+                        </div>
+                        
+                        {/* Partner Info */}
+                        <div className="mb-3">
+                          <p className="text-[9px] font-bold uppercase text-gray-500 mb-0.5">Partner</p>
+                          <p className="text-sm font-semibold text-gray-900">{tx.partners?.shop_name || 'Unknown'}</p>
+                          <p className="text-xs text-gray-600">{tx.partners?.address || 'No address'}</p>
+                        </div>
+                        
+                        {/* Amount Grid */}
+                        <div className="grid grid-cols-2 gap-3 mb-3 bg-gray-50 rounded-lg p-3">
+                          <div>
+                            <p className="text-[9px] font-bold uppercase text-gray-500 mb-0.5">Purchase Amount</p>
+                            <p className="text-base font-black text-gray-900">R{parseFloat(tx.purchase_amount || 0).toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-bold uppercase text-gray-500 mb-0.5">Member Cashback</p>
+                            <p className="text-base font-black text-[#1a558b]">R{parseFloat(tx.member_amount || 0).toFixed(2)}</p>
+                          </div>
+                        </div>
+                        
+                        {/* Date & Time */}
+                        <div className="flex items-center justify-between text-xs text-gray-600 mb-3">
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">calendar_today</span>
+                            {new Date(tx.created_at).toLocaleDateString()}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">schedule</span>
+                            {tx.transaction_time || new Date(tx.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        
+                        {/* View Details Button */}
+                        <button
+                          onClick={() => handleViewDetails(tx)}
+                          className="w-full px-3 py-2 bg-[#1a558b] text-white rounded-lg text-xs font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-sm">visibility</span>
+                          View Full Details
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
+            
+            {/* Load More Button */}
+            {!loading && hasMore && filteredTransactions.length === transactions.length && (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={loadMoreTransactions}
+                  disabled={loadingMore}
+                  className="px-6 py-3 bg-[#1a558b] text-white rounded-lg font-bold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                >
+                  {loadingMore ? (
+                    <>
+                      <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined">expand_more</span>
+                      Load More Transactions
+                    </>
+                  )}
+                </button>
+                <p className="text-xs text-gray-500 mt-2">
+                  Showing {transactions.length} of {totalCount} total transactions
+                </p>
+              </div>
+            )}
+            
+            {!loading && !hasMore && transactions.length > 0 && (
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-600 font-medium">
+                  All transactions loaded ({transactions.length} total)
+                </p>
+              </div>
+            )}
           </div>
           <div className="mt-12 text-center">
             <p className="text-[10px] text-gray-600 font-bold tracking-[0.2em] uppercase">© 2026 +1 Rewards Platform Management • Secured Admin Access</p>
@@ -314,7 +544,7 @@ export default function TransactionsPage() {
                 </div>
                 <button
                   onClick={closeDetailsModal}
-                  className="size-8 rounded-full flex items-center justify-center hover:bg-gray-100 text-gray-500 transition-colors"
+                  className="size-8 flex items-center justify-center hover:bg-gray-100 text-gray-500 transition-colors" style={{ borderRadius: '9px' }}
                 >
                   <span className="material-symbols-outlined">close</span>
                 </button>
@@ -327,15 +557,15 @@ export default function TransactionsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-[10px] text-gray-600 uppercase font-black tracking-widest mb-2">Transaction Status</p>
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase ${
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold uppercase ${
                         selectedTransaction.status === 'completed' ? 'bg-[#1a558b]/20 text-[#1a558b]' : 
                         selectedTransaction.status === 'pending' ? 'bg-yellow-500/20 text-yellow-600' :
                         'bg-red-500/20 text-red-600'
-                      }`}>
-                        <span className={`size-1.5 rounded-full ${
+                      }`} style={{ borderRadius: '9px' }}>
+                        <span className={`size-1.5 ${
                           selectedTransaction.status === 'completed' ? 'bg-[#1a558b]' : 
                           selectedTransaction.status === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
-                        }`}></span>
+                        }`} style={{ borderRadius: '50%' }}></span>
                         {selectedTransaction.status}
                       </span>
                     </div>
@@ -391,7 +621,7 @@ export default function TransactionsPage() {
                         </p>
                         <p className="text-xs text-gray-600 flex items-center gap-2">
                           <span className="material-symbols-outlined text-xs">phone</span>
-                          {selectedTransaction.members ? `${selectedTransaction.members.first_name || ''} ${selectedTransaction.members.last_name || ''}`.trim() : 'N/A'}
+                          {selectedTransaction.members?.cell_phone || 'N/A'}
                         </p>
                         <p className="text-xs text-gray-600 flex items-center gap-2">
                           <span className="material-symbols-outlined text-xs">mail</span>
@@ -417,29 +647,17 @@ export default function TransactionsPage() {
                     </div>
                   </div>
 
-                  {/* Policy Connection */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h3 className="text-[10px] text-gray-600 uppercase font-black tracking-widest mb-3 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-sm">health_and_safety</span>
-                      Policy Connection
-                    </h3>
-                    {detailsLoading ? (
-                      <p className="text-xs text-gray-500 italic">Checking for policy impact...</p>
-                    ) : transactionDetails?.policyTransactions?.length > 0 ? (
-                      <div className="space-y-3">
-                        {transactionDetails.policyTransactions.map((pt: any) => (
-                          <div key={pt.id} className="p-3 bg-[#1a558b]/5 rounded border border-[#1a558b]/10">
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-xs font-bold text-[#1a558b] uppercase">{pt.transaction_type}</span>
-                              <span className="text-xs font-black text-gray-900">R{parseFloat(pt.amount).toFixed(2)}</span>
-                            </div>
-                            <p className="text-xs text-gray-600">{pt.description || 'No additional details'}</p>
-                          </div>
-                        ))}
+                  {/* Cover Plan Impact Info */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <span className="material-symbols-outlined text-blue-600 text-xl">info</span>
+                      <div>
+                        <h3 className="text-sm font-bold text-blue-900 mb-1">Cover Plan Funding</h3>
+                        <p className="text-xs text-blue-800">
+                          The member cashback of <span className="font-bold">R{parseFloat(selectedTransaction.member_amount || 0).toFixed(2)}</span> was automatically allocated to this member's cover plan based on their funding priority (creation order).
+                        </p>
                       </div>
-                    ) : (
-                      <p className="text-xs text-gray-500 italic">This transaction did not directly affect a policy plan.</p>
-                    )}
+                    </div>
                   </div>
 
                   {/* Timeline */}
@@ -448,15 +666,24 @@ export default function TransactionsPage() {
                       <span className="material-symbols-outlined text-sm">schedule</span>
                       Transaction Timeline
                     </h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-3">
                       <div>
-                        <p className="text-[10px] text-gray-500 uppercase font-bold">Created At</p>
-                        <p className="text-xs text-gray-900">{new Date(selectedTransaction.created_at).toLocaleString()}</p>
+                        <p className="text-[10px] text-gray-500 uppercase font-bold">Transaction Date & Time</p>
+                        <p className="text-sm text-gray-900 font-semibold">{new Date(selectedTransaction.created_at).toLocaleString('en-ZA', { 
+                          day: '2-digit', 
+                          month: 'short', 
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit'
+                        })}</p>
                       </div>
-                      <div>
-                        <p className="text-[10px] text-gray-500 uppercase font-bold">Synced At</p>
-                        <p className="text-xs text-gray-900">{selectedTransaction.synced_at ? new Date(selectedTransaction.synced_at).toLocaleString() : 'Not yet synced'}</p>
-                      </div>
+                      {selectedTransaction.transaction_time && (
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase font-bold">Partner Recorded Time</p>
+                          <p className="text-sm text-gray-900">{selectedTransaction.transaction_time}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

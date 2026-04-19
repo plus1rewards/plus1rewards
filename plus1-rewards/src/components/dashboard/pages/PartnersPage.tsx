@@ -1,4 +1,4 @@
-// plus1-rewards/src/components/dashboard/pages/PartnersPage.tsx
+﻿// plus1-rewards/src/components/dashboard/pages/PartnersPage.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../DashboardLayout';
@@ -27,6 +27,7 @@ export default function PartnersPage() {
     revenue: 0
   });
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedPartner, setSelectedPartner] = useState<any>(null);
   const [partnerDetails, setPartnerDetails] = useState<any>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -36,50 +37,102 @@ export default function PartnersPage() {
     businessType: '',
     location: ''
   });
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
     console.log('selectedPartner changed:', selectedPartner);
   }, [selectedPartner]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (loadMore = false) => {
+    if (loadMore) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      setPage(0);
+      setPartners([]);
+    }
+    
     try {
-      // Fetch partners
+      const currentPage = loadMore ? page + 1 : 0;
+      const from = currentPage * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      
+      console.log(`Fetching partners page ${currentPage} (${from}-${to})...`);
+      
+      // Get total count first (only on initial load)
+      if (!loadMore) {
+        const { count } = await supabaseAdmin
+          .from('partners')
+          .select('*', { count: 'exact', head: true });
+        setTotalCount(count || 0);
+        console.log('Total partners:', count);
+      }
+      
+      // Fetch partners with pagination
       const { data: partnersData, error: shopsError } = await supabaseAdmin
         .from('partners')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (shopsError) throw shopsError;
+      
+      console.log('Partners fetched:', partnersData?.length);
+      
+      // Check if there are more records
+      setHasMore(partnersData && partnersData.length === PAGE_SIZE);
 
-      // Fetch transactions for revenue calculation
-      const { data: transactionsData, error: transError} = await supabaseAdmin
-        .from('transactions')
-        .select('partner_id, purchase_amount, cashback_percent');
+      // Update partners list
+      if (loadMore) {
+        setPartners(prev => [...prev, ...partnersData || []]);
+        setPage(currentPage);
+      } else {
+        setPartners(partnersData || []);
+        
+        // Fetch transactions for revenue calculation (only on initial load)
+        const { data: transactionsData, error: transError} = await supabaseAdmin
+          .from('transactions')
+          .select('partner_id, purchase_amount, cashback_percent');
 
-      if (transError) throw transError;
+        if (transError) throw transError;
 
-      // Calculate stats
-      const totalPartners = partnersData?.length || 0;
-      const verified = partnersData?.filter(s => s.status === 'active' && s.approved_at)?.length || 0;
-      const pending = partnersData?.filter(s => s.status === 'pending')?.length || 0;
-      const transactions = transactionsData?.length || 0;
-      // Revenue is the total purchase amount from all transactions
-      const revenue = transactionsData?.reduce((sum, t) => sum + (parseFloat(t.purchase_amount) || 0), 0) || 0;
+        // Calculate stats
+        const { count: verifiedCount } = await supabaseAdmin
+          .from('partners')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'active')
+          .not('approved_at', 'is', null);
+        
+        const { count: pendingCount } = await supabaseAdmin
+          .from('partners')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending');
+        
+        const transactions = transactionsData?.length || 0;
+        const revenue = transactionsData?.reduce((sum, t) => sum + (parseFloat(t.purchase_amount) || 0), 0) || 0;
 
-      setStats({
-        totalPartners,
-        verified,
-        pending,
-        transactions,
-        revenue
-      });
-
-      setPartners(partnersData || []);
+        setStats({
+          totalPartners: totalCount,
+          verified: verifiedCount || 0,
+          pending: pendingCount || 0,
+          transactions,
+          revenue
+        });
+      }
     } catch (error) {
       console.error('Error fetching partners:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const loadMorePartners = () => {
+    if (!loadingMore && hasMore) {
+      fetchData(true);
     }
   };
 
@@ -191,7 +244,7 @@ export default function PartnersPage() {
         .select('*')
         .eq('partner_id', partnerId)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(10);
 
       console.log('Transactions query result:', { transactions, transError });
       console.log('Number of transactions found:', transactions?.length || 0);
@@ -347,8 +400,8 @@ export default function PartnersPage() {
     <>
       <DashboardLayout>
         <main className="flex-1 overflow-y-auto bg-[#f5f8fc]">
-          {/* Topbar */}
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 md:p-10 pb-6">
+          {/* Topbar - Desktop */}
+          <header className="hidden md:flex md:flex-row md:items-center justify-between gap-6 p-6 md:p-10 pb-6">
             <div className="flex-1 max-w-2xl">
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xl">
@@ -383,6 +436,41 @@ export default function PartnersPage() {
             </div>
           </header>
 
+          {/* Topbar - Mobile */}
+          <header className="md:hidden p-4 space-y-3">
+            {/* Row 1: Search */}
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-base">
+                search
+              </span>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-white border border-gray-200 rounded-lg py-2 pl-9 pr-3 text-sm text-gray-900 focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none transition-all placeholder:text-gray-400"
+                placeholder="Search partners..."
+              />
+            </div>
+            
+            {/* Row 2: Buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleRefresh}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 font-bold rounded-lg border border-[#1a558b] bg-white text-[#1a558b] hover:bg-[#1a558b] hover:text-white transition-all text-xs flex-1"
+              >
+                <span className="material-symbols-outlined text-base">refresh</span>
+                <span>Refresh</span>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[#1a558b] text-white rounded-lg hover:opacity-90 transition-all text-xs flex-1"
+              >
+                <span className="material-symbols-outlined text-base">logout</span>
+                <span>Logout</span>
+              </button>
+            </div>
+          </header>
+
           <div className="px-6 md:px-10 pb-10">
             {/* Page Title */}
             <div className="mb-8">
@@ -406,7 +494,8 @@ export default function PartnersPage() {
 
             {/* partners List Table */}
             <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-2xl">
-              <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+              {/* Desktop Header */}
+              <div className="hidden md:flex px-6 py-5 border-b border-gray-200 items-center justify-between bg-gray-50">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   <span className="material-symbols-outlined text-[#1a558b]">list_alt</span>
                   All partners ({filteredPartners.length})
@@ -425,6 +514,36 @@ export default function PartnersPage() {
                   >
                     <span className="material-symbols-outlined text-sm">download</span>
                     Export CSV
+                  </button>
+                </div>
+              </div>
+
+              {/* Mobile Header */}
+              <div className="md:hidden px-4 py-4 border-b border-gray-200 bg-gray-50">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#1a558b]" style={{ fontSize: '20px' }}>list_alt</span>
+                    All partners ({filteredPartners.length})
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={handleFilter}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-all ${
+                      showFilters 
+                        ? 'bg-[#1a558b] text-white' 
+                        : 'bg-white border border-gray-200 text-gray-700 hover:border-[#1a558b] hover:text-[#1a558b]'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{showFilters ? 'filter_list_off' : 'filter_list'}</span>
+                    <span>{showFilters ? 'Hide' : 'Filter'}</span>
+                  </button>
+                  <button 
+                    onClick={handleExport}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg bg-white border border-gray-200 text-gray-700 hover:border-[#1a558b] hover:text-[#1a558b] transition-all"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>download</span>
+                    <span>Export</span>
                   </button>
                 </div>
               </div>
@@ -489,8 +608,10 @@ export default function PartnersPage() {
                   <p className="text-gray-600">No partners found</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse min-w-[900px]">
+                <>
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[900px]">
                     <thead>
                       <tr className="bg-gray-50">
                         <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Partner</th>
@@ -534,17 +655,17 @@ export default function PartnersPage() {
                             <span className="text-sm font-bold text-[#1a558b]">{partner.cashback_percent || 0}%</span>
                           </td>
                           <td className="px-4 py-4">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase ${
                               partner.status === 'active' 
                                 ? 'bg-[#1a558b]/20 text-[#1a558b] border border-[#1a558b]/30'
                                 : partner.status === 'pending'
                                 ? 'bg-yellow-500/20 text-yellow-600 border border-yellow-500/30'
                                 : 'bg-red-500/20 text-red-600 border border-red-500/30'
-                            }`}>
-                              <span className={`size-1.5 rounded-full ${
+                            }`} style={{ borderRadius: "5px" }}>
+                              <span className={`size-1.5 ${
                                 partner.status === 'active' ? 'bg-[#1a558b]' : 
                                 partner.status === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
-                              }`}></span>
+                              }`} style={{ borderRadius: "50%" }}></span>
                               {partner.status}
                             </span>
                           </td>
@@ -641,10 +762,188 @@ export default function PartnersPage() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden divide-y divide-gray-200">
+                  {filteredPartners.map((partner) => (
+                    <div key={partner.id} className="p-4 bg-white">
+                      {/* Partner Header */}
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="size-12 rounded-full bg-gradient-to-br from-[#1a558b] to-blue-600 flex items-center justify-center text-white font-black text-base flex-shrink-0">
+                          {(partner.shop_name || 'P').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-base font-bold text-gray-900 mb-0.5">{partner.shop_name || 'No name'}</p>
+                          <p className="text-[10px] font-mono text-gray-500 mb-1">{partner.id.substring(0, 8)}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {partner.category && (
+                              <span className="text-[10px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                                {partner.category}
+                              </span>
+                            )}
+                            <span className="text-sm font-bold text-[#1a558b]">{partner.cashback_percent || 0}% cashback</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Compact Info Grid */}
+                      <div className="space-y-2 mb-3 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-gray-400" style={{ fontSize: '16px' }}>phone</span>
+                          <span className="text-gray-900">{partner.cell_phone || 'No phone'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-gray-400" style={{ fontSize: '16px' }}>email</span>
+                          <span className="text-gray-600 truncate">{partner.email || 'No email'}</span>
+                        </div>
+                        {partner.address && (
+                          <div className="flex items-start gap-2">
+                            <span className="material-symbols-outlined text-gray-400 flex-shrink-0" style={{ fontSize: '16px' }}>location_on</span>
+                            <span className="text-gray-600">{partner.address}{partner.postal_code ? `, ${partner.postal_code}` : ''}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-gray-400" style={{ fontSize: '16px' }}>person</span>
+                          <span className="text-gray-600">{getOwnerName(partner)}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Status & Dates Row */}
+                      <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+                        <div>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase ${
+                            partner.status === 'active' 
+                              ? 'bg-[#1a558b]/20 text-[#1a558b]'
+                              : partner.status === 'pending'
+                              ? 'bg-yellow-500/20 text-yellow-700'
+                              : 'bg-red-500/20 text-red-700'
+                          }`} style={{ borderRadius: "5px" }}>
+                            <span className={`size-1.5 ${
+                              partner.status === 'active' ? 'bg-[#1a558b]' : 
+                              partner.status === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
+                            }`} style={{ borderRadius: "50%" }}></span>
+                            {partner.status}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9px] text-gray-500 uppercase font-bold">Registered</p>
+                          <p className="text-[10px] text-gray-700">{new Date(partner.created_at).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleViewDetails(partner)}
+                          className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 bg-[#1a558b] text-white rounded-lg hover:opacity-90 transition-all text-sm font-bold"
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>visibility</span>
+                          View Details
+                        </button>
+                        {partner.status === 'suspended' ? (
+                          <button
+                            onClick={async () => {
+                              if (confirm(`Reactivate ${partner.shop_name}?`)) {
+                                try {
+                                  await supabaseAdmin
+                                    .from('partners')
+                                    .update({ status: 'active' })
+                                    .eq('id', partner.id);
+                                  alert('Partner reactivated');
+                                  fetchData();
+                                } catch (err: any) {
+                                  alert('Error: ' + err.message);
+                                }
+                              }
+                            }}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Reactivate"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>check_circle</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={async () => {
+                              const reason = prompt(`Enter reason for suspending ${partner.shop_name}:`);
+                              if (reason && reason.trim()) {
+                                try {
+                                  await supabaseAdmin
+                                    .from('partners')
+                                    .update({ status: 'suspended' })
+                                    .eq('id', partner.id);
+                                  
+                                  await supabaseAdmin.from('admin_notifications').insert({
+                                    type: 'partner_suspended',
+                                    member_id: null,
+                                    member_name: partner.shop_name,
+                                    member_phone: partner.cell_phone,
+                                    message: `Partner ${partner.shop_name} (${partner.cell_phone}) has been SUSPENDED by admin. Reason: ${reason}`,
+                                    priority: 'high',
+                                    metadata: {
+                                      suspension_reason: reason,
+                                      suspended_at: new Date().toISOString(),
+                                      action: 'partner_suspended',
+                                      partner_id: partner.id
+                                    }
+                                  });
+                                  
+                                  alert(`Partner ${partner.shop_name} suspended successfully`);
+                                  fetchData();
+                                } catch (err: any) {
+                                  alert('Error: ' + err.message);
+                                }
+                              }
+                            }}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Suspend"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>block</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
               )}
+              
+              {/* Load More Button */}
+              {!loading && hasMore && filteredPartners.length === partners.length && (
+                <div className="mt-6 text-center px-6">
+                  <button
+                    onClick={loadMorePartners}
+                    disabled={loadingMore}
+                    className="px-6 py-3 bg-[#1a558b] text-white rounded-lg font-bold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined">expand_more</span>
+                        Load More Partners
+                      </>
+                    )}
+                  </button>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Showing {partners.length} of {totalCount} total partners
+                  </p>
+                </div>
+              )}
+              
+              {!loading && !hasMore && partners.length > 0 && (
+                <div className="mt-6 text-center px-6">
+                  <p className="text-sm text-gray-600 font-medium">
+                    All partners loaded ({partners.length} total)
+                  </p>
+                </div>
+              )}
+              
               <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
                 <p className="text-[10px] text-gray-600 font-medium uppercase tracking-widest text-center">
-                  Showing {filteredPartners.length} of {partners.length} total partners
+                  Showing {filteredPartners.length} of {partners.length} loaded partners
                 </p>
               </div>
             </div>
@@ -652,7 +951,7 @@ export default function PartnersPage() {
             {/* Footer Copyright */}
             <div className="mt-12 text-center">
               <p className="text-[10px] text-gray-600 font-bold tracking-[0.2em] uppercase">
-                © 2026 +1 Rewards Platform Management • Secured Admin Access
+                Â© 2026 +1 Rewards Platform Management â€¢ Secured Admin Access
               </p>
             </div>
           </div>
@@ -671,7 +970,7 @@ export default function PartnersPage() {
               </div>
               <button
                 onClick={closeDetailsModal}
-                className="size-10 rounded-full bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-colors"
+                className="size-10 bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-colors" style={{ borderRadius: "9px" }}
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
@@ -706,23 +1005,19 @@ export default function PartnersPage() {
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Status</p>
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase ${
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold uppercase ${
                         partnerDetails.partner.status === 'active' 
                           ? 'bg-[#1a558b]/20 text-[#1a558b] border border-[#1a558b]/30'
                           : partnerDetails.partner.status === 'pending'
                           ? 'bg-yellow-500/20 text-yellow-700 border border-yellow-500/30'
                           : 'bg-red-500/20 text-red-700 border border-red-500/30'
-                      }`}>
+                      }`} style={{ borderRadius: "5px" }}>
                         {partnerDetails.partner.status}
                       </span>
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Commission Rate</p>
                       <p className="text-lg text-[#1a558b] font-bold">{partnerDetails.partner.cashback_percent || 0}%</p>
-                    </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">Registration Number</p>
-                      <p className="text-sm text-gray-900">{partnerDetails.partner.registration_number || 'Not provided'}</p>
                     </div>
                   </div>
                 </section>
@@ -803,36 +1098,6 @@ export default function PartnersPage() {
                   </div>
                 </section>
 
-                {/* Banking Information */}
-                <section>
-                  <h3 className="text-lg font-bold text-[#1a558b] mb-4 flex items-center gap-2">
-                    <span className="material-symbols-outlined">account_balance</span>
-                    Banking Information
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">Bank Name</p>
-                      <p className="text-sm text-gray-900">{partnerDetails.partner.bank_name || 'Not provided'}</p>
-                    </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">Account Number</p>
-                      <p className="text-sm text-gray-900 font-mono">{partnerDetails.partner.bank_account || 'Not provided'}</p>
-                    </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">Branch Code</p>
-                      <p className="text-sm text-gray-900">{partnerDetails.partner.branch_code || 'Not provided'}</p>
-                    </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">Account Type</p>
-                      <p className="text-sm text-gray-900">{partnerDetails.partner.account_type || 'Not provided'}</p>
-                    </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4 md:col-span-2">
-                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">Account Holder Name</p>
-                      <p className="text-sm text-gray-900">{partnerDetails.partner.account_holder_name || 'Not provided'}</p>
-                    </div>
-                  </div>
-                </section>
-
                 {/* Registration & Approval Details */}
                 <section>
                   <h3 className="text-lg font-bold text-[#1a558b] mb-4 flex items-center gap-2">
@@ -852,18 +1117,6 @@ export default function PartnersPage() {
                       <p className="text-xs text-gray-600 uppercase font-bold mb-1">Approved At</p>
                       <p className="text-sm text-gray-900">{partnerDetails.partner.approved_at ? new Date(partnerDetails.partner.approved_at).toLocaleString() : 'Not approved yet'}</p>
                     </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">Approved By</p>
-                      <p className="text-sm text-gray-900">{partnerDetails.partner.approved_by || 'N/A'}</p>
-                    </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">User ID</p>
-                      <p className="text-sm text-gray-900 font-mono">{partnerDetails.partner.user_id || 'Not linked'}</p>
-                    </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 uppercase font-bold mb-1">QR Code</p>
-                      <p className="text-sm text-gray-900 font-mono">{partnerDetails.partner.qr_code || 'Not generated'}</p>
-                    </div>
                   </div>
                 </section>
 
@@ -874,11 +1127,11 @@ export default function PartnersPage() {
                     Digital Signature
                   </h3>
                   {partnerDetails.partner.signature_public_url ? (
-                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
                       <img 
                         src={partnerDetails.partner.signature_public_url}
                         alt="Partner Signature"
-                        className="max-w-md h-auto border border-gray-300 rounded-lg"
+                        className="w-full max-w-md h-auto border border-gray-300 rounded-lg"
                         onLoad={() => {
                           console.log('Signature image loaded successfully');
                         }}
@@ -955,47 +1208,99 @@ export default function PartnersPage() {
                     Recent Transactions ({partnerDetails.transactions.length})
                   </h3>
                   {partnerDetails.transactions.length > 0 ? (
-                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead className="bg-[#1a558b]/10">
-                            <tr>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Date</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Time</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Member</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Purchase Amount</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Member Cashback</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Type</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200">
-                            {partnerDetails.transactions.map((transaction: any) => (
-                              <tr key={transaction.id} className="hover:bg-gray-50">
-                                <td className="px-4 py-3 text-sm text-gray-600">{new Date(transaction.created_at).toLocaleDateString()}</td>
-                                <td className="px-4 py-3 text-sm text-gray-600">{transaction.transaction_time || new Date(transaction.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                                <td className="px-4 py-3">
-                                  <div className="text-sm text-gray-900 font-semibold">{transaction.members ? `${transaction.members.first_name || ''} ${transaction.members.last_name || ''}`.trim() : 'Unknown'}</div>
-                                  <div className="text-xs text-gray-500">{transaction.members?.cell_phone || 'No phone'}</div>
-                                </td>
-                                <td className="px-4 py-3 text-sm text-gray-900 font-bold">R{parseFloat(transaction.purchase_amount || 0).toFixed(2)}</td>
-                                <td className="px-4 py-3 text-sm text-[#1a558b] font-bold">R{parseFloat(transaction.member_amount || transaction.cashback_amount || 0).toFixed(2)}</td>
-                                <td className="px-4 py-3 text-sm text-gray-600">{transaction.transaction_type || 'Purchase'}</td>
-                                <td className="px-4 py-3">
-                                  <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                                    transaction.status === 'completed' ? 'bg-green-500/20 text-green-600' : 
-                                    transaction.status === 'pending' ? 'bg-yellow-500/20 text-yellow-600' :
-                                    'bg-red-500/20 text-red-600'
-                                  }`}>
-                                    {transaction.status}
-                                  </span>
-                                </td>
+                    <>
+                      {/* Desktop Table */}
+                      <div className="hidden md:block bg-white border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-[#1a558b]/10">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Date</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Time</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Member</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Purchase Amount</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Member Cashback</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Type</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Status</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {partnerDetails.transactions.map((transaction: any) => (
+                                <tr key={transaction.id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3 text-sm text-gray-600">{new Date(transaction.created_at).toLocaleDateString()}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-600">{transaction.transaction_time || new Date(transaction.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                  <td className="px-4 py-3">
+                                    <div className="text-sm text-gray-900 font-semibold">{transaction.members ? `${transaction.members.first_name || ''} ${transaction.members.last_name || ''}`.trim() : 'Unknown'}</div>
+                                    <div className="text-xs text-gray-500">{transaction.members?.cell_phone || 'No phone'}</div>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-gray-900 font-bold">R{parseFloat(transaction.purchase_amount || 0).toFixed(2)}</td>
+                                  <td className="px-4 py-3 text-sm text-[#1a558b] font-bold">R{parseFloat(transaction.member_amount || transaction.cashback_amount || 0).toFixed(2)}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-600">{transaction.transaction_type || 'Purchase'}</td>
+                                  <td className="px-4 py-3">
+                                    <span className={`px-2 py-1 text-xs font-bold ${
+                                      transaction.status === 'completed' ? 'bg-green-500/20 text-green-600' : 
+                                      transaction.status === 'pending' ? 'bg-yellow-500/20 text-yellow-600' :
+                                      'bg-red-500/20 text-red-600'
+                                    }`} style={{ borderRadius: "5px" }}>
+                                      {transaction.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
+
+                      {/* Mobile Cards */}
+                      <div className="md:hidden space-y-3">
+                        {partnerDetails.transactions.map((transaction: any) => (
+                          <div key={transaction.id} className="bg-white border border-gray-200 rounded-lg p-3">
+                            {/* Date & Time */}
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>calendar_today</span>
+                                <span>{new Date(transaction.created_at).toLocaleDateString()}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-xs text-gray-600">
+                                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>schedule</span>
+                                <span>{transaction.transaction_time || new Date(transaction.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                            </div>
+
+                            {/* Member Info */}
+                            <div className="mb-2 pb-2 border-b border-gray-100">
+                              <p className="text-sm font-bold text-gray-900">{transaction.members ? `${transaction.members.first_name || ''} ${transaction.members.last_name || ''}`.trim() : 'Unknown'}</p>
+                              <p className="text-xs text-gray-500">{transaction.members?.cell_phone || 'No phone'}</p>
+                            </div>
+
+                            {/* Amounts Grid */}
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                              <div>
+                                <p className="text-[9px] font-bold uppercase text-gray-500 mb-0.5">Purchase</p>
+                                <p className="text-sm font-bold text-gray-900">R{parseFloat(transaction.purchase_amount || 0).toFixed(2)}</p>
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-bold uppercase text-gray-500 mb-0.5">Cashback</p>
+                                <p className="text-sm font-bold text-[#1a558b]">R{parseFloat(transaction.member_amount || transaction.cashback_amount || 0).toFixed(2)}</p>
+                              </div>
+                            </div>
+
+                            {/* Status & Type */}
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-600">{transaction.transaction_type || 'Purchase'}</span>
+                              <span className={`px-2 py-0.5 text-[10px] font-bold ${
+                                transaction.status === 'completed' ? 'bg-green-500/20 text-green-600' : 
+                                transaction.status === 'pending' ? 'bg-yellow-500/20 text-yellow-600' :
+                                'bg-red-500/20 text-red-600'
+                              }`} style={{ borderRadius: "5px" }}>
+                                {transaction.status}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   ) : (
                     <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
                       <p className="text-gray-600">No transactions recorded yet</p>
@@ -1029,11 +1334,11 @@ export default function PartnersPage() {
                                 <td className="px-4 py-3 text-sm text-gray-900 font-bold">R{invoice.amount_due?.toFixed(2)}</td>
                                 <td className="px-4 py-3 text-sm text-[#1a558b] font-bold">R{invoice.amount_paid?.toFixed(2) || '0.00'}</td>
                                 <td className="px-4 py-3">
-                                  <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                  <span className={`px-2 py-1 text-xs font-bold ${
                                     invoice.status === 'paid' ? 'bg-green-500/20 text-green-400' : 
                                     invoice.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
                                     'bg-red-500/20 text-red-400'
-                                  }`}>
+                                  }`} style={{ borderRadius: "5px" }}>
                                     {invoice.status}
                                   </span>
                                 </td>
@@ -1139,3 +1444,5 @@ export default function PartnersPage() {
     </>
   );
 }
+
+

@@ -1,4 +1,4 @@
-// plus1-rewards/src/components/dashboard/pages/ApprovalsPage.tsx
+﻿// plus1-rewards/src/components/dashboard/pages/ApprovalsPage.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../DashboardLayout';
@@ -83,7 +83,7 @@ export default function ApprovalsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      console.log('🔍 Fetching approvals data...');
+      console.log('ðŸ” Fetching approvals data...');
       
       // Fetch pending partners with agent information
       const { data: partners, error: partnersError } = await supabaseAdmin
@@ -124,9 +124,9 @@ export default function ApprovalsPage() {
       ];
 
       if (partnersError || partnersWithoutAgentsError) {
-        console.error('❌ Partners error:', partnersError || partnersWithoutAgentsError);
+        console.error('âŒ Partners error:', partnersError || partnersWithoutAgentsError);
       } else {
-        console.log('✅ Partners:', allPartners?.length || 0);
+        console.log('âœ… Partners:', allPartners?.length || 0);
       }
 
       // Fetch pending agents
@@ -137,10 +137,10 @@ export default function ApprovalsPage() {
         .order('created_at', { ascending: false });
 
       if (agentsError) {
-        console.error('❌ Agents error:', agentsError);
+        console.error('âŒ Agents error:', agentsError);
         setPendingAgents([]);
       } else {
-        console.log('✅ Agents:', agents?.length || 0);
+        console.log('âœ… Agents:', agents?.length || 0);
         // Agent details are stored directly in agents table, no need for separate join
         setPendingAgents(agents || []);
       }
@@ -163,9 +163,9 @@ export default function ApprovalsPage() {
         .order('created_at', { ascending: false });
 
       if (insurersError) {
-        console.error('❌ Insurers error:', insurersError);
+        console.error('âŒ Insurers error:', insurersError);
       } else {
-        console.log('✅ Insurers:', insurers?.length || 0);
+        console.log('âœ… Insurers:', insurers?.length || 0);
       }
 
       // Fetch pending dependants - NO LONGER NEEDED
@@ -187,16 +187,16 @@ export default function ApprovalsPage() {
         .order('rejected_at', { ascending: true });
 
       if (rejectedError) {
-        console.error('❌ Rejected partners error:', rejectedError);
+        console.error('âŒ Rejected partners error:', rejectedError);
         setRejectedPartners([]);
       } else {
-        console.log('✅ Rejected partners:', rejected?.length || 0);
+        console.log('âœ… Rejected partners:', rejected?.length || 0);
         setRejectedPartners(rejected || []);
       }
 
       const totalPending = (allPartners?.length || 0) + (agents?.length || 0) + (insurers?.length || 0);
       
-      console.log('📊 Total pending:', totalPending);
+      console.log('ðŸ“Š Total pending:', totalPending);
       
       setStats({
         totalPending,
@@ -207,7 +207,7 @@ export default function ApprovalsPage() {
         linkedPeople: linkedPeopleRequests?.length || 0
       });
     } catch (error) {
-      console.error('❌ Error fetching approvals:', error);
+      console.error('âŒ Error fetching approvals:', error);
     } finally {
       setLoading(false);
     }
@@ -222,7 +222,7 @@ export default function ApprovalsPage() {
     const fetchSignatureUrl = async () => {
       if (showDetailsModal && selectedItem) {
         try {
-          console.log('📋 Modal opened for:', selectedItem.type, 'ID:', selectedItem.id);
+          console.log('ðŸ“‹ Modal opened for:', selectedItem.type, 'ID:', selectedItem.id);
           
           // For partners, use signature_url; for agents, use agreement_file
           const signaturePath = selectedItem.type === 'partner' 
@@ -246,20 +246,20 @@ export default function ApprovalsPage() {
 
           // For agents, also fetch passport image
           if (selectedItem.type === 'agent' && selectedItem.id_document_url) {
-            console.log('🖼️ Fetching passport image:', selectedItem.id_document_url);
+            console.log('ðŸ–¼ï¸ Fetching passport image:', selectedItem.id_document_url);
             const { data: passportData, error: passportError } = await supabaseAdmin.storage
               .from('documents')
               .createSignedUrl(selectedItem.id_document_url, 3600); // 1 hour expiry
 
             if (passportError) {
-              console.error('❌ Error fetching passport image URL:', passportError);
+              console.error('âŒ Error fetching passport image URL:', passportError);
               setPassportImageUrl(null);
             } else {
-              console.log('✅ Passport image URL fetched successfully');
+              console.log('âœ… Passport image URL fetched successfully');
               setPassportImageUrl(passportData.signedUrl);
             }
           } else {
-            console.log('⚠️ Not fetching passport - type:', selectedItem.type, 'has id_document_url:', !!selectedItem.id_document_url);
+            console.log('âš ï¸ Not fetching passport - type:', selectedItem.type, 'has id_document_url:', !!selectedItem.id_document_url);
             setPassportImageUrl(null);
           }
         } catch (error) {
@@ -466,7 +466,7 @@ export default function ApprovalsPage() {
             >
               Partners
               {stats.partners > 0 && (
-                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
+                <span className={`ml-2 px-2 py-0.5 text-xs font-bold" style={{ borderRadius: "9px" }} ${
                   activeTab === 'partners' ? 'bg-white text-[#1a558b]' : 'bg-red-500 text-white'
                 }`}>
                   {stats.partners}
@@ -481,7 +481,7 @@ export default function ApprovalsPage() {
             >
               Agents
               {stats.agents > 0 && (
-                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
+                <span className={`ml-2 px-2 py-0.5 text-xs font-bold" style={{ borderRadius: "9px" }} ${
                   activeTab === 'agents' ? 'bg-white text-[#1a558b]' : 'bg-red-500 text-white'
                 }`}>
                   {stats.agents}
@@ -496,7 +496,7 @@ export default function ApprovalsPage() {
             >
               Cover Plan Changes
               {stats.coverPlans > 0 && (
-                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
+                <span className={`ml-2 px-2 py-0.5 text-xs font-bold" style={{ borderRadius: "9px" }} ${
                   activeTab === 'cover_plans' ? 'bg-white text-[#1a558b]' : 'bg-red-500 text-white'
                 }`}>
                   {stats.coverPlans}
@@ -511,7 +511,7 @@ export default function ApprovalsPage() {
             >
               dependants
               {stats.linkedPeople > 0 && (
-                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
+                <span className={`ml-2 px-2 py-0.5 text-xs font-bold" style={{ borderRadius: "9px" }} ${
                   activeTab === 'dependants' ? 'bg-white text-[#1a558b]' : 'bg-red-500 text-white'
                 }`}>
                   {stats.linkedPeople}
@@ -861,7 +861,7 @@ export default function ApprovalsPage() {
           {/* Footer */}          {/* Footer */}
           <div className="mt-12 text-center">
             <p className="text-[10px] text-gray-600 font-bold tracking-[0.2em] uppercase">
-              © 2026 +1 Rewards Platform Management • Secured Admin Access
+              Â© 2026 +1 Rewards Platform Management â€¢ Secured Admin Access
             </p>
           </div>
         </div>
@@ -899,7 +899,7 @@ export default function ApprovalsPage() {
                   onClick={() => setShowDetailsModal(false)}
                   className="text-gray-600 hover:text-gray-900 text-2xl"
                 >
-                  ✕
+                  âœ•
                 </button>
               </div>
 
@@ -1230,11 +1230,11 @@ export default function ApprovalsPage() {
                           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                             <h4 className="font-bold text-sm text-blue-900 mb-2">Sales Agent Agreement Summary</h4>
                             <ul className="text-xs text-blue-800 space-y-1">
-                              <li>• You earn 1% commission on total sales at every partner shop you register and manage.</li>
-                              <li>• Commissions are calculated and paid out on a monthly basis.</li>
-                              <li>• Agent is required to manage all partner and member functionality professionaly.</li>
-                              <li>• Account will be approved by an administrator before it becomes active.</li>
-                              <li>• Please read and sign the agreement summary before final submission.</li>
+                              <li>â€¢ You earn 1% commission on total sales at every partner shop you register and manage.</li>
+                              <li>â€¢ Commissions are calculated and paid out on a monthly basis.</li>
+                              <li>â€¢ Agent is required to manage all partner and member functionality professionaly.</li>
+                              <li>â€¢ Account will be approved by an administrator before it becomes active.</li>
+                              <li>â€¢ Please read and sign the agreement summary before final submission.</li>
                             </ul>
                           </div>
                         </div>
@@ -1425,3 +1425,5 @@ export default function ApprovalsPage() {
     </DashboardLayout>
   );
 }
+
+

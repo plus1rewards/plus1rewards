@@ -71,8 +71,8 @@ export default function MembersTable({ members }: MembersTableProps) {
                 </div>
               </td>
               <td className="px-6 py-4">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-[#1a558b]/20 text-[#1a558b] border border-[#1a558b]/30">
-                  <span className="size-1.5 rounded-full bg-[#1a558b]"></span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase bg-[#1a558b]/20 text-[#1a558b] border border-[#1a558b]/30" style={{ borderRadius: "9px" }}>
+                  <span className="size-1.5 bg-[#1a558b]" style={{ borderRadius: "50%" }}></span>
                   {member.status}
                 </span>
               </td>
@@ -121,3 +121,4 @@ export default function MembersTable({ members }: MembersTableProps) {
     </div>
   );
 }
+

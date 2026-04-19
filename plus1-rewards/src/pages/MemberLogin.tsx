@@ -39,49 +39,80 @@ export default function MemberLogin() {
         return;
       }
 
-      // Fetch member (by phone only — check lockout before verifying PIN)
-      const { data: memberData, error: fetchError } = await supabase
-        .from('members')
-        .select('*')
-        .eq('cell_phone', cleanPhone)
-        .single();
+      // Use database function to verify PIN securely
+      const { data: verifyResult, error: verifyError } = await supabase
+        .rpc('verify_member_pin', {
+          p_cell_phone: cleanPhone,
+          p_pin: pin
+        });
 
-      if (fetchError || !memberData) {
+      if (verifyError) {
+        console.error('Verification error:', verifyError);
+        setError('Login failed. Please try again.');
+        return;
+      }
+
+      // Check if verification returned a result
+      if (!verifyResult || verifyResult.length === 0) {
         setError('Invalid mobile number or PIN');
         return;
       }
 
-      // Check lockout
+      const { member_id, is_valid, member_data } = verifyResult[0];
+
+      // If member not found or PIN invalid
+      if (!member_id || !is_valid) {
+        // Fetch member to update failed attempts
+        const { data: memberData } = await supabase
+          .from('members')
+          .select('id, failed_login_attempts, locked_until')
+          .eq('cell_phone', cleanPhone)
+          .single();
+
+        if (memberData) {
+          // Check if already locked
+          if (memberData.locked_until && new Date(memberData.locked_until) > new Date()) {
+            const mins = Math.ceil((new Date(memberData.locked_until).getTime() - Date.now()) / 60000);
+            setError(`Account locked. Too many failed attempts. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.`);
+            return;
+          }
+
+          const newAttempts = (memberData.failed_login_attempts ?? 0) + 1;
+          const shouldLock = newAttempts >= MAX_ATTEMPTS;
+          
+          await supabase.from('members').update({
+            failed_login_attempts: newAttempts,
+            locked_until: shouldLock
+              ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000).toISOString()
+              : null,
+          }).eq('id', memberData.id);
+
+          if (shouldLock) {
+            setError(`Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.`);
+          } else {
+            setError(`Invalid mobile number or PIN. ${MAX_ATTEMPTS - newAttempts} attempt${MAX_ATTEMPTS - newAttempts !== 1 ? 's' : ''} remaining.`);
+          }
+        } else {
+          setError('Invalid mobile number or PIN');
+        }
+        return;
+      }
+
+      // PIN is valid - parse member data
+      const memberData = member_data as any;
+
+      // Check if account is locked
       if (memberData.locked_until && new Date(memberData.locked_until) > new Date()) {
         const mins = Math.ceil((new Date(memberData.locked_until).getTime() - Date.now()) / 60000);
         setError(`Account locked. Too many failed attempts. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.`);
         return;
       }
 
-      // Verify PIN
-      if (memberData.pin_code !== pin) {
-        const newAttempts = (memberData.failed_login_attempts ?? 0) + 1;
-        const shouldLock = newAttempts >= MAX_ATTEMPTS;
-        await supabase.from('members').update({
-          failed_login_attempts: newAttempts,
-          locked_until: shouldLock
-            ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000).toISOString()
-            : null,
-        }).eq('id', memberData.id);
-
-        if (shouldLock) {
-          setError(`Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.`);
-        } else {
-          setError(`Invalid mobile number or PIN. ${MAX_ATTEMPTS - newAttempts} attempt${MAX_ATTEMPTS - newAttempts !== 1 ? 's' : ''} remaining.`);
-        }
-        return;
-      }
-
-      // PIN correct — reset attempts
+      // Reset failed attempts on successful login
       await supabase.from('members').update({
         failed_login_attempts: 0,
         locked_until: null,
-      }).eq('id', memberData.id);
+      }).eq('id', member_id);
 
       if (memberData.status !== 'active') {
         setError('Your account is ' + memberData.status + '. Please contact support.');

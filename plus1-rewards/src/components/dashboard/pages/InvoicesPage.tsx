@@ -1,4 +1,4 @@
-// plus1-rewards/src/components/dashboard/pages/InvoicesPage.tsx
+﻿// plus1-rewards/src/components/dashboard/pages/InvoicesPage.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../DashboardLayout';
@@ -162,7 +162,7 @@ export default function InvoicesPage() {
     return { html, partner, totalDue: fmt(totalDue), dueDate, ref, invoiceMonth };
   };
 
-  // Render HTML in hidden div → html2canvas → jsPDF → base64
+  // Render HTML in hidden div â†’ html2canvas â†’ jsPDF â†’ base64
   const generatePdfBase64 = async (html: string): Promise<string> => {
     const container = document.createElement('div');
     container.style.cssText = 'position:fixed; left:-9999px; top:0; width:794px; background:#f4f4f4;';
@@ -336,7 +336,50 @@ export default function InvoicesPage() {
     <>
     <DashboardLayout>
       <main className="flex-1 overflow-y-auto bg-[#f5f8fc]">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 md:p-10 pb-6">
+        {/* Mobile Header - 3 rows */}
+        <header className="md:hidden p-4 space-y-3">
+          {/* Row 1: Title + Count */}
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#1a558b] text-2xl">receipt</span>
+            <h1 className="text-xl font-black text-gray-900">Partner Billing</h1>
+            <span className="ml-auto px-2 py-0.5 bg-[#1a558b]/10 text-[#1a558b] text-xs font-bold" style={{ borderRadius: '5px' }}>
+              {filteredInvoices.length}
+            </span>
+          </div>
+
+          {/* Row 2: Search */}
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">search</span>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-white border border-gray-200 rounded-lg py-2.5 pl-10 pr-4 text-sm text-gray-900 focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none transition-all placeholder:text-gray-400"
+              placeholder="Search invoices..."
+            />
+          </div>
+
+          {/* Row 3: Two equal buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={handleRefresh}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-bold rounded-lg border border-[#1a558b] bg-white text-[#1a558b] hover:bg-[#1a558b] hover:text-white transition-all text-sm"
+            >
+              <span className="material-symbols-outlined text-lg">refresh</span>
+              Refresh
+            </button>
+            <button
+              onClick={() => setShowTestEmailModal(true)}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-bold rounded-lg border border-orange-500 bg-white text-orange-500 hover:bg-orange-500 hover:text-white transition-all text-sm"
+            >
+              <span className="material-symbols-outlined text-lg">mail</span>
+              Test
+            </button>
+          </div>
+        </header>
+
+        {/* Desktop Header */}
+        <header className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 md:p-10 pb-6">
           <div className="flex-1 max-w-2xl">
             <div className="relative">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xl">search</span>
@@ -376,30 +419,32 @@ export default function InvoicesPage() {
           </div>
         </header>
 
-        <div className="px-6 md:px-10 pb-10">
-          <div className="mb-8">
+        <div className="px-4 md:px-10 pb-10">
+          {/* Desktop Title */}
+          <div className="mb-8 hidden md:block">
             <h2 className="text-3xl font-black text-gray-900 tracking-tight">Partner Billing & Invoices</h2>
             <p className="text-gray-600 mt-1">Manage monthly partner invoices and payment tracking</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-10">
             {statsData.map((stat, index) => (
               <StatCard key={index} icon={stat.icon} title={stat.title} value={stat.value} change={stat.change} description={stat.description} />
             ))}
           </div>
 
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-2xl">
-            <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <div className="px-4 md:px-6 py-4 md:py-5 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+              <h3 className="text-base md:text-lg font-bold text-gray-900 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#1a558b]">list_alt</span>
-                All Invoices ({filteredInvoices.length})
+                <span className="hidden md:inline">All Invoices ({filteredInvoices.length})</span>
+                <span className="md:hidden">Invoices</span>
               </h3>
               <button 
                 onClick={() => setShowSendModal(true)}
                 className="text-xs text-gray-600 hover:text-[#1a558b] flex items-center gap-1 font-medium transition-colors"
               >
                 <span className="material-symbols-outlined text-sm">add</span>
-                Send Statement
+                <span className="hidden sm:inline">Send Statement</span>
               </button>
             </div>
 
@@ -409,99 +454,190 @@ export default function InvoicesPage() {
               </div>
             ) : filteredInvoices.length === 0 ? (
               <div className="px-6 py-12 text-center">
+                <span className="material-symbols-outlined text-gray-400 text-4xl mb-2">inbox</span>
                 <p className="text-gray-600">No invoices found</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[800px]">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Invoice #</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Partner</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Month</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Amount</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Due Date</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Status</th>
-                      <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {filteredInvoices.map((invoice) => {
-                      const isOverdue = invoice.status !== 'paid' && new Date(invoice.due_date) < new Date();
-                      
-                      return (
-                        <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-4">
-                            <span className="text-xs font-mono font-bold text-[#1a558b]">{invoice.id.substring(0, 8).toUpperCase()}</span>
-                          </td>
-                          <td className="px-4 py-4">
-                            <div className="text-sm font-semibold text-gray-900">{invoice.partners?.name || 'Unknown'}</div>
-                          </td>
-                          <td className="px-4 py-4">
-                            <span className="text-sm text-gray-900">{invoice.invoice_month}</span>
-                          </td>
-                          <td className="px-4 py-4">
-                            <span className="text-sm font-bold text-gray-900">R{parseFloat(invoice.total_amount).toFixed(2)}</span>
-                          </td>
-                          <td className="px-4 py-4">
-                            <span className={`text-sm ${isOverdue ? 'text-red-600 font-bold' : 'text-gray-600'}`}>
+              <>
+                {/* Mobile Card View */}
+                <div className="md:hidden divide-y divide-gray-200">
+                  {filteredInvoices.map((invoice) => {
+                    const isOverdue = invoice.status !== 'paid' && new Date(invoice.due_date) < new Date();
+                    
+                    return (
+                      <div key={invoice.id} className="p-4 hover:bg-gray-50 transition-colors">
+                        {/* Header Row */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="font-bold text-gray-900 text-sm mb-1">
+                              {invoice.partners?.shop_name || 'Unknown'}
+                            </div>
+                            <div className="text-xs font-mono text-[#1a558b] font-semibold">
+                              #{invoice.id.substring(0, 8).toUpperCase()}
+                            </div>
+                          </div>
+                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold uppercase" style={{ borderRadius: "5px" }} ${
+                            invoice.status === 'paid'
+                              ? 'bg-green-500/20 text-green-700 border border-green-500/30'
+                              : isOverdue
+                              ? 'bg-red-500/20 text-red-700 border border-red-500/30'
+                              : 'bg-yellow-500/20 text-yellow-700 border border-yellow-500/30'
+                          }`}>
+                            <span className={`size-1.5 rounded-full ${
+                              invoice.status === 'paid' ? 'bg-green-600' : isOverdue ? 'bg-red-600' : 'bg-yellow-500'
+                            }`}></span>
+                            {invoice.status === 'paid' ? 'Paid' : isOverdue ? 'Overdue' : 'Pending'}
+                          </span>
+                        </div>
+
+                        {/* Info Grid */}
+                        <div className="space-y-2 mb-3">
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="material-symbols-outlined text-gray-400 text-base">calendar_month</span>
+                            <span className="text-gray-600">Month:</span>
+                            <span className="text-gray-900 font-semibold">{invoice.invoice_month}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="material-symbols-outlined text-gray-400 text-base">payments</span>
+                            <span className="text-gray-600">Amount:</span>
+                            <span className="text-gray-900 font-bold">R{parseFloat(invoice.total_amount).toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="material-symbols-outlined text-gray-400 text-base">event</span>
+                            <span className="text-gray-600">Due:</span>
+                            <span className={`font-semibold ${isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
                               {new Date(invoice.due_date).toLocaleDateString()}
                             </span>
-                          </td>
-                          <td className="px-4 py-4">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                              invoice.status === 'paid'
-                                ? 'bg-green-500/20 text-green-700 border border-green-500/30'
-                                : isOverdue
-                                ? 'bg-red-500/20 text-red-700 border border-red-500/30'
-                                : 'bg-yellow-500/20 text-yellow-700 border border-yellow-500/30'
-                            }`}>
-                              <span className={`size-1.5 rounded-full ${
-                                invoice.status === 'paid' ? 'bg-green-600' : isOverdue ? 'bg-red-600' : 'bg-yellow-500'
-                              }`}></span>
-                              {invoice.status === 'paid' ? 'Paid' : isOverdue ? 'Overdue' : 'Pending'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4">
-                            <div className="flex items-center gap-2">
-                              {invoice.status !== 'paid' && (
-                                <>
-                                  <button
-                                    onClick={() => handleMarkPaid(invoice.id)}
-                                    className="p-2 text-gray-600 hover:text-green-600 transition-colors rounded-lg bg-gray-100 hover:bg-green-50"
-                                    title="Mark as Paid"
-                                  >
-                                    <span className="material-symbols-outlined text-sm">check_circle</span>
-                                  </button>
-                                  {isOverdue && (
-                                    <button
-                                      onClick={() => handleSuspendPartner(invoice.partner_id)}
-                                      className="p-2 text-gray-600 hover:text-red-600 transition-colors rounded-lg bg-gray-100 hover:bg-red-50"
-                                      title="Suspend Partner"
-                                    >
-                                      <span className="material-symbols-outlined text-sm">block</span>
-                                    </button>
-                                  )}
-                                </>
-                              )}
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                          {invoice.status !== 'paid' && (
+                            <>
                               <button
-                                onClick={() => handleViewInvoice(invoice)}
-                                className="p-2 text-gray-600 hover:text-[#1a558b] transition-colors rounded-lg bg-gray-100 hover:bg-[#1a558b]/10"
-                                title="View Details"
+                                onClick={() => handleMarkPaid(invoice.id)}
+                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
                               >
-                                <span className="material-symbols-outlined text-sm">visibility</span>
+                                <span className="material-symbols-outlined text-sm">check_circle</span>
+                                Mark Paid
                               </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                              {isOverdue && (
+                                <button
+                                  onClick={() => handleSuspendPartner(invoice.partner_id)}
+                                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                                >
+                                  <span className="material-symbols-outlined text-sm">block</span>
+                                  Suspend
+                                </button>
+                              )}
+                            </>
+                          )}
+                          <button
+                            onClick={() => handleViewInvoice(invoice)}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#1a558b] bg-[#1a558b]/10 hover:bg-[#1a558b]/20 rounded-lg transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-sm">visibility</span>
+                            View
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Invoice #</th>
+                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Partner</th>
+                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Month</th>
+                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Amount</th>
+                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Due Date</th>
+                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Status</th>
+                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredInvoices.map((invoice) => {
+                        const isOverdue = invoice.status !== 'paid' && new Date(invoice.due_date) < new Date();
+                        
+                        return (
+                          <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-4">
+                              <span className="text-xs font-mono font-bold text-[#1a558b]">{invoice.id.substring(0, 8).toUpperCase()}</span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="text-sm font-semibold text-gray-900">{invoice.partners?.shop_name || 'Unknown'}</div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className="text-sm text-gray-900">{invoice.invoice_month}</span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className="text-sm font-bold text-gray-900">R{parseFloat(invoice.total_amount).toFixed(2)}</span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className={`text-sm ${isOverdue ? 'text-red-600 font-bold' : 'text-gray-600'}`}>
+                                {new Date(invoice.due_date).toLocaleDateString()}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase" style={{ borderRadius: "5px" }} ${
+                                invoice.status === 'paid'
+                                  ? 'bg-green-500/20 text-green-700 border border-green-500/30'
+                                  : isOverdue
+                                  ? 'bg-red-500/20 text-red-700 border border-red-500/30'
+                                  : 'bg-yellow-500/20 text-yellow-700 border border-yellow-500/30'
+                              }`}>
+                                <span className={`size-1.5 rounded-full ${
+                                  invoice.status === 'paid' ? 'bg-green-600' : isOverdue ? 'bg-red-600' : 'bg-yellow-500'
+                                }`}></span>
+                                {invoice.status === 'paid' ? 'Paid' : isOverdue ? 'Overdue' : 'Pending'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex items-center gap-2">
+                                {invoice.status !== 'paid' && (
+                                  <>
+                                    <button
+                                      onClick={() => handleMarkPaid(invoice.id)}
+                                      className="p-2 text-gray-600 hover:text-green-600 transition-colors rounded-lg bg-gray-100 hover:bg-green-50"
+                                      title="Mark as Paid"
+                                    >
+                                      <span className="material-symbols-outlined text-sm">check_circle</span>
+                                    </button>
+                                    {isOverdue && (
+                                      <button
+                                        onClick={() => handleSuspendPartner(invoice.partner_id)}
+                                        className="p-2 text-gray-600 hover:text-red-600 transition-colors rounded-lg bg-gray-100 hover:bg-red-50"
+                                        title="Suspend Partner"
+                                      >
+                                        <span className="material-symbols-outlined text-sm">block</span>
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+                                <button
+                                  onClick={() => handleViewInvoice(invoice)}
+                                  className="p-2 text-gray-600 hover:text-[#1a558b] transition-colors rounded-lg bg-gray-100 hover:bg-[#1a558b]/10"
+                                  title="View Details"
+                                >
+                                  <span className="material-symbols-outlined text-sm">visibility</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
 
-            <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
+            <div className="px-4 md:px-6 py-3 bg-gray-50 border-t border-gray-200">
               <p className="text-[10px] text-gray-600 font-medium uppercase tracking-widest text-center">
                 Showing {filteredInvoices.length} of {invoices.length} total invoices
               </p>
@@ -513,17 +649,17 @@ export default function InvoicesPage() {
             <div>
               <h4 className="text-sm font-bold text-yellow-900 mb-1">Invoice & Billing Cycle</h4>
               <ul className="text-xs text-yellow-800 space-y-1">
-                <li>• Partners issue cashback during the month</li>
-                <li>• Invoices generated at month end</li>
-                <li>• Grace period applies before suspension</li>
-                <li>• Suspended partners cannot process transactions</li>
+                <li>â€¢ Partners issue cashback during the month</li>
+                <li>â€¢ Invoices generated at month end</li>
+                <li>â€¢ Grace period applies before suspension</li>
+                <li>â€¢ Suspended partners cannot process transactions</li>
               </ul>
             </div>
           </div>
 
           <div className="mt-12 text-center">
             <p className="text-[10px] text-gray-600 font-bold tracking-[0.2em] uppercase">
-              © 2026 +1 Rewards Platform Management • Secured Admin Access
+              Â© 2026 +1 Rewards Platform Management â€¢ Secured Admin Access
             </p>
           </div>
         </div>
@@ -535,65 +671,65 @@ export default function InvoicesPage() {
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
         <div className="bg-white border border-gray-200 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
           {/* Modal Header */}
-          <div className="border-b border-gray-200 px-8 py-6 flex items-center justify-between flex-shrink-0">
+          <div className="border-b border-gray-200 px-4 md:px-8 py-4 md:py-6 flex items-center justify-between flex-shrink-0">
             <div>
-              <h2 className="text-2xl font-black text-gray-900">Invoice Details</h2>
-              <p className="text-sm text-gray-600 mt-1">Invoice #{selectedInvoice.id.substring(0, 8).toUpperCase()}</p>
+              <h2 className="text-xl md:text-2xl font-black text-gray-900">Invoice Details</h2>
+              <p className="text-xs md:text-sm text-gray-600 mt-1">Invoice #{selectedInvoice.id.substring(0, 8).toUpperCase()}</p>
             </div>
             <button
               onClick={closeInvoiceModal}
-              className="size-10 rounded-full bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-colors"
+              className="size-8 md:size-10 rounded-full bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-colors"
             >
-              <span className="material-symbols-outlined">close</span>
+              <span className="material-symbols-outlined text-lg md:text-xl">close</span>
             </button>
           </div>
 
           {/* Modal Content */}
-          <div className="overflow-y-auto flex-1 px-8 py-6 space-y-6 bg-gray-50">
+          <div className="overflow-y-auto flex-1 px-4 md:px-8 py-4 md:py-6 space-y-4 md:space-y-6 bg-gray-50">
             {/* Partner Information */}
             <section>
-              <h3 className="text-lg font-bold text-[#1a558b] mb-4 flex items-center gap-2">
+              <h3 className="text-base md:text-lg font-bold text-[#1a558b] mb-3 md:mb-4 flex items-center gap-2">
                 <span className="material-symbols-outlined">storefront</span>
                 Partner Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4">
                   <p className="text-xs text-gray-600 uppercase font-bold mb-1">Partner Name</p>
                   <p className="text-sm text-gray-900 font-semibold">{selectedInvoice.partners?.shop_name || 'Unknown'}</p>
                 </div>
-                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4">
                   <p className="text-xs text-gray-600 uppercase font-bold mb-1">Contact Phone</p>
                   <p className="text-sm text-gray-900">{selectedInvoice.partners?.cell_phone || 'Not provided'}</p>
                 </div>
-                <div className="bg-white border border-gray-200 rounded-lg p-4 md:col-span-2">
+                <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4 md:col-span-2">
                   <p className="text-xs text-gray-600 uppercase font-bold mb-1">Email</p>
-                  <p className="text-sm text-gray-900">{selectedInvoice.partners?.email || 'Not provided'}</p>
+                  <p className="text-sm text-gray-900 break-all">{selectedInvoice.partners?.email || 'Not provided'}</p>
                 </div>
               </div>
             </section>
 
             {/* Invoice Details */}
             <section>
-              <h3 className="text-lg font-bold text-[#1a558b] mb-4 flex items-center gap-2">
+              <h3 className="text-base md:text-lg font-bold text-[#1a558b] mb-3 md:mb-4 flex items-center gap-2">
                 <span className="material-symbols-outlined">receipt</span>
                 Invoice Details
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4">
                   <p className="text-xs text-gray-600 uppercase font-bold mb-1">Invoice Month</p>
                   <p className="text-sm text-gray-900 font-semibold">{selectedInvoice.invoice_month}</p>
                 </div>
-                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4">
                   <p className="text-xs text-gray-600 uppercase font-bold mb-1">Due Date</p>
                   <p className="text-sm text-gray-900">{new Date(selectedInvoice.due_date).toLocaleDateString()}</p>
                 </div>
-                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4">
                   <p className="text-xs text-gray-600 uppercase font-bold mb-1">Total Amount</p>
-                  <p className="text-2xl text-[#1a558b] font-bold">R{parseFloat(selectedInvoice.total_amount).toFixed(2)}</p>
+                  <p className="text-xl md:text-2xl text-[#1a558b] font-bold">R{parseFloat(selectedInvoice.total_amount).toFixed(2)}</p>
                 </div>
-                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4">
                   <p className="text-xs text-gray-600 uppercase font-bold mb-1">Status</p>
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase ${
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold" style={{ borderRadius: "5px" }} uppercase ${
                     selectedInvoice.status === 'paid'
                       ? 'bg-green-500/20 text-green-700 border border-green-500/30'
                       : new Date(selectedInvoice.due_date) < new Date()
@@ -604,7 +740,7 @@ export default function InvoicesPage() {
                   </span>
                 </div>
                 {selectedInvoice.paid_at && (
-                  <div className="bg-white border border-gray-200 rounded-lg p-4 md:col-span-2">
+                  <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4 md:col-span-2">
                     <p className="text-xs text-gray-600 uppercase font-bold mb-1">Paid At</p>
                     <p className="text-sm text-green-700 font-semibold">{new Date(selectedInvoice.paid_at).toLocaleString()}</p>
                   </div>
@@ -614,16 +750,16 @@ export default function InvoicesPage() {
 
             {/* Timestamps */}
             <section>
-              <h3 className="text-lg font-bold text-[#1a558b] mb-4 flex items-center gap-2">
+              <h3 className="text-base md:text-lg font-bold text-[#1a558b] mb-3 md:mb-4 flex items-center gap-2">
                 <span className="material-symbols-outlined">schedule</span>
                 Timestamps
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4">
                   <p className="text-xs text-gray-600 uppercase font-bold mb-1">Created At</p>
                   <p className="text-sm text-gray-900">{new Date(selectedInvoice.created_at).toLocaleString()}</p>
                 </div>
-                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4">
                   <p className="text-xs text-gray-600 uppercase font-bold mb-1">Updated At</p>
                   <p className="text-sm text-gray-900">{new Date(selectedInvoice.updated_at).toLocaleString()}</p>
                 </div>
@@ -632,15 +768,15 @@ export default function InvoicesPage() {
 
             {/* Actions */}
             {selectedInvoice.status !== 'paid' && (
-              <section className="flex gap-4 justify-center pt-4">
+              <section className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center pt-2 md:pt-4">
                 <button
                   onClick={() => {
                     handleMarkPaid(selectedInvoice.id);
                     closeInvoiceModal();
                   }}
-                  className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold transition-colors flex items-center gap-2"
+                  className="px-4 md:px-6 py-2.5 md:py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold transition-colors flex items-center justify-center gap-2 text-sm md:text-base"
                 >
-                  <span className="material-symbols-outlined">check_circle</span>
+                  <span className="material-symbols-outlined text-lg md:text-xl">check_circle</span>
                   Mark as Paid
                 </button>
                 {new Date(selectedInvoice.due_date) < new Date() && (
@@ -649,9 +785,9 @@ export default function InvoicesPage() {
                       handleSuspendPartner(selectedInvoice.partner_id);
                       closeInvoiceModal();
                     }}
-                    className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold transition-colors flex items-center gap-2"
+                    className="px-4 md:px-6 py-2.5 md:py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold transition-colors flex items-center justify-center gap-2 text-sm md:text-base"
                   >
-                    <span className="material-symbols-outlined">block</span>
+                    <span className="material-symbols-outlined text-lg md:text-xl">block</span>
                     Suspend Partner
                   </button>
                 )}
@@ -667,21 +803,21 @@ export default function InvoicesPage() {
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div className="bg-white border border-gray-200 rounded-2xl max-w-md w-full shadow-2xl">
           {/* Modal Header */}
-          <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-            <h2 className="text-xl font-black text-gray-900">Send Statement</h2>
+          <div className="border-b border-gray-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
+            <h2 className="text-lg md:text-xl font-black text-gray-900">Send Statement</h2>
             <button
               onClick={() => {
                 setShowSendModal(false);
                 setSelectedPartner(null);
               }}
-              className="size-8 rounded-full bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-colors"
+              className="size-7 md:size-8 rounded-full bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-colors"
             >
               <span className="material-symbols-outlined text-sm">close</span>
             </button>
           </div>
 
           {/* Modal Content */}
-          <div className="px-6 py-6 space-y-4">
+          <div className="px-4 md:px-6 py-4 md:py-6 space-y-4">
             <div>
               <label className="block text-sm font-bold text-gray-900 mb-2">
                 Select Partner
@@ -692,7 +828,7 @@ export default function InvoicesPage() {
                   const partner = invoices.find(inv => inv.id === e.target.value);
                   setSelectedPartner(partner);
                 }}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none transition-all"
+                className="w-full px-3 md:px-4 py-2 md:py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#1a558b] focus:border-[#1a558b] outline-none transition-all"
               >
                 <option value="">Choose a partner...</option>
                 {invoices.map((invoice) => (
@@ -704,22 +840,22 @@ export default function InvoicesPage() {
             </div>
 
             {selectedPartner && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4 space-y-2">
                 <p className="text-xs text-blue-600 font-bold uppercase">Statement Details</p>
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-900">
+                  <p className="text-xs md:text-sm text-gray-900">
                     <span className="font-semibold">Partner:</span> {selectedPartner.partners?.shop_name}
                   </p>
-                  <p className="text-sm text-gray-900">
+                  <p className="text-xs md:text-sm text-gray-900 break-all">
                     <span className="font-semibold">Email:</span> {selectedPartner.partners?.email}
                   </p>
-                  <p className="text-sm text-gray-900">
+                  <p className="text-xs md:text-sm text-gray-900">
                     <span className="font-semibold">Month:</span> {selectedPartner.invoice_month}
                   </p>
-                  <p className="text-sm text-gray-900">
+                  <p className="text-xs md:text-sm text-gray-900">
                     <span className="font-semibold">Amount:</span> R{parseFloat(selectedPartner.total_amount).toFixed(2)}
                   </p>
-                  <p className="text-sm text-gray-900">
+                  <p className="text-xs md:text-sm text-gray-900">
                     <span className="font-semibold">Due Date:</span> {new Date(selectedPartner.due_date).toLocaleDateString()}
                   </p>
                 </div>
@@ -728,24 +864,24 @@ export default function InvoicesPage() {
           </div>
 
           {/* Modal Footer */}
-          <div className="border-t border-gray-200 px-6 py-4 flex gap-3 justify-end">
+          <div className="border-t border-gray-200 px-4 md:px-6 py-3 md:py-4 flex gap-2 md:gap-3 justify-end">
             <button
               onClick={() => {
                 setShowSendModal(false);
                 setSelectedPartner(null);
               }}
-              className="px-4 py-2 border border-gray-200 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+              className="px-3 md:px-4 py-2 border border-gray-200 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
             >
               Cancel
             </button>
             <button
               onClick={handleSendStatement}
               disabled={!selectedPartner || sendingEmail}
-              className="px-4 py-2 bg-[#1a558b] text-white rounded-lg hover:opacity-90 transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-3 md:px-4 py-2 bg-[#1a558b] text-white rounded-lg hover:opacity-90 transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {sendingEmail ? (
                 <>
-                  <span className="animate-spin">⏳</span>
+                  <span className="animate-spin">â³</span>
                   Sending...
                 </>
               ) : (
@@ -763,29 +899,29 @@ export default function InvoicesPage() {
     {/* Test Email Modal */}
     {showTestEmailModal && (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-white border border-gray-200 rounded-2xl max-w-md w-full shadow-2xl">
+        <div className="bg-white border border-gray-200 rounded-2xl max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
           {/* Modal Header */}
-          <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-            <h2 className="text-xl font-black text-gray-900">Test Email Templates</h2>
+          <div className="border-b border-gray-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between sticky top-0 bg-white z-10">
+            <h2 className="text-lg md:text-xl font-black text-gray-900">Test Email Templates</h2>
             <button
               onClick={() => {
                 setShowTestEmailModal(false);
                 setTestEmailType(null);
               }}
-              className="size-8 rounded-full bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-colors"
+              className="size-7 md:size-8 rounded-full bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-colors"
             >
               <span className="material-symbols-outlined text-sm">close</span>
             </button>
           </div>
 
           {/* Modal Content */}
-          <div className="px-6 py-6 space-y-3">
-            <p className="text-sm text-gray-600 mb-4">Sends to the partner's registered email address</p>
+          <div className="px-4 md:px-6 py-4 md:py-6 space-y-3">
+            <p className="text-xs md:text-sm text-gray-600 mb-4">Sends to the partner's registered email address</p>
 
             <button
               onClick={handleSendTestPdfStatement}
               disabled={sendingTestEmail}
-              className="w-full px-4 py-3 bg-[#1a568b] border border-[#1a568b] text-white rounded-lg hover:opacity-90 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full px-3 md:px-4 py-2.5 md:py-3 bg-[#1a568b] border border-[#1a568b] text-white rounded-lg hover:opacity-90 transition-colors font-medium text-xs md:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
               {sendingTestEmail ? 'Sending...' : 'Send 2 Statement Emails (Test)'}
@@ -796,7 +932,7 @@ export default function InvoicesPage() {
             <button
               onClick={() => handleSendTestEmail('due')}
               disabled={sendingTestEmail}
-              className="w-full px-4 py-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full px-3 md:px-4 py-2.5 md:py-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors font-medium text-xs md:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-sm">mail</span>
               Partner Invoice Due
@@ -805,7 +941,7 @@ export default function InvoicesPage() {
             <button
               onClick={() => handleSendTestEmail('overdue')}
               disabled={sendingTestEmail}
-              className="w-full px-4 py-3 bg-orange-50 border border-orange-200 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full px-3 md:px-4 py-2.5 md:py-3 bg-orange-50 border border-orange-200 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors font-medium text-xs md:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-sm">mail</span>
               Partner Invoice Overdue
@@ -814,7 +950,7 @@ export default function InvoicesPage() {
             <button
               onClick={() => handleSendTestEmail('payment_received')}
               disabled={sendingTestEmail}
-              className="w-full px-4 py-3 bg-green-50 border border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full px-3 md:px-4 py-2.5 md:py-3 bg-green-50 border border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-colors font-medium text-xs md:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-sm">mail</span>
               Partner Payment Received
@@ -823,7 +959,7 @@ export default function InvoicesPage() {
             <button
               onClick={() => handleSendTestEmail('suspended')}
               disabled={sendingTestEmail}
-              className="w-full px-4 py-3 bg-red-50 border border-red-200 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full px-3 md:px-4 py-2.5 md:py-3 bg-red-50 border border-red-200 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium text-xs md:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-sm">mail</span>
               Partner Suspended
@@ -832,7 +968,7 @@ export default function InvoicesPage() {
             <button
               onClick={() => handleSendTestEmail('reactivated')}
               disabled={sendingTestEmail}
-              className="w-full px-4 py-3 bg-purple-50 border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full px-3 md:px-4 py-2.5 md:py-3 bg-purple-50 border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors font-medium text-xs md:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-sm">mail</span>
               Partner Reactivated
@@ -840,13 +976,13 @@ export default function InvoicesPage() {
           </div>
 
           {/* Modal Footer */}
-          <div className="border-t border-gray-200 px-6 py-4 flex justify-end">
+          <div className="border-t border-gray-200 px-4 md:px-6 py-3 md:py-4 flex justify-end sticky bottom-0 bg-white">
             <button
               onClick={() => {
                 setShowTestEmailModal(false);
                 setTestEmailType(null);
               }}
-              className="px-4 py-2 border border-gray-200 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+              className="px-3 md:px-4 py-2 border border-gray-200 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
             >
               Close
             </button>
@@ -857,3 +993,5 @@ export default function InvoicesPage() {
     </>
   );
 }
+
+

@@ -65,7 +65,8 @@ export default function PlanSelectionModal({
   onPlanSelected
 }: PlanSelectionModalProps) {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(PLANS[0]);
-  const [expandedBenefits, setExpandedBenefits] = useState(true);
+  const [expandedBenefits, setExpandedBenefits] = useState<string | null>(null);
+  const [showComparison, setShowComparison] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { notification, showSuccess, hideNotification } = useNotification();
@@ -169,199 +170,217 @@ export default function PlanSelectionModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-3xl max-w-5xl w-full max-h-[95vh] overflow-hidden shadow-2xl">
-        {/* Header with gradient */}
-        <div className="bg-gradient-to-r from-[#1a558b] via-[#2a6a9b] to-[#1a558b] px-8 py-12 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20"></div>
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full -ml-16 -mb-16"></div>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center z-50">
+      <div className="bg-white w-full h-full sm:h-auto sm:max-h-[95vh] sm:rounded-3xl sm:max-w-5xl overflow-hidden shadow-2xl flex flex-col">
+        {/* Header */}
+        <div className="bg-gradient-to-br from-[#1a558b] to-[#2a6a9b] px-5 py-6 sm:px-8 sm:py-10 text-white relative overflow-hidden flex-shrink-0">
+          <div className="absolute top-0 right-0 w-32 h-32 sm:w-48 sm:h-48 bg-white/10 rounded-full -mr-16 sm:-mr-24 -mt-16 sm:-mt-24"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 sm:w-40 sm:h-40 bg-white/10 rounded-full -ml-12 sm:-ml-20 -mb-12 sm:-mb-20"></div>
           
           <div className="relative z-10">
-            <h1 className="text-4xl font-black mb-2">Welcome to Plus1 Health</h1>
-            <p className="text-lg text-blue-100">Read and compare the 2 default plans then choose your perfect cover.</p>
+            <h1 className="text-2xl sm:text-4xl font-black mb-2 leading-tight">Welcome to<br className="sm:hidden" /> Plus1 Health</h1>
+            <p className="text-sm sm:text-lg text-blue-100 leading-relaxed">Choose your perfect cover plan</p>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-8 overflow-y-auto max-h-[calc(95vh-200px)]">
-          {error && (
-            <div className="rounded-xl p-4 mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 flex items-start gap-3">
-              <span className="text-2xl">⚠️</span>
-              <div>
-                <p className="font-bold">Something went wrong</p>
-                <p className="text-sm mt-1">{error}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Info Banner */}
-          <div className="rounded-2xl p-6 mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200">
-            <div className="flex items-start gap-4">
-              <span className="text-4xl">💡</span>
-              <div>
-                <p className="font-bold text-gray-900 mb-1">How it works</p>
-                <p className="text-gray-700 text-sm">
-                  Your rewards from partner shops automatically fund your chosen plan. Once your monthly target is reached, your policy activates and you can start using your benefits.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Plans Grid */}
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            {PLANS.map((plan) => {
-              const isSelected = selectedPlan?.id === plan.id;
-              return (
-                <div
-                  key={plan.id}
-                  onClick={() => setSelectedPlan(plan)}
-                  className={`rounded-2xl cursor-pointer transition-all duration-300 overflow-hidden border-2 ${
-                    isSelected
-                      ? 'border-[#1a558b] shadow-2xl scale-105'
-                      : 'border-gray-200 shadow-lg hover:shadow-xl hover:border-[#1a558b]/50'
-                  }`}
-                >
-                  {/* Plan Card Header */}
-                  <div className={`p-6 ${isSelected ? 'bg-gradient-to-r from-[#1a558b] to-[#2a6a9b]' : 'bg-gradient-to-r from-gray-50 to-gray-100'}`}>
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <div className="text-5xl mb-3">{plan.icon}</div>
-                        <h3 className={`text-2xl font-black ${isSelected ? 'text-white' : 'text-gray-900'}`}>
-                          {plan.name}
-                        </h3>
-                        <p className={`text-sm mt-2 ${isSelected ? 'text-blue-100' : 'text-gray-600'}`}>
-                          {plan.description}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Price Section */}
-                  <div className={`px-6 py-4 border-t-2 ${isSelected ? 'border-blue-200 bg-blue-50' : 'border-gray-100 bg-white'}`}>
-                    <div className="flex items-baseline gap-2">
-                      <span className={`text-4xl font-black ${isSelected ? 'text-[#1a558b]' : 'text-gray-900'}`}>
-                        R{plan.price}
-                      </span>
-                      <span className={`text-sm font-semibold ${isSelected ? 'text-[#1a558b]' : 'text-gray-600'}`}>
-                        /month target
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Benefits Toggle */}
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setExpandedBenefits(!expandedBenefits);
-                    }}
-                    className={`px-6 py-3 cursor-pointer transition-colors ${
-                      isSelected ? 'bg-blue-100 hover:bg-blue-200' : 'bg-gray-50 hover:bg-gray-100'
-                    } flex items-center justify-between`}
-                  >
-                    <span className={`font-bold text-sm ${isSelected ? 'text-[#1a558b]' : 'text-gray-700'}`}>
-                      ✓ {plan.benefits.length} Key Benefits
-                    </span>
-                    <span className={`text-xl transition-transform ${expandedBenefits ? 'rotate-180' : ''}`}>
-                      ▼
-                    </span>
-                  </div>
-
-                  {/* Benefits List */}
-                  {expandedBenefits && (
-                    <div className="px-6 py-4 bg-white border-t border-gray-100">
-                      <ul className="space-y-2">
-                        {plan.benefits.map((benefit, idx) => (
-                          <li key={idx} className="flex gap-3 text-sm">
-                            <span className="text-green-500 font-bold flex-shrink-0 mt-0.5">✓</span>
-                            <span className="text-gray-700">{benefit}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Selection Indicator */}
-                  {isSelected && (
-                    <div className="px-6 py-3 bg-gradient-to-r from-green-50 to-emerald-50 border-t-2 border-green-200 flex items-center justify-center gap-2">
-                      <span className="text-2xl">✓</span>
-                      <span className="font-bold text-green-700">Selected</span>
-                    </div>
-                  )}
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-5 sm:p-8">
+            {error && (
+              <div className="rounded-lg p-4 mb-4 bg-red-50 border-l-4 border-red-500 text-red-700 flex items-start gap-3">
+                <span className="text-xl flex-shrink-0">⚠️</span>
+                <div className="min-w-0">
+                  <p className="font-bold text-sm">Something went wrong</p>
+                  <p className="text-xs mt-1">{error}</p>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            )}
 
-          {/* Comparison Table */}
-          <div className="mb-8 rounded-2xl overflow-hidden border-2 border-gray-200">
-            <div className="bg-gray-50 px-6 py-4 border-b-2 border-gray-200">
-              <h3 className="font-black text-gray-900">Quick Comparison</h3>
+            {/* Info Banner */}
+            <div className="rounded-xl p-4 mb-5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl flex-shrink-0">💡</span>
+                <div className="min-w-0">
+                  <p className="font-bold text-gray-900 mb-1 text-sm">How it works</p>
+                  <p className="text-gray-700 text-xs leading-relaxed">
+                    Shop at partner stores to earn rewards that automatically fund your plan. Once funded, your coverage activates!
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-100 border-b-2 border-gray-200">
-                    <th className="px-6 py-3 text-left font-bold text-gray-900">Feature</th>
-                    {PLANS.map((plan) => (
-                      <th key={plan.id} className="px-6 py-3 text-center font-bold text-gray-900">
-                        {plan.name}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="px-6 py-3 font-semibold text-gray-900">Monthly Cost</td>
-                    {PLANS.map((plan) => (
-                      <td key={plan.id} className="px-6 py-3 text-center text-gray-700">
-                        <span className="font-black text-lg">R{plan.price}</span>
-                      </td>
-                    ))}
-                  </tr>
-                  <tr className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="px-6 py-3 font-semibold text-gray-900">Doctor Visits</td>
-                    <td className="px-6 py-3 text-center text-gray-700">✓ 5/year</td>
-                    <td className="px-6 py-3 text-center text-gray-700">Emergency only</td>
-                  </tr>
-                  <tr className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="px-6 py-3 font-semibold text-gray-900">Hospital Cover</td>
-                    <td className="px-6 py-3 text-center text-gray-700">Limited</td>
-                    <td className="px-6 py-3 text-center text-gray-700">✓ Full coverage</td>
-                  </tr>
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-6 py-3 font-semibold text-gray-900">Dental</td>
-                    <td className="px-6 py-3 text-center text-gray-700">✓ 2 visits</td>
-                    <td className="px-6 py-3 text-center text-gray-700">Not included</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
 
-          {/* Action Button */}
-          <div className="flex gap-4">
+            {/* Mobile: Swipeable Plan Cards */}
+            <div className="mb-5">
+              <h2 className="text-lg font-black text-gray-900 mb-3">Select Your Plan</h2>
+              
+              <div className="space-y-3 sm:grid sm:grid-cols-2 sm:gap-4 sm:space-y-0">
+                {PLANS.map((plan) => {
+                  const isSelected = selectedPlan?.id === plan.id;
+                  const isExpanded = expandedBenefits === plan.id;
+                  
+                  return (
+                    <div
+                      key={plan.id}
+                      className={`rounded-2xl overflow-hidden border-2 transition-all ${
+                        isSelected
+                          ? 'border-[#1a558b] shadow-lg'
+                          : 'border-gray-200 shadow-sm'
+                      }`}
+                    >
+                      {/* Plan Header - Clickable */}
+                      <div
+                        onClick={() => setSelectedPlan(plan)}
+                        className={`p-4 cursor-pointer ${
+                          isSelected 
+                            ? 'bg-gradient-to-br from-[#1a558b] to-[#2a6a9b]' 
+                            : 'bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <span className="text-3xl">{plan.icon}</span>
+                            <div>
+                              <h3 className={`text-lg font-black ${isSelected ? 'text-white' : 'text-gray-900'}`}>
+                                {plan.name}
+                              </h3>
+                              <p className={`text-xs ${isSelected ? 'text-blue-100' : 'text-gray-600'}`}>
+                                {plan.description}
+                              </p>
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-400 flex items-center justify-center">
+                              <span className="text-white text-sm font-bold">✓</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Price */}
+                        <div className={`flex items-baseline gap-2 ${isSelected ? 'text-white' : 'text-gray-900'}`}>
+                          <span className="text-3xl font-black">R{plan.price}</span>
+                          <span className="text-xs font-semibold opacity-80">/month</span>
+                        </div>
+                      </div>
+
+                      {/* Benefits Toggle */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedBenefits(isExpanded ? null : plan.id);
+                        }}
+                        className={`w-full px-4 py-3 flex items-center justify-between transition-colors ${
+                          isSelected ? 'bg-blue-50 hover:bg-blue-100' : 'bg-white hover:bg-gray-50'
+                        } border-t border-gray-200`}
+                      >
+                        <span className={`text-sm font-bold ${isSelected ? 'text-[#1a558b]' : 'text-gray-700'}`}>
+                          {plan.benefits.length} Benefits
+                        </span>
+                        <span className={`text-lg transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                          ▼
+                        </span>
+                      </button>
+
+                      {/* Benefits List - Expandable */}
+                      {isExpanded && (
+                        <div className="px-4 py-3 bg-white border-t border-gray-100">
+                          <ul className="space-y-2">
+                            {plan.benefits.map((benefit, idx) => (
+                              <li key={idx} className="flex gap-2 text-xs">
+                                <span className="text-green-500 font-bold flex-shrink-0 mt-0.5">✓</span>
+                                <span className="text-gray-700 leading-relaxed">{benefit}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Comparison Toggle */}
             <button
-              onClick={handleSelectPlan}
-              disabled={loading || !selectedPlan}
-              className={`flex-1 py-4 rounded-2xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-2 ${
-                loading || !selectedPlan
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:shadow-lg hover:scale-105 active:scale-95'
-              }`}
+              onClick={() => setShowComparison(!showComparison)}
+              className="w-full mb-5 px-4 py-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-between border border-gray-200"
             >
-              {loading ? (
-                <>
-                  <span className="animate-spin">⏳</span>
-                  Activating...
-                </>
-              ) : (
-                <>
-                  <span>✓</span>
-                  <span>Activate {selectedPlan?.name}</span>
-                </>
-              )}
+              <span className="text-sm font-bold text-gray-700">Compare Plans</span>
+              <span className={`text-lg transition-transform ${showComparison ? 'rotate-180' : ''}`}>▼</span>
             </button>
+
+            {/* Comparison Table - Collapsible */}
+            {showComparison && (
+              <div className="mb-5 rounded-xl overflow-hidden border border-gray-200">
+                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                  <h3 className="font-bold text-gray-900 text-sm">Quick Comparison</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[400px]">
+                    <thead>
+                      <tr className="bg-gray-100 border-b border-gray-200">
+                        <th className="px-3 py-2 text-left font-bold text-gray-900 text-xs">Feature</th>
+                        {PLANS.map((plan) => (
+                          <th key={plan.id} className="px-3 py-2 text-center font-bold text-gray-900 text-xs">
+                            {plan.name}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white">
+                      <tr className="border-b border-gray-100">
+                        <td className="px-3 py-2 font-semibold text-gray-900 text-xs">Cost</td>
+                        {PLANS.map((plan) => (
+                          <td key={plan.id} className="px-3 py-2 text-center">
+                            <span className="font-black text-sm">R{plan.price}</span>
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <td className="px-3 py-2 font-semibold text-gray-900 text-xs">Doctor Visits</td>
+                        <td className="px-3 py-2 text-center text-gray-700 text-xs">✓ 5/year</td>
+                        <td className="px-3 py-2 text-center text-gray-700 text-xs">Emergency</td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <td className="px-3 py-2 font-semibold text-gray-900 text-xs">Hospital</td>
+                        <td className="px-3 py-2 text-center text-gray-700 text-xs">Limited</td>
+                        <td className="px-3 py-2 text-center text-gray-700 text-xs">✓ Full</td>
+                      </tr>
+                      <tr>
+                        <td className="px-3 py-2 font-semibold text-gray-900 text-xs">Dental</td>
+                        <td className="px-3 py-2 text-center text-gray-700 text-xs">✓ 2 visits</td>
+                        <td className="px-3 py-2 text-center text-gray-700 text-xs">—</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* Fixed Bottom Action Button */}
+        <div className="flex-shrink-0 p-5 bg-white border-t border-gray-200 sm:p-6">
+          <button
+            onClick={handleSelectPlan}
+            disabled={loading || !selectedPlan}
+            className={`w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
+              loading || !selectedPlan
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:shadow-lg active:scale-[0.98]'
+            }`}
+          >
+            {loading ? (
+              <>
+                <span className="animate-spin">⏳</span>
+                <span>Activating...</span>
+              </>
+            ) : (
+              <>
+                <span>✓</span>
+                <span>Activate {selectedPlan?.name}</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 

@@ -49,37 +49,37 @@ export function Notification({ type, title, message, onClose, duration = 5000 }:
 
   return (
     <div
-      className="fixed top-4 right-4 z-50 max-w-md w-full animate-slide-in-right"
+      className="fixed top-2 left-2 right-2 sm:top-4 sm:right-4 sm:left-auto z-50 sm:max-w-md w-auto sm:w-full animate-slide-in-right"
       style={{
         animation: 'slideInRight 0.3s ease-out'
       }}
     >
       <div
-        className="rounded-2xl shadow-2xl p-5 text-white relative overflow-hidden"
+        className="rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-5 text-white relative overflow-hidden"
         style={{ background: styles.bg }}
       >
         {/* Decorative circles */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
+        <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-white/10 rounded-full -mr-10 sm:-mr-16 -mt-10 sm:-mt-16" />
+        <div className="absolute bottom-0 left-0 w-16 h-16 sm:w-24 sm:h-24 bg-white/10 rounded-full -ml-8 sm:-ml-12 -mb-8 sm:-mb-12" />
         
-        <div className="relative flex items-start gap-4">
+        <div className="relative flex items-start gap-3 sm:gap-4">
           <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: styles.iconBg }}
           >
-            <span className="material-symbols-outlined text-3xl">{styles.icon}</span>
+            <span className="material-symbols-outlined text-2xl sm:text-3xl">{styles.icon}</span>
           </div>
           
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-black mb-1">{title}</h3>
-            <p className="text-sm opacity-90 leading-relaxed whitespace-pre-line">{message}</p>
+            <h3 className="text-base sm:text-lg font-black mb-1">{title}</h3>
+            <p className="text-xs sm:text-sm opacity-90 leading-relaxed whitespace-pre-line">{message}</p>
           </div>
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition-colors flex-shrink-0"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition-colors flex-shrink-0"
           >
-            <span className="material-symbols-outlined text-xl">close</span>
+            <span className="material-symbols-outlined text-lg sm:text-xl">close</span>
           </button>
         </div>
 

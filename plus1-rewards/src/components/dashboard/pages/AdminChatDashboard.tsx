@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -6,8 +6,6 @@
 import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
-  Phone, 
-  MoreVertical, 
   Paperclip, 
   Image as ImageIcon, 
   Smile, 
@@ -73,7 +71,7 @@ interface ChatConversation {
 }
 
 export default function App() {
-  const { notification, showSuccess, showError, showInfo, hideNotification } = useNotification();
+  const { notification, showSuccess, showError, hideNotification } = useNotification();
   const navigate = useNavigate();
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -454,7 +452,7 @@ export default function App() {
         const key = convo.conversation_type === 'member' ? convo.member_id : 
                     convo.conversation_type === 'partner' ? convo.partner_id : 
                     convo.agent_id;
-        const existing = acc.find(c => 
+        const existing = acc.find((c: ChatConversation) => 
           (c.conversation_type === convo.conversation_type) && 
           ((c.conversation_type === 'member' && c.member_id === key) || 
            (c.conversation_type === 'partner' && c.partner_id === key) ||
@@ -549,7 +547,7 @@ export default function App() {
         attachmentType = selectedImage.type.startsWith('video/') ? 'video' : 'image';
       }
 
-      const messageText = inputText.trim() || (attachmentType === 'image' ? '📷 Image' : '🎥 Video');
+      const messageText = inputText.trim() || (attachmentType === 'image' ? 'ðŸ“· Image' : 'ðŸŽ¥ Video');
 
       const { error } = await supabaseAdmin
         .from(tableName)
@@ -649,7 +647,7 @@ export default function App() {
         .insert([{
           conversation_id: selectedConversation.id,
           sender_type: 'admin',
-          message: `📎 Sent ${file.name}`,
+          message: `ðŸ“Ž Sent ${file.name}`,
           attachment_url: fileUrl,
           attachment_type: 'file',
           attachment_name: file.name,
@@ -736,32 +734,7 @@ export default function App() {
     }
   };
 
-  const handleRequestFeedback = async () => {
-    if (!selectedConversation) return;
 
-    try {
-      const tableName = selectedConversation.conversation_type === 'member'
-        ? 'chat_conversations'
-        : selectedConversation.conversation_type === 'partner'
-        ? 'partner_chat_conversations'
-        : 'agent_chat_conversations';
-
-      await supabaseAdmin
-        .from(tableName)
-        .update({ 
-          status: 'closed',
-          feedback_requested: true,
-          feedback_requested_at: new Date().toISOString()
-        })
-        .eq('id', selectedConversation.id);
-
-      await loadConversations();
-      showSuccess('Feedback Requested', 'The conversation has been closed and feedback request sent');
-    } catch (error) {
-      console.error('Error requesting feedback:', error);
-      showError('Request Failed', 'Failed to request feedback. Please try again.');
-    }
-  };
 
   const handleDeleteConversation = async () => {
     if (!selectedConversation || !confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) return;
@@ -856,7 +829,7 @@ export default function App() {
             .insert([{
               conversation_id: selectedConversation.id,
               sender_type: 'admin',
-              message: '🎤 Sent a voice note',
+              message: 'ðŸŽ¤ Sent a voice note',
               attachment_url: fileUrl,
               attachment_type: 'voice',
               read: true
@@ -975,14 +948,14 @@ export default function App() {
         onChange={handleFileUpload}
       />
       
-      {/* Sidebar */}
-      <aside className="w-80 flex flex-col border-r border-gray-200 bg-gray-50">
+      {/* Sidebar - Hidden on mobile when chat is selected */}
+      <aside className={`${selectedConversation ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-col border-r border-gray-200 bg-gray-50`}>
         <div className="p-4 space-y-3">
           <button
             onClick={() => navigate('/admin/dashboard')}
             className="flex items-center gap-2 text-sm font-semibold text-[#1a558b] hover:underline"
           >
-            ← Back to Home
+            â† Back to Home
           </button>
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#1a558b] transition-colors" />
@@ -1031,12 +1004,20 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Main Chat Area */}
+      {/* Main Chat Area - Full screen on mobile */}
       {selectedConversation ? (
         <main className="flex-1 flex flex-col relative bg-white">
-          {/* Header */}
-          <header className="h-16 flex items-center justify-between px-6 border-b border-gray-200 bg-white/80 backdrop-blur-md z-10">
+          {/* Header with mobile back button */}
+          <header className="h-16 flex items-center justify-between px-4 md:px-6 border-b border-gray-200 bg-white/80 backdrop-blur-md z-10">
             <div className="flex items-center gap-3">
+              {/* Mobile back button */}
+              <button
+                onClick={() => setSelectedConversation(null)}
+                className="md:hidden p-2 -ml-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <span className="material-symbols-outlined text-gray-700">arrow_back</span>
+              </button>
+              
               <div className="relative">
                 <div className="w-10 h-10 rounded-full bg-[#1a558b] flex items-center justify-center font-semibold text-white">
                   {selectedConversation.conversation_type === 'member' 
@@ -1057,7 +1038,7 @@ export default function App() {
                     ? (selectedConversation.partner?.name || 'Unknown Partner')
                     : (selectedConversation.agent?.name || 'Unknown Agent')}
                   {selectedConversation.conversation_type === 'partner' && (
-                    <span className="ml-2 text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full">Partner</span>
+                    <span className="ml-2 text-xs bg-purple-100 text-purple-600 px-2 py-0.5" style={{ borderRadius: '5px' }}>Partner</span>
                   )}
                 </h2>
                 <p className="text-xs text-gray-500">
@@ -1069,28 +1050,33 @@ export default function App() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-4 text-gray-400">
+            <div className="flex items-center gap-2 text-gray-400">
               {selectedConversation.status === 'open' ? (
                 <button
                   onClick={handleCloseConversation}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#1a558b] hover:bg-[#1a558b]/90 transition-colors shadow-sm"
+                  className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#1a558b] hover:bg-[#1a558b]/90 transition-colors shadow-sm"
                 >
                   <XCircle className="w-3.5 h-3.5" /> Close
                 </button>
               ) : (
-                <span className="text-xs text-gray-500 px-3 py-1.5 bg-gray-100 rounded-lg font-medium">Closed</span>
+                <span className="hidden md:inline text-xs text-gray-500 px-3 py-1.5 bg-gray-100 rounded-lg font-medium">Closed</span>
               )}
               <button
                 onClick={handleDeleteConversation}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm"
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Delete
+              </button>
+              
+              {/* Mobile menu button */}
+              <button className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-gray-700">more_vert</span>
               </button>
             </div>
           </header>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8 custom-scrollbar">
             {messages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
@@ -1175,7 +1161,7 @@ export default function App() {
                           {showEmojiPicker && (
                             <div className="absolute bottom-10 right-0 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 z-50 w-64">
                               <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
-                                {['😀','😂','😍','🥰','😎','🤔','😅','😭','😊','🙏','👍','👎','❤️','🔥','✅','⭐','🎉','💪','🤝','👋','😢','😡','🤣','😇','🥳','😴','🤯','😱','🙄','😏','💯','🚀','💡','📞','📧','🏥','💊','🩺','📋','✍️'].map(emoji => (
+                                {['ðŸ˜€','ðŸ˜‚','ðŸ˜','ðŸ¥°','ðŸ˜Ž','ðŸ¤”','ðŸ˜…','ðŸ˜­','ðŸ˜Š','ðŸ™','ðŸ‘','ðŸ‘Ž','â¤ï¸','ðŸ”¥','âœ…','â­','ðŸŽ‰','ðŸ’ª','ðŸ¤','ðŸ‘‹','ðŸ˜¢','ðŸ˜¡','ðŸ¤£','ðŸ˜‡','ðŸ¥³','ðŸ˜´','ðŸ¤¯','ðŸ˜±','ðŸ™„','ðŸ˜','ðŸ’¯','ðŸš€','ðŸ’¡','ðŸ“ž','ðŸ“§','ðŸ¥','ðŸ’Š','ðŸ©º','ðŸ“‹','âœï¸'].map(emoji => (
                                   <button
                                     key={emoji}
                                     type="button"
@@ -1260,7 +1246,7 @@ export default function App() {
           </button>
         </main>
       ) : (
-        <main className="flex-1 flex items-center justify-center bg-gray-50">
+        <main className="hidden md:flex flex-1 items-center justify-center bg-gray-50">
           <div className="text-center">
             <MessageSquarePlus className="w-20 h-20 text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-700 mb-2">No conversation selected</h3>
@@ -1302,7 +1288,7 @@ function ChatItem({ name, message, time, unread, active, status, initial, thumbn
           <div className="flex items-center gap-2">
             <h3 className={`font-semibold text-sm truncate ${active ? 'text-[#1a558b]' : 'text-gray-900'}`}>{name}</h3>
             {conversationType === 'partner' && (
-              <span className="text-[9px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full font-bold">PARTNER</span>
+              <span className="text-[9px] bg-purple-100 text-purple-600 px-1.5 py-0.5 font-bold" style={{ borderRadius: '5px' }}>PARTNER</span>
             )}
           </div>
           <span className="text-[10px] text-gray-400">{time}</span>
@@ -1317,7 +1303,7 @@ function ChatItem({ name, message, time, unread, active, status, initial, thumbn
             <p className={`text-xs truncate ${active ? 'text-[#1a558b]/70' : 'text-gray-500'}`}>{message}</p>
           )}
           {unread && unread > 0 && (
-            <span className="bg-[#00a63e] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center flex-shrink-0">
+            <span className="bg-[#00a63e] text-white text-[10px] font-bold px-1.5 py-0.5 min-w-[18px] text-center flex-shrink-0" style={{ borderRadius: '5px' }}>
               {unread}
             </span>
           )}
@@ -1417,7 +1403,7 @@ function Message({ msg, selectedConversation, playingAudio, toggleAudioPlayback 
                     <span className="text-sm text-gray-700 truncate">{msg.attachment_name || 'Download file'}</span>
                   </a>
                 )}
-                {msg.attachment_type !== 'voice' && msg.message && !msg.message.startsWith('📷') && !msg.message.startsWith('🎥') && !msg.message.startsWith('📎') && (
+                {msg.attachment_type !== 'voice' && msg.message && !msg.message.startsWith('ðŸ“·') && !msg.message.startsWith('ðŸŽ¥') && !msg.message.startsWith('ðŸ“Ž') && (
                   <p className="text-gray-800 text-sm">{msg.message}</p>
                 )}
               </div>
@@ -1443,4 +1429,7 @@ function AttachmentOption({ icon, label, onClick }: any) {
     </button>
   );
 }
+
+
+
 

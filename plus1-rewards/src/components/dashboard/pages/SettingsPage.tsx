@@ -67,8 +67,65 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout>
-      <main className="flex-1 overflow-y-auto bg-[#f5f8fc]">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 md:p-10 pb-6">
+      <main className="flex-1 overflow-y-auto bg-[#f5f8fc] relative">
+        {/* COMING SOON OVERLAY */}
+        <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(8px)' }}>
+          <div className="text-center px-6 max-w-2xl">
+            <div className="mb-6">
+              <span className="material-symbols-outlined text-[#1a558b] mb-4" style={{ fontSize: '120px' }}>
+                construction
+              </span>
+            </div>
+            <h1 className="text-5xl md:text-6xl font-black text-white mb-4 tracking-tight">
+              COMING SOON
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-300 mb-6 font-semibold">
+              Settings Management
+            </p>
+            <div className="bg-white/10 border border-white/20 rounded-xl p-6 backdrop-blur-sm">
+              <p className="text-base text-gray-200 leading-relaxed mb-4">
+                The Settings page is currently under development. This feature will allow you to configure system-wide settings including:
+              </p>
+              <ul className="text-sm text-gray-300 space-y-2 text-left max-w-md mx-auto">
+                <li className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[#1a558b] text-lg mt-0.5">check_circle</span>
+                  <span>Cashback percentage rules and limits</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[#1a558b] text-lg mt-0.5">check_circle</span>
+                  <span>Invoice generation and payment timing</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[#1a558b] text-lg mt-0.5">check_circle</span>
+                  <span>System status labels and notifications</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[#1a558b] text-lg mt-0.5">check_circle</span>
+                  <span>Export preferences and data formats</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[#1a558b] text-lg mt-0.5">check_circle</span>
+                  <span>Support contact information</span>
+                </li>
+              </ul>
+              <div className="mt-6 pt-6 border-t border-white/20">
+                <p className="text-xs text-gray-400 italic">
+                  Note: Settings are currently not persisted to the database. This feature requires implementation of the system_settings table and proper save/load functionality.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/admin/dashboard')}
+              className="mt-8 px-8 py-4 bg-[#1a558b] hover:opacity-90 text-white rounded-xl font-bold transition-all flex items-center gap-2 mx-auto text-lg"
+            >
+              <span className="material-symbols-outlined">arrow_back</span>
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+
+        {/* Desktop Header */}
+        <header className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 md:p-10 pb-6">
           <div>
             <h1 className="text-3xl font-black text-gray-900 tracking-tight">Settings / Configuration</h1>
             <p className="text-gray-600 mt-1">System-wide settings and configuration</p>
@@ -91,7 +148,34 @@ export default function SettingsPage() {
           </div>
         </header>
 
-        <div className="px-6 md:px-10 pb-10">
+        {/* Mobile Header - 2 rows */}
+        <header className="md:hidden px-4 py-4 space-y-3">
+          {/* Row 1: Title */}
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#1a558b]">settings</span>
+            <h1 className="text-xl font-black text-gray-900">Settings</h1>
+          </div>
+
+          {/* Row 2: Two equal-width buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={handleRefresh}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-bold rounded-lg border border-[#1a558b] bg-white text-[#1a558b] text-sm"
+            >
+              <span className="material-symbols-outlined text-lg">refresh</span>
+              Refresh
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1a558b] text-white rounded-lg text-sm"
+            >
+              <span className="material-symbols-outlined text-lg">logout</span>
+              Logout
+            </button>
+          </div>
+        </header>
+
+        <div className="px-4 md:px-10 pb-6 md:pb-10">
           {/* Warning Banner */}
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
             <span className="material-symbols-outlined text-red-600">warning</span>
