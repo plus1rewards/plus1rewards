@@ -393,7 +393,7 @@ export function MemberFindPartners() {
                     {/* Footer */}
                     <div className="flex items-center justify-between">
                       <div className="text-gray-600 text-sm">
-                        {partner.phone || 'No phone'}
+                        {partner.cell_phone || 'No phone'}
                       </div>
                       
                       {/* Action Button */}

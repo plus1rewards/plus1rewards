@@ -786,7 +786,7 @@ export default function App() {
                       {/* Footer */}
                       <div className="flex items-center justify-between pt-6 border-t border-outline-variant/20 mt-auto">
                         <div className="text-xs font-bold text-on-surface/60">
-                          {partner.phone || 'No phone'}
+                          {partner.cell_phone || 'No phone'}
                         </div>
                         <div className="flex items-center gap-1 text-primary font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
                           View Details <ChevronRight size={14} strokeWidth={3} />

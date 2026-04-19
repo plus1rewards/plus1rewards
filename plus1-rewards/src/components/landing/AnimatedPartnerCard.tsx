@@ -95,7 +95,7 @@ export default function AnimatedPartnerCard({ partner, onClick }: AnimatedPartne
         </div>
         
         <div className="card__footer">
-          <div className="card__price">{partner.phone || 'No phone'}</div>
+          <div className="card__price">{partner.cell_phone || 'No phone'}</div>
           <div className="card__button">
             <svg height="16" width="16" viewBox="0 0 24 24">
               <path
