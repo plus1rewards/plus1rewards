@@ -49,20 +49,20 @@ export function Notification({ type, title, message, onClose, duration = 5000 }:
 
   return (
     <div
-      className="fixed top-2 left-2 right-2 sm:top-4 sm:right-4 sm:left-auto z-50 sm:max-w-md w-auto sm:w-full animate-slide-in-right"
+      className="fixed top-0 left-0 right-0 sm:top-2 sm:left-2 sm:right-2 sm:left-auto z-50 sm:max-w-md w-full sm:w-auto"
       style={{
-        animation: 'slideInRight 0.3s ease-out'
+        animation: 'slideInDown 0.4s ease-out'
       }}
     >
       <div
-        className="rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-5 text-white relative overflow-hidden"
+        className="sm:rounded-xl sm:shadow-2xl shadow-lg text-white relative overflow-hidden"
         style={{ background: styles.bg }}
       >
         {/* Decorative circles */}
         <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-white/10 rounded-full -mr-10 sm:-mr-16 -mt-10 sm:-mt-16" />
         <div className="absolute bottom-0 left-0 w-16 h-16 sm:w-24 sm:h-24 bg-white/10 rounded-full -ml-8 sm:-ml-12 -mb-8 sm:-mb-12" />
         
-        <div className="relative flex items-start gap-3 sm:gap-4">
+        <div className="relative flex items-start gap-3 sm:gap-4 p-4 sm:p-5">
           <div
             className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: styles.iconBg }}
@@ -97,13 +97,13 @@ export function Notification({ type, title, message, onClose, duration = 5000 }:
       </div>
 
       <style>{`
-        @keyframes slideInRight {
+        @keyframes slideInDown {
           from {
-            transform: translateX(100%);
+            transform: translateY(-100%);
             opacity: 0;
           }
           to {
-            transform: translateX(0);
+            transform: translateY(0);
             opacity: 1;
           }
         }

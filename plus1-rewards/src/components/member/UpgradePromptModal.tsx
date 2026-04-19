@@ -103,122 +103,116 @@ export default function UpgradePromptModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-white w-full h-full sm:h-auto sm:rounded-2xl sm:max-w-2xl overflow-hidden shadow-2xl flex flex-col sm:max-h-[95vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-gray-900">Upgrade Your Cover Plan</h2>
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-gray-200 flex-shrink-0">
+          <h2 className="text-base sm:text-lg font-bold text-gray-900">Upgrade Your Cover</h2>
           <button
             onClick={onDecline}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1"
           >
-            <span className="material-symbols-outlined">close</span>
+            <span className="material-symbols-outlined text-xl sm:text-2xl">close</span>
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-5">
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 sm:space-y-5">
           {/* Plan Info */}
-          <div className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-bold text-lg text-gray-900 mb-2">Comprehensive - Value Plus</h3>
-              <p className="text-sm text-gray-600 mb-1">Price: <span className="font-bold text-gray-900">R{nextTarget.toFixed(2)}</span>/month</p>
-              <p className="text-sm text-gray-600">Upgrade Cost: <span className="font-bold text-blue-600">R{upgradeCost.toFixed(2)}</span></p>
+          <div className="space-y-3 sm:space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-2">Comprehensive - Value Plus</h3>
+              <p className="text-xs sm:text-sm text-gray-600 mb-1">Monthly Price: <span className="font-bold text-gray-900">R{nextTarget.toFixed(2)}</span></p>
+              <p className="text-xs sm:text-sm text-gray-600">Upgrade Cost: <span className="font-bold text-blue-600">R{upgradeCost.toFixed(2)}</span></p>
             </div>
 
             {/* Cover Details */}
-            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-              <p className="text-sm font-bold text-gray-700 uppercase tracking-wide">What's Included:</p>
+            <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+              <p className="text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wide">What You'll Get:</p>
               <div className="space-y-2">
                 <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-green-600 text-lg flex-shrink-0">check_circle</span>
-                  <p className="text-sm text-gray-700"><span className="font-semibold">Doctor Managed Doctor Visits</span> - 5 visits per member per annum</p>
+                  <span className="material-symbols-outlined text-green-600 text-base sm:text-lg flex-shrink-0 mt-0.5">check_circle</span>
+                  <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Doctor Visits</span> - 5 visits per year</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-green-600 text-lg flex-shrink-0">check_circle</span>
-                  <p className="text-sm text-gray-700"><span className="font-semibold">Acute Chronic Medication</span> - According to Day1Health formulary</p>
+                  <span className="material-symbols-outlined text-green-600 text-base sm:text-lg flex-shrink-0 mt-0.5">check_circle</span>
+                  <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Medication</span> - Acute & chronic prescriptions</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-green-600 text-lg flex-shrink-0">check_circle</span>
-                  <p className="text-sm text-gray-700"><span className="font-semibold">Dentistry / Optometry</span> - Basic treatment & eye tests</p>
+                  <span className="material-symbols-outlined text-green-600 text-base sm:text-lg flex-shrink-0 mt-0.5">check_circle</span>
+                  <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Dental & Eye Care</span> - Basic treatment & tests</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-green-600 text-lg flex-shrink-0">check_circle</span>
-                  <p className="text-sm text-gray-700"><span className="font-semibold">Private Hospital Benefits</span> - Up to R5,000 for 21 days</p>
+                  <span className="material-symbols-outlined text-green-600 text-base sm:text-lg flex-shrink-0 mt-0.5">check_circle</span>
+                  <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Hospital Cover</span> - Up to R5,000 for 21 days</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-green-600 text-lg flex-shrink-0">check_circle</span>
-                  <p className="text-sm text-gray-700"><span className="font-semibold">Accident/Trauma Benefit</span> - Up to R150,000 per member</p>
+                  <span className="material-symbols-outlined text-green-600 text-base sm:text-lg flex-shrink-0 mt-0.5">check_circle</span>
+                  <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Accident Cover</span> - Up to R150,000</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-green-600 text-lg flex-shrink-0">check_circle</span>
-                  <p className="text-sm text-gray-700"><span className="font-semibold">24 Hour Emergency Ambulance</span> - Immediate cover</p>
+                  <span className="material-symbols-outlined text-green-600 text-base sm:text-lg flex-shrink-0 mt-0.5">check_circle</span>
+                  <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Emergency Ambulance</span> - 24/7 coverage</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-green-600 text-lg flex-shrink-0">check_circle</span>
-                  <p className="text-sm text-gray-700"><span className="font-semibold">Maternity Benefit</span> - Up to R25,000 (12 month waiting period)</p>
+                  <span className="material-symbols-outlined text-green-600 text-base sm:text-lg flex-shrink-0 mt-0.5">check_circle</span>
+                  <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Maternity</span> - Up to R25,000</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-green-600 text-lg flex-shrink-0">check_circle</span>
-                  <p className="text-sm text-gray-700"><span className="font-semibold">Family Funeral Benefit</span> - Up to R20,000 principal member</p>
+                  <span className="material-symbols-outlined text-green-600 text-base sm:text-lg flex-shrink-0 mt-0.5">check_circle</span>
+                  <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Funeral Cover</span> - Up to R20,000</p>
                 </div>
               </div>
             </div>
-
-            {/* View Brochure Button */}
-            <button className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-              <span className="material-symbols-outlined">description</span>
-              View Full Brochure
-            </button>
           </div>
 
           {/* Plan Comparison */}
-          <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+          <div className="bg-gray-50 rounded-xl p-4 space-y-2 sm:space-y-3">
             <div className="flex justify-between items-center py-2 border-b border-gray-200">
-              <span className="text-sm text-gray-600">Current Plan:</span>
-              <span className="font-bold text-gray-900">{currentPlanName}</span>
+              <span className="text-xs sm:text-sm text-gray-600">Your Current Plan:</span>
+              <span className="font-bold text-gray-900 text-xs sm:text-sm">{currentPlanName}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-200">
-              <span className="text-sm text-gray-600">New Plan:</span>
-              <span className="font-bold text-gray-900">Comprehensive - Value Plus</span>
+              <span className="text-xs sm:text-sm text-gray-600">Upgrading To:</span>
+              <span className="font-bold text-gray-900 text-xs sm:text-sm">Comprehensive</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-200">
-              <span className="text-sm text-gray-600">Upgrade Cost:</span>
-              <span className="font-bold text-blue-600">R{upgradeCost.toFixed(2)}</span>
+              <span className="text-xs sm:text-sm text-gray-600">Upgrade Cost:</span>
+              <span className="font-bold text-blue-600 text-xs sm:text-sm">R{upgradeCost.toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center py-2">
-              <span className="text-sm text-gray-600">Your Overflow Balance:</span>
-              <span className="font-bold text-green-600">R{overflowAmount.toFixed(2)}</span>
+              <span className="text-xs sm:text-sm text-gray-600">Your Available Funds:</span>
+              <span className="font-bold text-green-600 text-xs sm:text-sm">R{overflowAmount.toFixed(2)}</span>
             </div>
           </div>
 
           {/* Info Note */}
-          <div className={`${hasEnoughOverflow ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'} border rounded-lg p-3 flex items-start gap-2`}>
-            <span className={`material-symbols-outlined ${hasEnoughOverflow ? 'text-amber-600' : 'text-red-600'} text-lg flex-shrink-0 mt-0.5`}>
+          <div className={`${hasEnoughOverflow ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'} border-2 rounded-xl p-4 flex items-start gap-3`}>
+            <span className={`material-symbols-outlined ${hasEnoughOverflow ? 'text-blue-600' : 'text-red-600'} text-xl sm:text-2xl flex-shrink-0`}>
               {hasEnoughOverflow ? 'info' : 'error'}
             </span>
-            <p className={`text-xs ${hasEnoughOverflow ? 'text-amber-800' : 'text-red-800'} leading-relaxed`}>
+            <p className={`text-xs sm:text-sm ${hasEnoughOverflow ? 'text-blue-800' : 'text-red-800'} leading-relaxed`}>
               {hasEnoughOverflow 
-                ? "Your overflow balance will be used to cover the upgrade cost. You'll be redirected to Day1Health to complete the upgrade."
-                : `You need R${upgradeCost.toFixed(2)} to upgrade, but you only have R${overflowAmount.toFixed(2)} overflow. Keep earning cashback to reach the required amount!`
+                ? "Great news! You have enough funds to upgrade. The cost will be deducted from your overflow balance, and you'll be taken to Day1Health to complete the upgrade."
+                : `You need R${upgradeCost.toFixed(2)} to upgrade, but you currently have R${overflowAmount.toFixed(2)}. Keep shopping at partner stores to earn more cashback!`
               }
             </p>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
+        {/* Footer - Fixed */}
+        <div className="flex flex-col sm:flex-row gap-3 px-5 sm:px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
           <button
             onClick={onDecline}
-            className="flex-1 px-4 py-3 rounded-lg border-2 border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-bold hover:bg-gray-100 transition-colors disabled:opacity-50 text-sm sm:text-base"
             disabled={isProcessing}
           >
-            Remind Me Later
+            Maybe Later
           </button>
           <button
             onClick={handleUpgradeNow}
             disabled={isProcessing || !hasEnoughOverflow}
-            className="flex-1 px-4 py-3 rounded-lg bg-green-600 text-white font-bold hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
           >
             {isProcessing ? (
               <>

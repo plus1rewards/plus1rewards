@@ -345,7 +345,8 @@ const DashboardNew: React.FC = () => {
       setFirstName(memberData.first_name || '');
       setLastName(memberData.last_name || '');
       setContactNumber(memberData.cell_phone);
-      setEmail(memberData.email || '');
+      // Don't pre-fill email if it's the default @plus1rewards.local
+      setEmail(memberData.email && !memberData.email.includes('@plus1rewards.local') ? memberData.email : '');
 
       // Generate QR code
       if (memberData.qr_code) {
@@ -862,12 +863,16 @@ const DashboardNew: React.FC = () => {
         throw error;
       }
 
+      // Show success notification FIRST
+      showSuccess('Information Updated!', 'Your profile has been updated successfully.', 4000);
+      
+      // Wait a moment for the notification to appear, then close modal
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       // Close the profile incomplete modal after successful save
       setShowProfileIncomplete(false);
       setProfileModalDismissedByUser(false);
       setIsEditingProfile(false);
-
-      showSuccess('Profile Updated', 'Profile updated successfully!', 3000);
       
       // Reload dashboard data
       await loadDashboardData();
@@ -917,7 +922,8 @@ const DashboardNew: React.FC = () => {
       setFirstName(member.name.split(' ')[0] || '');
       setLastName(member.name.split(' ').slice(1).join(' ') || '');
       setContactNumber(member.phone);
-      setEmail(member.email || '');
+      // Don't pre-fill email if it's the default @plus1rewards.local
+      setEmail(member.email && !member.email.includes('@plus1rewards.local') ? member.email : '');
     }
   };
 
@@ -1478,7 +1484,10 @@ const DashboardNew: React.FC = () => {
                   <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Email Address</label>
                   <input
                     className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none"
-                    type="email" value={email} onFocus={handleInputFocus}
+                    type="email" 
+                    placeholder="Enter your email address"
+                    value={email} 
+                    onFocus={handleInputFocus}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
