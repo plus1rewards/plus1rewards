@@ -6,6 +6,7 @@ import StatCard from '../components/StatCard';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { FilterConfig, FilterValues } from '../AdvancedFilters';
 import { applyFilters, countActiveFilters, commonFilters } from '../../../utils/filterHelpers';
+import { formatLargeNumber } from '../../../utils/formatNumber';
 
 export default function TransactionsPage() {
   const navigate = useNavigate();
@@ -219,10 +220,10 @@ export default function TransactionsPage() {
   const handleExport = () => console.log('Export CSV triggered');
 
   const statsData = [
-    { icon: 'receipt_long', title: 'Total Transactions', value: stats.total.toString(), change: '', description: 'All time' },
-    { icon: 'check_circle', title: 'Completed', value: stats.completed.toString(), change: '', description: 'Successful' },
-    { icon: 'pending', title: 'Pending', value: stats.pending.toString(), change: '', description: 'Awaiting confirmation' },
-    { icon: 'payments', title: 'Total Volume', value: `R${stats.volume.toFixed(2)}`, change: '', description: 'Transaction value' }
+    { icon: 'receipt_long', title: 'Total Transactions', value: stats.total.toString(), description: 'All time' },
+    { icon: 'check_circle', title: 'Completed', value: stats.completed.toString(), description: 'Successful' },
+    { icon: 'pending', title: 'Pending', value: stats.pending.toString(), description: 'Awaiting confirmation' },
+    { icon: 'payments', title: 'Total Volume', value: formatLargeNumber(stats.volume).display, fullValue: `R${stats.volume.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`, description: 'Transaction value' }
   ];
 
   // Advanced Filter Configuration
@@ -298,7 +299,7 @@ export default function TransactionsPage() {
             <p className="text-gray-600 mt-1">Monitor all platform transactions and payments</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-            {statsData.map((stat, index) => (<StatCard key={index} icon={stat.icon} title={stat.title} value={stat.value} change={stat.change} description={stat.description} />))}
+            {statsData.map((stat, index) => (<StatCard key={index} icon={stat.icon} title={stat.title} value={stat.value} fullValue={stat.fullValue} description={stat.description} />))}
           </div>
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-2xl">
             <div className="px-4 md:px-6 py-4 md:py-5 border-b border-gray-200 bg-gray-50">

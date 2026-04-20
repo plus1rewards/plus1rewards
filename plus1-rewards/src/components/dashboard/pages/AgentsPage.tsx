@@ -6,6 +6,7 @@ import StatCard from '../components/StatCard';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { FilterConfig, FilterValues } from '../AdvancedFilters';
 import { applyFilters, countActiveFilters, commonFilters } from '../../../utils/filterHelpers';
+import { formatLargeNumber } from '../../../utils/formatNumber';
 
 export default function AgentsPage() {
   const navigate = useNavigate();
@@ -301,10 +302,10 @@ export default function AgentsPage() {
   };
 
   const statsData = [
-    { icon: 'support_agent', title: 'Total Agents', value: stats.totalAgents.toString(), change: '+0%', description: 'All agents' },
-    { icon: 'verified_user', title: 'Active', value: stats.verified.toString(), change: '+0%', description: 'Approved agents' },
-    { icon: 'pending', title: 'Pending Approval', value: stats.pending.toString(), change: '+0%', description: 'Awaiting approval' },
-    { icon: 'account_balance_wallet', title: 'Commissions Paid', value: `R${stats.commissions.toFixed(2)}`, change: '+0%', description: 'Total payouts' }
+    { icon: 'support_agent', title: 'Total Agents', value: stats.totalAgents.toString(), description: 'All agents' },
+    { icon: 'verified_user', title: 'Active', value: stats.verified.toString(), description: 'Approved agents' },
+    { icon: 'pending', title: 'Pending Approval', value: stats.pending.toString(), description: 'Awaiting approval' },
+    { icon: 'account_balance_wallet', title: 'Commissions Paid', value: formatLargeNumber(stats.commissions).display, fullValue: `R${stats.commissions.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`, description: 'Total payouts' }
   ];
 
   // Advanced Filter Configuration
@@ -459,7 +460,7 @@ export default function AgentsPage() {
                 icon={stat.icon}
                 title={stat.title}
                 value={stat.value}
-                change={stat.change}
+                fullValue={stat.fullValue}
                 description={stat.description}
               />
             ))}

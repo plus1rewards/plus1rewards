@@ -6,6 +6,7 @@ import StatCard from '../components/StatCard';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { FilterConfig, FilterValues } from '../AdvancedFilters';
 import { applyFilters, countActiveFilters, commonFilters } from '../../../utils/filterHelpers';
+import { formatLargeNumber } from '../../../utils/formatNumber';
 
 // Helper function to get full name from first_name and last_name
 const getFullName = (member: any): string => {
@@ -544,28 +545,25 @@ export default function MembersPage() {
       icon: 'group',
       title: 'Total Members',
       value: stats.totalMembers.toString(),
-      change: '+0%',
       description: 'Active members on platform'
     },
     {
       icon: 'verified_user',
       title: 'Verified',
       value: stats.verified.toString(),
-      change: '+0%',
       description: 'KYC completed accounts'
     },
     {
       icon: 'qr_code',
       title: 'QR Codes Issued',
       value: stats.qrCodes.toString(),
-      change: '+0%',
       description: 'Active codes in circulation'
     },
     {
       icon: 'payments',
       title: 'Total Rewards',
-      value: `R${stats.totalRewards.toFixed(2)}`,
-      change: '+0%',
+      value: formatLargeNumber(stats.totalRewards).display,
+      fullValue: `R${stats.totalRewards.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`,
       description: 'Issued to members'
     }
   ];
@@ -624,7 +622,7 @@ export default function MembersPage() {
                 icon={stat.icon}
                 title={stat.title}
                 value={stat.value}
-                change={stat.change}
+                fullValue={stat.fullValue}
                 description={stat.description}
               />
             ))}

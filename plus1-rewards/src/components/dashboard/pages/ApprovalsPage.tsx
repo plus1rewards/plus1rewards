@@ -399,9 +399,9 @@ export default function ApprovalsPage() {
   const handleLogout = () => navigate('/');
 
   const statsData = [
-    { icon: 'pending_actions', title: 'Total Pending', value: stats.totalPending.toString(), change: '', description: 'Awaiting approval' },
-    { icon: 'storefront', title: 'Partners', value: stats.partners.toString(), change: '', description: 'Partner applications' },
-    { icon: 'support_agent', title: 'Agents', value: stats.agents.toString(), change: '', description: 'Agent applications' }
+    { icon: 'pending_actions', title: 'Total Pending', value: stats.totalPending.toString(), description: 'Awaiting approval' },
+    { icon: 'storefront', title: 'Partners', value: stats.partners.toString(), description: 'Partner applications' },
+    { icon: 'support_agent', title: 'Agents', value: stats.agents.toString(), description: 'Agent applications' }
   ];
 
   return (
@@ -450,7 +450,6 @@ export default function ApprovalsPage() {
                 icon={stat.icon}
                 title={stat.title}
                 value={stat.value}
-                change={stat.change}
                 description={stat.description}
               />
             ))}

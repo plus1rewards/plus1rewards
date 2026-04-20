@@ -107,7 +107,7 @@ export default function QuickTransaction() {
     try {
       const { data, error } = await supabase
         .from('members')
-        .select('id, first_name, last_name, phone, status')
+        .select('id, first_name, last_name, phone, status, role, email, sa_id, address_line_1')
         .eq('phone', phoneNumber)
         .single();
 
@@ -118,6 +118,53 @@ export default function QuickTransaction() {
 
       if (data.status !== 'active') {
         setError('Member account is not active');
+        return;
+      }
+
+      // Prevent transactions for sponsored members
+      if (data.role === 'sponsored_member') {
+        setError('This is a sponsored member. Only the sponsor can earn cashback, not the sponsored member.');
+        return;
+      }
+
+      // Check if member has any paused cover plans
+      const { data: pausedPlans, error: planError } = await supabase
+        .from('member_cover_plans')
+        .select('id, status')
+        .eq('member_id', data.id)
+        .eq('status', 'paused');
+
+      if (!planError && pausedPlans && pausedPlans.length > 0) {
+        // Check if profile is complete to determine the reason for pause
+        const isProfileComplete = 
+          data.email && 
+          !data.email.includes('@plus1rewards.local') && 
+          data.sa_id && 
+          data.address_line_1;
+
+        if (!isProfileComplete) {
+          // Profile incomplete - BLOCK transaction
+          setError('Member policy is PAUSED. Member needs to complete their profile information (email, ID number, address) in the +1 Rewards app before transactions can continue. Please ask them to update their information.');
+          return;
+        }
+        // If profile is complete but paused (insufficient funds), ALLOW transaction to continue
+        // They need to earn cashback to reactivate their plan
+      }
+
+      // Check if member has any plans pending Day1Health verification
+      const { data: pendingPlans, error: pendingError } = await supabase
+        .from('member_cover_plans')
+        .select('id, status')
+        .eq('member_id', data.id)
+        .in('status', ['pending_day1health', 'pending_upgrade']);
+
+      if (!pendingError && pendingPlans && pendingPlans.length > 0) {
+        // Plan is pending Day1Health verification or upgrade approval - BLOCK transaction
+        const isPendingUpgrade = pendingPlans.some(p => p.status === 'pending_upgrade');
+        const message = isPendingUpgrade 
+          ? 'Member policy upgrade is pending verification from Day1Health. Transactions cannot be processed until the upgrade is approved. Please ask the member to check their app for updates.'
+          : 'Member policy is pending verification from Day1Health. Transactions cannot be processed until the policy is approved. Please ask the member to check their app for updates.';
+        setError(message);
         return;
       }
 

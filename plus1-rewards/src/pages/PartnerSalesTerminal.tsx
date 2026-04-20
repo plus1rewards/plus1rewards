@@ -275,6 +275,24 @@ export default function PartnerSalesTerminal() {
         }
       }
 
+      // Check if member has any plans pending Day1Health verification
+      const { data: pendingPlans, error: pendingError } = await supabase
+        .from('member_cover_plans')
+        .select('id, status')
+        .eq('member_id', data.id)
+        .in('status', ['pending_day1health', 'pending_upgrade']);
+
+      if (!pendingError && pendingPlans && pendingPlans.length > 0) {
+        // Plan is pending Day1Health verification or upgrade approval - BLOCK transaction
+        const isPendingUpgrade = pendingPlans.some(p => p.status === 'pending_upgrade');
+        const message = isPendingUpgrade 
+          ? 'Member policy upgrade is pending verification from Day1Health. Transactions cannot be processed until the upgrade is approved. Please ask the member to check their app for updates.'
+          : 'Member policy is pending verification from Day1Health. Transactions cannot be processed until the policy is approved. Please ask the member to check their app for updates.';
+        setError(message);
+        setLoading(false);
+        return;
+      }
+
       setMember(data);
       setPhoneNumber(memberIdentifier);
       setActiveField('amount');
@@ -397,6 +415,25 @@ export default function PartnerSalesTerminal() {
         }
         // If profile is complete but paused (insufficient funds), ALLOW transaction to continue
         // They need to earn cashback to reactivate their plan
+      }
+
+      // Check if member has any plans pending Day1Health verification
+      const { data: pendingPlans, error: pendingError } = await supabase
+        .from('member_cover_plans')
+        .select('id, status')
+        .eq('member_id', data.id)
+        .in('status', ['pending_day1health', 'pending_upgrade']);
+
+      if (!pendingError && pendingPlans && pendingPlans.length > 0) {
+        // Plan is pending Day1Health verification or upgrade approval - BLOCK transaction
+        const isPendingUpgrade = pendingPlans.some(p => p.status === 'pending_upgrade');
+        const message = isPendingUpgrade 
+          ? 'Member policy upgrade is pending verification from Day1Health. Transactions cannot be processed until the upgrade is approved. Please ask the member to check their app for updates.'
+          : 'Member policy is pending verification from Day1Health. Transactions cannot be processed until the policy is approved. Please ask the member to check their app for updates.';
+        setError(message);
+        setLoading(false);
+        setActiveField('phone');
+        return;
       }
 
       setMember(data);

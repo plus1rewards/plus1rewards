@@ -6,6 +6,7 @@ import StatCard from '../components/StatCard';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { FilterConfig, FilterValues } from '../AdvancedFilters';
 import { applyFilters, countActiveFilters, commonFilters } from '../../../utils/filterHelpers';
+import { formatLargeNumber } from '../../../utils/formatNumber';
 
 // Helper function to get owner name from first_name and last_name or responsible_person
 const getOwnerName = (partner: any): string => {
@@ -483,28 +484,25 @@ export default function PartnersPage() {
       icon: 'storefront',
       title: 'Total partners',
       value: stats.totalPartners.toString(),
-      change: '+0%',
       description: 'All partners'
     },
     {
       icon: 'check_circle',
       title: 'Active',
       value: stats.verified.toString(),
-      change: '+0%',
       description: 'Approved partners'
     },
     {
       icon: 'pending',
       title: 'Pending Approval',
       value: stats.pending.toString(),
-      change: '+0%',
       description: 'Awaiting approval'
     },
     {
       icon: 'payments',
       title: 'Revenue',
-      value: `R${stats.revenue.toFixed(2)}`,
-      change: '+0%',
+      value: formatLargeNumber(stats.revenue).display,
+      fullValue: `R${stats.revenue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`,
       description: 'Total collected'
     }
   ];
@@ -599,7 +597,7 @@ export default function PartnersPage() {
                   icon={stat.icon}
                   title={stat.title}
                   value={stat.value}
-                  change={stat.change}
+                  fullValue={stat.fullValue}
                   description={stat.description}
                 />
               ))}

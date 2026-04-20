@@ -108,16 +108,24 @@ const DashboardNew: React.FC = () => {
   const [timeRemaining, setTimeRemaining] = useState<string>('');
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   
-  // Check sessionStorage for dismissal flag on mount
-  const [profileModalDismissedByUser, setProfileModalDismissedByUser] = useState(() => {
-    return sessionStorage.getItem('profile_modal_dismissed_session') === 'true';
-  });
+  // Check sessionStorage for dismissal flag on mount (plan-specific)
+  const [profileModalDismissedByUser, setProfileModalDismissedByUser] = useState(false);
 
-  // Persist dismissal flag to sessionStorage
+  // Persist dismissal flag to sessionStorage (plan-specific)
   const dismissProfileModal = () => {
-    setProfileModalDismissedByUser(true);
-    sessionStorage.setItem('profile_modal_dismissed_session', 'true');
+    if (mainCoverPlan?.id) {
+      setProfileModalDismissedByUser(true);
+      sessionStorage.setItem(`profile_modal_dismissed_${mainCoverPlan.id}`, 'true');
+    }
   };
+
+  // Check if modal was dismissed for current plan
+  useEffect(() => {
+    if (mainCoverPlan?.id) {
+      const isDismissed = sessionStorage.getItem(`profile_modal_dismissed_${mainCoverPlan.id}`) === 'true';
+      setProfileModalDismissedByUser(isDismissed);
+    }
+  }, [mainCoverPlan?.id]);
 
 
   // Debug: Log when showProfileIncomplete changes
@@ -756,7 +764,9 @@ const DashboardNew: React.FC = () => {
           // Close the modal and reload data to show pending status
           setShowProfileIncomplete(false);
           // Clear dismissal flag since profile is now complete
-          sessionStorage.removeItem('profile_modal_dismissed_session');
+          if (mainCoverPlan?.id) {
+            sessionStorage.removeItem(`profile_modal_dismissed_${mainCoverPlan.id}`);
+          }
           setProfileModalDismissedByUser(false);
           await loadDashboardData();
           
@@ -770,7 +780,9 @@ const DashboardNew: React.FC = () => {
       else if (isProfileComplete && mainCoverPlan.status === 'pending_day1health') {
         setShowProfileIncomplete(false);
         // Clear dismissal flag since profile is complete
-        sessionStorage.removeItem('profile_modal_dismissed_session');
+        if (mainCoverPlan?.id) {
+          sessionStorage.removeItem(`profile_modal_dismissed_${mainCoverPlan.id}`);
+        }
         setProfileModalDismissedByUser(false);
       }
     };
@@ -863,15 +875,29 @@ const DashboardNew: React.FC = () => {
         throw error;
       }
 
+      // Update member state immediately with new values to prevent modal from showing again
+      setMember(prev => prev ? {
+        ...prev,
+        name: `${firstName} ${lastName}`.trim(),
+        phone: contactNumber,
+        email: email,
+        sa_id: member.sa_id,
+        address_line_1: member.address_line_1,
+        city: member.city,
+        postal_code: member.postal_code
+      } : null);
+
       // Show success notification FIRST
       showSuccess('Information Updated!', 'Your profile has been updated successfully.', 4000);
-      
-      // Wait a moment for the notification to appear, then close modal
-      await new Promise(resolve => setTimeout(resolve, 300));
       
       // Close the profile incomplete modal after successful save
       setShowProfileIncomplete(false);
       setProfileModalDismissedByUser(false);
+      
+      // Wait a moment for state to update before allowing profile check to run
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Now set isEditingProfile to false to allow profile check
       setIsEditingProfile(false);
       
       // Reload dashboard data

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../DashboardLayout';
 import StatCard from '../components/StatCard';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { formatLargeNumber } from '../../../utils/formatNumber';
 
 export default function TopUpsPage() {
   const navigate = useNavigate();
@@ -43,10 +44,16 @@ export default function TopUpsPage() {
   useEffect(() => { fetchData(); }, []);
 
   const statsData = [
-    { icon: 'add_card', title: 'Total Top-Ups', value: stats.total.toString(), change: '', description: 'All payments' },
-    { icon: 'person', title: 'Member Top-Ups', value: topUps.filter(t => t.payer_type === 'member').length.toString(), change: '', description: 'From members' },
-    { icon: 'storefront', title: 'Partner Top-Ups', value: topUps.filter(t => t.payer_type === 'partner').length.toString(), change: '', description: 'From partners' },
-    { icon: 'payments', title: 'Total Amount', value: `R${stats.totalAmount.toFixed(2)}`, change: '', description: 'All top-ups' }
+    { icon: 'add_card', title: 'Total Top-Ups', value: stats.total.toString(), description: 'All payments' },
+    { icon: 'person', title: 'Member Top-Ups', value: topUps.filter(t => t.payer_type === 'member').length.toString(), description: 'From members' },
+    { icon: 'storefront', title: 'Partner Top-Ups', value: topUps.filter(t => t.payer_type === 'partner').length.toString(), description: 'From partners' },
+    { 
+      icon: 'payments', 
+      title: 'Total Amount', 
+      value: formatLargeNumber(stats.totalAmount).display, 
+      fullValue: `R${stats.totalAmount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`,
+      description: 'All top-ups' 
+    }
   ];
 
   return (
@@ -94,7 +101,7 @@ export default function TopUpsPage() {
         <div className="px-4 md:px-10 pb-10">
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-10">
             {statsData.map((stat, index) => (
-              <StatCard key={index} icon={stat.icon} title={stat.title} value={stat.value} change={stat.change} description={stat.description} />
+              <StatCard key={index} icon={stat.icon} title={stat.title} value={stat.value} fullValue={stat.fullValue} description={stat.description} />
             ))}
           </div>
 

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../DashboardLayout';
 import StatCard from '../components/StatCard';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { formatLargeNumber } from '../../../utils/formatNumber';
 
 export default function CoverPlansPage() {
   const navigate = useNavigate();
@@ -160,10 +161,10 @@ export default function CoverPlansPage() {
   });
 
   const statsData = [
-    { icon: 'health_and_safety', title: 'Total Cover Plans', value: stats.totalCoverPlans.toString(), change: '', description: 'All member plans' },
-    { icon: 'check_circle', title: 'Active', value: stats.active.toString(), change: '', description: 'Fully funded plans' },
-    { icon: 'pause_circle', title: 'Suspended', value: stats.suspended.toString(), change: '', description: 'Awaiting funding' },
-    { icon: 'payments', title: 'Total Funded', value: `R${stats.totalFunded.toFixed(2)}`, change: '', description: 'Across all plans' }
+    { icon: 'health_and_safety', title: 'Total Cover Plans', value: stats.totalCoverPlans.toString(), description: 'All member plans' },
+    { icon: 'check_circle', title: 'Active', value: stats.active.toString(), description: 'Fully funded plans' },
+    { icon: 'pause_circle', title: 'Suspended', value: stats.suspended.toString(), description: 'Awaiting funding' },
+    { icon: 'payments', title: 'Total Funded', value: formatLargeNumber(stats.totalFunded).display, fullValue: `R${stats.totalFunded.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`, description: 'Across all plans' }
   ];
 
   return (
@@ -255,7 +256,7 @@ export default function CoverPlansPage() {
                 icon={stat.icon}
                 title={stat.title}
                 value={stat.value}
-                change={stat.change}
+                fullValue={stat.fullValue}
                 description={stat.description}
               />
             ))}

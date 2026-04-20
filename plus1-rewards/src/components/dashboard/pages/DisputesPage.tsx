@@ -155,10 +155,10 @@ export default function DisputesPage() {
   useEffect(() => { fetchData(); }, []);
 
   const statsData = [
-    { icon: 'report_problem', title: 'Total Disputes', value: stats.total.toString(), change: '', description: 'All time' },
-    { icon: 'pending', title: 'Open', value: stats.open.toString(), change: '', description: 'Awaiting resolution' },
-    { icon: 'check_circle', title: 'Resolved', value: stats.resolved.toString(), change: '', description: 'Successfully resolved' },
-    { icon: 'cancel', title: 'Rejected', value: stats.rejected.toString(), change: '', description: 'Invalid disputes' }
+    { icon: 'report_problem', title: 'Total Disputes', value: stats.total.toString(), description: 'All time' },
+    { icon: 'pending', title: 'Open', value: stats.open.toString(), description: 'Awaiting resolution' },
+    { icon: 'check_circle', title: 'Resolved', value: stats.resolved.toString(), description: 'Successfully resolved' },
+    { icon: 'cancel', title: 'Rejected', value: stats.rejected.toString(), description: 'Invalid disputes' }
   ];
 
   return (
@@ -206,7 +206,7 @@ export default function DisputesPage() {
         <div className="px-4 md:px-10 pb-10">
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-10">
             {statsData.map((stat, index) => (
-              <StatCard key={index} icon={stat.icon} title={stat.title} value={stat.value} change={stat.change} description={stat.description} />
+              <StatCard key={index} icon={stat.icon} title={stat.title} value={stat.value} description={stat.description} />
             ))}
           </div>
 

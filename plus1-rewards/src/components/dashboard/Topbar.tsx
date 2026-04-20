@@ -47,10 +47,6 @@ export default function Topbar({ onRefresh }: TopbarProps) {
             <span className="material-symbols-outlined text-sm md:text-base lg:text-lg">logout</span>
             <span className="hidden sm:inline">Logout</span>
           </button>
-          
-          <div className="size-7 md:size-9 lg:size-11 rounded-full border-2 border-[#1a558b] p-0.5 ml-0.5 md:ml-1 lg:ml-2 flex-shrink-0">
-            <div className="w-full h-full rounded-full bg-cover bg-center" style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBZTVGWF5d9bUsTI1U_LA3u4Y-VW_tV7rVaCbr2bBcopKZ6aUEHak7Ad9ln4DGdmBcA4N_9IKOEwo_ZTgYugg0o3iWvRKoqrWDyBrw7mtjHatTwJ33VZI6nS8OIhyQl1DNFVnLMy5g9mboPCvWqWHPBke7YtYx4A7Ny8R8SF3z24w7nM33LYsSZVYbQQMyEhfI9bUKhfbdf6UBFROSXG5deW8I1Twmv3QDRJbOGQADi06UdXRXlEIqzBN95vQGSGpy4mn-lBnbfZr0r')"}}></div>
-          </div>
         </div>
       </div>
     </header>

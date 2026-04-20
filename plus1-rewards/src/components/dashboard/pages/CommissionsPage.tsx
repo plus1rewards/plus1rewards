@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../DashboardLayout';
 import StatCard from '../components/StatCard';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { formatLargeNumber } from '../../../utils/formatNumber';
 
 export default function CommissionsPage() {
   const navigate = useNavigate();
@@ -206,10 +207,10 @@ export default function CommissionsPage() {
   });
 
   const statsData = [
-    { icon: 'account_balance_wallet', title: 'Total Agents', value: stats.totalCommissions.toString(), change: '', description: 'Earning commissions' },
-    { icon: 'check_circle', title: 'Paid Out', value: stats.paid.toString(), change: '', description: 'This month' },
-    { icon: 'pending', title: 'Pending', value: stats.pending.toString(), change: '', description: 'Below threshold' },
-    { icon: 'payments', title: 'Total Amount', value: `R${stats.totalAmount.toFixed(2)}`, change: '', description: 'All commissions' }
+    { icon: 'account_balance_wallet', title: 'Total Agents', value: stats.totalCommissions.toString(), description: 'Earning commissions' },
+    { icon: 'check_circle', title: 'Paid Out', value: stats.paid.toString(), description: 'This month' },
+    { icon: 'pending', title: 'Pending', value: stats.pending.toString(), description: 'Below threshold' },
+    { icon: 'payments', title: 'Total Amount', value: formatLargeNumber(stats.totalAmount).display, fullValue: `R${stats.totalAmount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`, description: 'All commissions' }
   ];
 
   return (
@@ -293,7 +294,7 @@ export default function CommissionsPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-10">
             {statsData.map((stat, index) => (
-              <StatCard key={index} icon={stat.icon} title={stat.title} value={stat.value} change={stat.change} description={stat.description} />
+              <StatCard key={index} icon={stat.icon} title={stat.title} value={stat.value} fullValue={stat.fullValue} description={stat.description} />
             ))}
           </div>
 

@@ -42,16 +42,44 @@ export default function Dashboard() {
 
   const checkMembersNeedingProfileCompletion = async () => {
     try {
-      console.log('ðŸ” Checking for members at 90%+ needing profile completion...');
+      console.log('Checking for members at 90%+ needing profile completion...');
       
-      // Get all members
-      const { data: members } = await supabaseAdmin
-        .from('members')
-        .select('*');
+      // Get all member cover plans with member details
+      const { data: memberCoverPlans, error } = await supabaseAdmin
+        .from('member_cover_plans')
+        .select(`
+          id,
+          member_id,
+          funded_amount,
+          target_amount,
+          status,
+          members (
+            id,
+            first_name,
+            last_name,
+            cell_phone,
+            email,
+            sa_id,
+            address_line_1
+          )
+        `)
+        .eq('creation_order', 1)
+        .in('status', ['in_progress', 'paused']);
       
-      if (!members) return;
+      if (error) {
+        console.error('Error fetching member cover plans:', error);
+        setAlert(null);
+        setMembersNeedingVerification([]);
+        return;
+      }
       
-      console.log(`ðŸ“‹ Found ${members.length} members`);
+      if (!memberCoverPlans || memberCoverPlans.length === 0) {
+        setAlert(null);
+        setMembersNeedingVerification([]);
+        return;
+      }
+      
+      console.log(`Found ${memberCoverPlans.length} active cover plans`);
       
       const membersNeedingAttention: Array<{
         id: string;
@@ -63,40 +91,39 @@ export default function Dashboard() {
         target: number;
       }> = [];
       
-      for (const member of members) {
+      for (const plan of memberCoverPlans) {
+        const member = plan.members;
+        if (!member) continue;
+        
         // Check if profile is incomplete
         const hasIncompleteProfile = 
           !member.email || 
           member.email.includes('@plus1rewards.local') || 
-          !member.sa_id;
+          !member.sa_id ||
+          !member.address_line_1;
         
-        if (!hasIncompleteProfile || !member.active_policy) continue;
+        if (!hasIncompleteProfile) continue;
         
-        // Get member's total cashback (using rewards as cashback)
-        const { data: wallets, error: walletError } = await supabaseAdmin
-          .from('wallets')
-          .select('rewards_total')
-          .eq('member_id', member.id);
+        const fundedAmount = parseFloat(plan.funded_amount || '0');
+        const targetAmount = parseFloat(plan.target_amount || '0');
         
-        console.log(`Member ${member.name} (${member.id}): wallets query returned`, wallets, 'error:', walletError);
+        if (targetAmount === 0) continue;
         
-        const totalCashback = (wallets || []).reduce((sum, w) => sum + (w.rewards_total || 0), 0);
-        const targetAmount = 385; // Default cover plan target from docs
-        const percentComplete = (totalCashback / targetAmount) * 100;
+        const percentComplete = (fundedAmount / targetAmount) * 100;
         
-        console.log(`Member ${member.name}: ${percentComplete.toFixed(1)}% complete (R${totalCashback}/R${targetAmount}), incomplete=${hasIncompleteProfile}`);
+        console.log(`Member ${member.first_name} ${member.last_name}: ${percentComplete.toFixed(1)}% complete (R${fundedAmount}/R${targetAmount}), incomplete=${hasIncompleteProfile}`);
         
         if (percentComplete >= 90) {
           membersNeedingAttention.push({
             id: member.id,
-            name: member.name,
-            phone: member.phone,
-            email: member.email,
+            name: `${member.first_name} ${member.last_name}`.trim(),
+            phone: member.cell_phone || 'N/A',
+            email: member.email || 'Not provided',
             percentComplete: percentComplete.toFixed(1),
-            amountFunded: totalCashback,
+            amountFunded: fundedAmount,
             target: targetAmount
           });
-          console.log(`âš ï¸ ALERT: Member ${member.name} at ${percentComplete.toFixed(1)}% needs verification!`);
+          console.log(`ALERT: Member ${member.first_name} ${member.last_name} at ${percentComplete.toFixed(1)}% needs verification!`);
         }
       }
       
@@ -112,6 +139,8 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error('Error checking members:', error);
+      setAlert(null);
+      setMembersNeedingVerification([]);
     }
   };
 
@@ -320,5 +349,3 @@ export default function Dashboard() {
     </DashboardLayout>
   );
 }
-
-

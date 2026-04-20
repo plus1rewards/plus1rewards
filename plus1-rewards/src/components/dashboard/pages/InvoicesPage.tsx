@@ -6,6 +6,7 @@ import StatCard from '../components/StatCard';
 import { supabaseAdmin } from '../../../lib/supabase';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { formatLargeNumber } from '../../../utils/formatNumber';
 
 export default function InvoicesPage() {
   const navigate = useNavigate();
@@ -326,10 +327,10 @@ export default function InvoicesPage() {
   });
 
   const statsData = [
-    { icon: 'receipt', title: 'Total Invoices', value: stats.totalInvoices.toString(), change: '', description: 'All time' },
-    { icon: 'check_circle', title: 'Paid', value: stats.paid.toString(), change: '', description: 'Settled invoices' },
-    { icon: 'warning', title: 'Overdue', value: stats.overdue.toString(), change: '', description: 'Past due date' },
-    { icon: 'payments', title: 'Total Amount', value: `R${stats.totalAmount.toFixed(2)}`, change: '', description: 'All invoices' }
+    { icon: 'receipt', title: 'Total Invoices', value: stats.totalInvoices.toString(), description: 'All time' },
+    { icon: 'check_circle', title: 'Paid', value: stats.paid.toString(), description: 'Settled invoices' },
+    { icon: 'warning', title: 'Overdue', value: stats.overdue.toString(), description: 'Past due date' },
+    { icon: 'payments', title: 'Total Amount', value: formatLargeNumber(stats.totalAmount).display, fullValue: `R${stats.totalAmount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`, description: 'All invoices' }
   ];
 
   return (
@@ -428,7 +429,7 @@ export default function InvoicesPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-10">
             {statsData.map((stat, index) => (
-              <StatCard key={index} icon={stat.icon} title={stat.title} value={stat.value} change={stat.change} description={stat.description} />
+              <StatCard key={index} icon={stat.icon} title={stat.title} value={stat.value} fullValue={stat.fullValue} description={stat.description} />
             ))}
           </div>
 

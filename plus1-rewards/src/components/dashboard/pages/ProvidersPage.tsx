@@ -100,9 +100,9 @@ export default function ProvidersPage() {
   };
 
   const statsData = [
-    { icon: 'business', title: 'Total Providers', value: stats.total.toString(), change: '', description: 'All providers' },
-    { icon: 'check_circle', title: 'Active', value: stats.active.toString(), change: '', description: 'With access' },
-    { icon: 'pending', title: 'Pending', value: stats.pending.toString(), change: '', description: 'Awaiting approval' }
+    { icon: 'business', title: 'Total Providers', value: stats.total.toString(), description: 'All providers' },
+    { icon: 'check_circle', title: 'Active', value: stats.active.toString(), description: 'With access' },
+    { icon: 'pending', title: 'Pending', value: stats.pending.toString(), description: 'Awaiting approval' }
   ];
 
   return (
@@ -149,7 +149,7 @@ export default function ProvidersPage() {
         <div className="px-6 md:px-10 pb-10">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
             {statsData.map((stat, index) => (
-              <StatCard key={index} icon={stat.icon} title={stat.title} value={stat.value} change={stat.change} description={stat.description} />
+              <StatCard key={index} icon={stat.icon} title={stat.title} value={stat.value} description={stat.description} />
             ))}
           </div>
 
